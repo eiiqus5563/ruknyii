@@ -104,6 +104,7 @@ services:
       - api
     environment:
       API_BACKEND_URL: http://api:3001
+      API_URL: http://api:3001
     networks:
       - rukny_network
 
@@ -122,6 +123,7 @@ services:
       - api
     environment:
       API_BACKEND_URL: http://api:3001
+      API_URL: http://api:3001
     networks:
       - rukny_network
 
