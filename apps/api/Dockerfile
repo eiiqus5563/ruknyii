@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --ignore-scripts \
+RUN npm install --ignore-scripts \
  && npx prisma generate --config prisma/prisma.config.ts \
  && npm cache clean --force
 
