@@ -57,7 +57,27 @@ self.addEventListener('notificationclose', (event) => {
   console.log('Notification closed:', event.notification.tag);
 });
 
-// Activate event - cleanup old caches
+// Install event
+self.addEventListener('install', () => {
+  // Don't auto-skipWaiting — let the app control when to activate
+});
+
+// Activate event - cleanup old caches and claim clients
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name.startsWith('rukny-') === false)
+          .map((name) => caches.delete(name))
+      );
+    }).then(() => clients.claim())
+  );
+});
+
+// Listen for SKIP_WAITING message from the app
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

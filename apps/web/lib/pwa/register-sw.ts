@@ -25,12 +25,12 @@ export async function registerServiceWorker(
 
   // Only register in production
   if (process.env.NODE_ENV !== 'production') {
-    // Skipping SW registration in development
+    console.log('[SW] Skipping registration in development');
     return null;
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
+    const registration = await navigator.serviceWorker.register('/service-worker.js', {
       scope: '/',
     });
 
@@ -62,12 +62,19 @@ export async function registerServiceWorker(
       options.onUpdate?.(registration);
     }
 
-    // 🔄 Periodically check for updates (every 60 minutes)
+    // 🔄 Periodically check for updates (every 30 minutes)
     setInterval(() => {
       registration.update().catch(() => {
         // Update check failed (likely offline)
       });
-    }, 60 * 60 * 1000);
+    }, 30 * 60 * 1000);
+
+    // 🔄 Check for updates when user returns to tab
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        registration.update().catch(() => {});
+      }
+    });
 
     // Handle controller change (new SW activated)
     navigator.serviceWorker.addEventListener('controllerchange', () => {

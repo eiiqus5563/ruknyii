@@ -172,7 +172,7 @@ export function Sidebar({ className }: SidebarProps) {
   const sidebarContent = (
     <aside
       className={cn(
-        "relative flex h-screen w-[240px] flex-col bg-background shrink-0",
+        "relative flex h-screen w-[240px] flex-col bg-background rounded-l-lg shrink-0",
         className,
       )}
       dir="rtl"

@@ -16,5 +16,9 @@ export function SidebarWrapper() {
     );
   }
 
-  return <Sidebar />;
+  return (
+    <div className="hidden lg:block">
+      <Sidebar />
+    </div>
+  );
 }

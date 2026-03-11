@@ -132,7 +132,7 @@ function SettingsSidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   return (
     <>
       {/* Brand Header - متطابق مع Dashboard */}
-      <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+      <div className="flex items-center gap-3 px-5 pt-5 pb-3 rounded-l-lg">
         <div className="relative size-10 shrink-0 overflow-hidden rounded-4xl bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/20 ring-1 ring-primary/10">
           {user?.avatar ? (
             <img
@@ -315,7 +315,7 @@ function SettingsSidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
 export function SettingsSidebarDesktop() {
   return (
-    <aside className="relative flex h-screen w-[240px] flex-col bg-background shrink-0" dir="rtl">
+    <aside className="relative flex h-screen w-[240px] flex-col bg-background rounded-l-lg shrink-0" dir="rtl">
       {/* Gradient divider */}
       <div className="via-border absolute left-0 top-12 bottom-0 w-px bg-gradient-to-b from-transparent to-transparent" />
       <SettingsSidebarContent />
@@ -359,7 +359,7 @@ export function SettingsSidebarSlider() {
               animate={{ x: 0 }}
               exit={{ x: 280 }}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-              className="fixed top-0 right-0 z-50 h-screen lg:hidden"
+              className="fixed top-0 right-0 z-50 h-screen lg:hidden rounded-l-lg"
             >
               <button
                 type="button"
@@ -369,7 +369,7 @@ export function SettingsSidebarSlider() {
               >
                 <X className="size-4 text-muted-foreground" />
               </button>
-              <aside className="relative flex h-screen w-[240px] flex-col bg-background shrink-0" dir="rtl">
+              <aside className="relative flex h-screen rounded-l-lg w-[240px] flex-col bg-background shrink-0" dir="rtl">
                 <SettingsSidebarContent onItemClick={() => setIsMobileOpen(false)} />
               </aside>
             </motion.div>
