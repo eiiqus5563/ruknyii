@@ -13,6 +13,8 @@ services:
       POSTGRES_USER: ${DB_USER:-rukny_admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME:-rukny_io}
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -129,6 +131,25 @@ services:
     networks:
       - rukny_network
 
+  # ─── pgAdmin Database Manager ───
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rukny_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@rukny.io}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "127.0.0.1:5050:5050"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rukny_network
+
   # ─── Nginx Reverse Proxy ───
   nginx:
     image: nginx:alpine
@@ -152,6 +173,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  pgadmin_data:
 
 networks:
   rukny_network:
