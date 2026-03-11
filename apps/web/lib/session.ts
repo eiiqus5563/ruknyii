@@ -13,7 +13,7 @@ import { cache } from 'react';
  */
 export const verifySession = cache(async (): Promise<boolean> => {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get('access_token');
+  const accessToken = cookieStore.get('__Secure-access_token') || cookieStore.get('access_token');
   return !!accessToken?.value;
 });
 
