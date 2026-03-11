@@ -21,7 +21,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npx nest build
+RUN NODE_OPTIONS="--max-old-space-size=4096" npx nest build
 
 # --- Runner ---
 FROM base AS runner
