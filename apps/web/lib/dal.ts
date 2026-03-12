@@ -24,13 +24,13 @@ import type { AuthUser } from './definitions';
 export const getUser = cache(async (): Promise<AuthUser> => {
   const hasSession = await verifySession();
   if (!hasSession) {
-    redirect('/login');
+    redirect('/login?session=expired');
   }
 
   const { data, error, status } = await apiClient<AuthUser>('/auth/me');
 
   if (status === 401 || error || !data) {
-    redirect('/login');
+    redirect('/login?session=expired');
   }
 
   return data;

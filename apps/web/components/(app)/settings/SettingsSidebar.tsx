@@ -122,11 +122,15 @@ function SettingsSidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   }, []);
 
   const isItemActive = (href: string) => {
+    // Normalize paths: strip /app prefix for subdomain mode comparison
+    const normPathname = pathname.replace(/^\/app/, '');
+    const normHref = href.split('?')[0].replace(/^\/app/, '');
+
     if (href.includes('?tab=')) {
       const tab = href.split('?tab=')[1]?.split('&')[0];
-      return pathname === '/app/settings' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === tab;
+      return normPathname === '/settings' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === tab;
     }
-    return pathname === href;
+    return normPathname === normHref;
   };
 
   return (
@@ -332,14 +336,14 @@ export function SettingsSidebarSlider() {
 
   return (
     <>
-      {/* Mobile toggle button */}
+      {/* Mobile toggle button — rendered inline (parent controls positioning) */}
       <button
         type="button"
         onClick={() => setIsMobileOpen(true)}
-        className="fixed top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-card border border-border/30 shadow-sm lg:hidden"
+        className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors lg:hidden"
         aria-label="فتح قائمة الإعدادات"
       >
-        <Menu className="size-5 text-foreground" />
+        <Menu className="size-4 text-muted-foreground" />
       </button>
 
       {/* Mobile sidebar overlay */}

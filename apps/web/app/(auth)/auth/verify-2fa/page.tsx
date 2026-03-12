@@ -108,10 +108,15 @@ function OTPInput({
   );
 }
 
+// UUID v4 format validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function Verify2FAContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get('sessionId');
+  const rawSessionId = searchParams.get('sessionId');
+  // 🔒 Validate sessionId format to prevent path traversal/injection
+  const sessionId = rawSessionId && UUID_REGEX.test(rawSessionId) ? rawSessionId : null;
   
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -157,6 +162,7 @@ function Verify2FAContent() {
 
         console.log('[2FA] Session valid, proceeding...');
         setSessionValid(true);
+        setIsCheckingSession(false);
       } catch (err) {
         console.error('[2FA] Failed to check session:', err);
         // إذا كانت المحاولة الأولى وفشلت، جرب مرة أخرى
@@ -164,11 +170,8 @@ function Verify2FAContent() {
           setTimeout(() => checkSession(retryCount + 1), 500);
           return;
         }
+        setIsCheckingSession(false);
         router.push('/login?session=expired');
-      } finally {
-        if (retryCount >= 2) {
-          setIsCheckingSession(false);
-        }
       }
     };
 
@@ -200,6 +203,7 @@ function Verify2FAContent() {
         body: JSON.stringify({
           token: code.replace(/-/g, ''),
           pendingSessionId: sessionId,
+          rememberDevice,
         }),
       });
 
@@ -239,12 +243,13 @@ function Verify2FAContent() {
     }
   };
 
-  // Auto submit when code is complete (only once)
+  // Auto submit when code is complete
   useEffect(() => {
-    if (code.length === 6 && !isLoading && !useBackupCode && !error) {
+    if (code.length === 6 && !isLoading && !useBackupCode && !error && sessionValid) {
       handleSubmit();
     }
-  }, [code]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, isLoading, useBackupCode, error, sessionValid]);
 
   if (!sessionId || isCheckingSession) {
     return (

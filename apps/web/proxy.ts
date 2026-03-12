@@ -100,17 +100,30 @@ function buildSubdomainUrl(
   return `${protocol}://${domain}${pathname}${search}`;
 }
 
-function hasSession(request: NextRequest): boolean {
-  const hasAccessToken = !!(
+/**
+ * Check if user has an access token (confirmed authenticated session).
+ * Used to decide whether to redirect from auth pages → app.
+ * Only access_token counts — refresh_token alone means the client
+ * still needs to refresh first, so we must NOT redirect away from login.
+ */
+function hasAccessToken(request: NextRequest): boolean {
+  return !!(
     request.cookies.get('__Secure-access_token')?.value ||
     request.cookies.get('access_token')?.value
   );
-  const hasRefreshToken = !!(
+}
+
+/**
+ * Check if user has ANY auth cookie (access OR refresh).
+ * Used to decide whether the user can potentially authenticate
+ * (e.g., let them through to protected routes so the server component
+ * or client-side refresh can handle it).
+ */
+function hasSession(request: NextRequest): boolean {
+  return hasAccessToken(request) || !!(
     request.cookies.get('__Secure-refresh_token')?.value ||
     request.cookies.get('refresh_token')?.value
   );
-
-  return hasAccessToken || hasRefreshToken;
 }
 
 function isProtectedPath(resolvedPathname: string): boolean {
@@ -172,7 +185,7 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (isAuthPath(pathname) && userHasSession) {
+    if (isAuthPath(pathname) && hasAccessToken(request)) {
       const authExceptions = ['/auth/callback', '/complete-profile', '/welcome'];
       const isException = authExceptions.some((path) => pathname === path || pathname.startsWith(`${path}/`));
       const hasSessionExpired =
@@ -232,7 +245,7 @@ export function proxy(request: NextRequest) {
         request.nextUrl.searchParams.get('session') === 'expired' ||
         request.nextUrl.searchParams.get('session') === 'invalid';
 
-      if (userHasSession && !hasSessionExpired) {
+      if (hasAccessToken(request) && !hasSessionExpired) {
         return NextResponse.redirect(
           new URL(buildAppRedirectUrl(rootDomain, protocol)),
         );
@@ -257,7 +270,7 @@ export function proxy(request: NextRequest) {
         request.nextUrl.searchParams.get('session') === 'expired' ||
         request.nextUrl.searchParams.get('session') === 'invalid';
 
-      if (userHasSession && !isException && !hasSessionExpired) {
+      if (hasAccessToken(request) && !isException && !hasSessionExpired) {
         return NextResponse.redirect(
           new URL(buildAppRedirectUrl(rootDomain, protocol)),
         );

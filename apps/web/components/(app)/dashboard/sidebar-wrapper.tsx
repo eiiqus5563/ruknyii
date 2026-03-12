@@ -6,7 +6,7 @@ import { SettingsSidebarDesktop } from '@/components/(app)/settings/SettingsSide
 
 export function SidebarWrapper() {
   const pathname = usePathname();
-  const isSettings = pathname?.startsWith('/app/settings');
+  const isSettings = pathname?.startsWith('/app/settings') || pathname?.startsWith('/settings');
 
   if (isSettings) {
     return (

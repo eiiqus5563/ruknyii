@@ -67,11 +67,10 @@ export class Verify2FALoginDto {
   @ApiProperty({
     description: 'معرف جلسة انتظار 2FA',
     example: 'pending-session-uuid',
-    required: false,
   })
   @IsString()
-  @IsOptional()
-  pendingSessionId?: string;
+  @IsNotEmpty({ message: 'معرف الجلسة مطلوب' })
+  pendingSessionId: string;
 
   @ApiProperty({
     description: 'تذكر هذا الجهاز (تخطي 2FA في المرات القادمة على نفس الجهاز)',

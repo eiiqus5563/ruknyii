@@ -16,7 +16,8 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { collapsed } = usePhonePreview();
-  const isSettingsRoot = pathname === '/app/settings';
+  // Support both /app/settings (localhost) and /settings (production subdomain)
+  const isSettingsRoot = pathname === '/app/settings' || pathname === '/settings';
 
   return (
     <>
@@ -27,9 +28,9 @@ export default function SettingsLayout({
         </div>
       )}
 
-      {/* Mobile: Back header on sub-pages */}
+      {/* Mobile: Back header + sidebar slider on sub-pages */}
       {!isSettingsRoot && (
-        <div className="sticky top-0 z-10 flex items-center gap-2 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 py-3 lg:hidden" dir="rtl">
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 py-3 lg:hidden" dir="rtl">
           <Link
             href="/app/settings"
             className="flex items-center gap-1.5 text-sm text-primary font-medium"
@@ -37,6 +38,7 @@ export default function SettingsLayout({
             <ArrowRight className="size-4" />
             <span>الإعدادات</span>
           </Link>
+          <SettingsSidebarSlider />
         </div>
       )}
 
@@ -56,11 +58,6 @@ export default function SettingsLayout({
           >
             {children}
           </motion.div>
-        </div>
-
-        {/* Mobile Slider — only on desktop now since mobile has card nav */}
-        <div className="hidden lg:block">
-          <SettingsSidebarSlider />
         </div>
       </div>
     </>

@@ -387,6 +387,7 @@ export class TwoFactorController {
    */
   @Get('check-session/:sessionId')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 🔒 10 محاولات في الدقيقة (منع تعداد الجلسات)
   @ApiOperation({ summary: 'التحقق من صلاحية جلسة 2FA المعلقة' })
   @ApiResponse({ status: 200, description: 'الجلسة صالحة' })
   @ApiResponse({ status: 404, description: 'الجلسة منتهية أو غير موجودة' })
@@ -400,9 +401,9 @@ export class TwoFactorController {
       };
     }
 
+    // 🔒 لا نُرجع البريد الإلكتروني لمنع تسريب المعلومات
     return {
       valid: true,
-      email: session.email,
     };
   }
 
