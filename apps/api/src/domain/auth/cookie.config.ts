@@ -29,6 +29,14 @@ const cookieSecure = (process.env.COOKIE_SECURE === 'true') || isProduction;
 //    إذا تركته undefined، الكوكي سيكون host-only على accounts.rukny.io فقط
 const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
+// 🔒 Warn if COOKIE_DOMAIN is missing in production (cookies won't be shared across subdomains)
+if (isProduction && !cookieDomain) {
+  console.error(
+    '⚠️  COOKIE_DOMAIN is not set! Cookies will be host-only and NOT shared across subdomains. ' +
+    'Set COOKIE_DOMAIN=rukny.io in environment variables.',
+  );
+}
+
 // 🔒 Origins المسموحة للـ CSRF validation
 // إضافة دعم للشبكة المحلية في بيئة التطوير
 // ⚠️ تأكد من إضافة جميع النطاقات المستخدمة (www و non-www)

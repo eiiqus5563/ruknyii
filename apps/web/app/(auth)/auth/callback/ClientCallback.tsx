@@ -9,6 +9,7 @@
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/providers';
+import { getAppUrl } from '@/lib/url';
 import { Loader2, XCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -64,11 +65,18 @@ function CallbackContent() {
           console.log('[ClientCallback] ➡️ Redirecting to /complete-profile');
           router.push('/complete-profile');
         } else {
-          // Redirect to app or stored callback URL
-          const callbackUrl = sessionStorage.getItem('oauth_callback') || '/app';
-          console.log('[ClientCallback] ➡️ Redirecting to:', callbackUrl);
+          // Redirect to app — use full URL for cross-subdomain navigation
+          const stored = sessionStorage.getItem('oauth_callback');
           sessionStorage.removeItem('oauth_callback');
-          router.push(callbackUrl);
+          const targetUrl = stored || getAppUrl('/');
+          console.log('[ClientCallback] ➡️ Redirecting to:', targetUrl);
+
+          // Full URLs (cross-subdomain) must use window.location
+          if (targetUrl.startsWith('http')) {
+            window.location.href = targetUrl;
+          } else {
+            router.push(targetUrl);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'فشل التوثيق';

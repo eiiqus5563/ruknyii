@@ -7,16 +7,12 @@ const nextConfig: NextConfig = {
       beforeFiles: [
         // Forward API requests to the backend
         // /api/v1/* -> http://localhost:3001/api/v1/*
-        // /api/auth/* -> http://localhost:3001/api/v1/auth/*
         {
           source: '/api/v1/:path*',
           destination: `${process.env.API_BACKEND_URL || 'http://localhost:3001'}/api/v1/:path*`,
         },
-        // Special handling for auth endpoints (also route to /api/v1/auth/*)
-        {
-          source: '/api/auth/:path*',
-          destination: `${process.env.API_BACKEND_URL || 'http://localhost:3001'}/api/v1/auth/:path*`,
-        },
+        // Note: /api/auth/* is handled by Route Handler (app/api/auth/[...path]/route.ts)
+        // for reliable Set-Cookie header forwarding across subdomains
       ],
     };
   },
