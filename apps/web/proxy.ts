@@ -129,19 +129,15 @@ function buildLoginUrl(
     return `${protocol}://accounts.${rootDomain}/login?callbackUrl=${encodeURIComponent(callbackPath)}`;
   }
 
+  // Localhost fallback — relative path is fine with request.url as base
   return `/login?callbackUrl=${encodeURIComponent(callbackPath)}`;
 }
 
 function buildAppRedirectUrl(
-  subdomain: string | null,
   rootDomain: string,
   protocol: string,
 ): string {
-  if (subdomain !== null) {
-    return `${protocol}://app.${rootDomain}/`;
-  }
-
-  return '/app';
+  return `${protocol}://app.${rootDomain}/`;
 }
 
 export function proxy(request: NextRequest) {
@@ -238,7 +234,7 @@ export function proxy(request: NextRequest) {
 
       if (userHasSession && !hasSessionExpired) {
         return NextResponse.redirect(
-          new URL(buildAppRedirectUrl(subdomain, rootDomain, protocol)),
+          new URL(buildAppRedirectUrl(rootDomain, protocol)),
         );
       }
 
@@ -263,7 +259,7 @@ export function proxy(request: NextRequest) {
 
       if (userHasSession && !isException && !hasSessionExpired) {
         return NextResponse.redirect(
-          new URL(buildAppRedirectUrl(subdomain, rootDomain, protocol)),
+          new URL(buildAppRedirectUrl(rootDomain, protocol)),
         );
       }
 
@@ -279,7 +275,7 @@ export function proxy(request: NextRequest) {
   if (pathname === '/') {
     if (userHasSession) {
       return NextResponse.redirect(
-        new URL(buildAppRedirectUrl(subdomain, rootDomain, protocol)),
+        new URL(buildAppRedirectUrl(rootDomain, protocol)),
       );
     }
     return NextResponse.redirect(
