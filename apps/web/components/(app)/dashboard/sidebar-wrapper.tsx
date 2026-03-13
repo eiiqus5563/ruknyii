@@ -10,14 +10,14 @@ export function SidebarWrapper() {
 
   if (isSettings) {
     return (
-      <div className="hidden lg:flex">
+      <div className="hidden md:flex">
         <SettingsSidebarDesktop />
       </div>
     );
   }
 
   return (
-    <div className="hidden lg:block">
+    <div className="hidden md:block">
       <Sidebar />
     </div>
   );

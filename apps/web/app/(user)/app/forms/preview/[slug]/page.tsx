@@ -119,7 +119,11 @@ function FormPreviewContent() {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="animate-pulse">
+          <div className="flex items-center">
+            <img src="/ruknylogo.svg" alt="Rukny" className="h-12 w-auto" />
+          </div>
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {authLoading ? 'جاري التحقق من الصلاحيات...' : 'جاري تحميل المعاينة...'}
           </p>

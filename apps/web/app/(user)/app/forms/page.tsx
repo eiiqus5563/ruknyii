@@ -87,21 +87,21 @@ export default function FormsPage() {
 
   const handleEditForm = useCallback(
     (form: Form) => {
-      router.push(`/app/forms/${form.id}/edit`);
+      router.push(`/app/forms/${form.slug}/edit`);
     },
     [router]
   );
 
   const handleViewForm = useCallback(
     (form: Form) => {
-      router.push(`/app/forms/${form.id}`);
+      router.push(`/app/forms/${form.slug}/responses`);
     },
     [router]
   );
 
   const handleViewResponses = useCallback(
     (form: Form) => {
-      router.push(`/app/forms/${form.id}/responses`);
+      router.push(`/app/forms/${form.slug}/responses`);
     },
     [router]
   );

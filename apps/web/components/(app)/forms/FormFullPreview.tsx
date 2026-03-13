@@ -68,6 +68,12 @@ const getThemeStyles = (theme: FormTheme): React.CSSProperties => {
     modern: '"IBM Plex Sans Arabic", "Rubik", sans-serif',
     classic: '"Noto Naskh Arabic", "Traditional Arabic", serif',
     playful: '"Comic Sans MS", "Changa", sans-serif',
+    cairo: '"Cairo", sans-serif',
+    tajawal: '"Tajawal", sans-serif',
+    almarai: '"Almarai", sans-serif',
+    'ibm-plex': '"IBM Plex Sans Arabic", sans-serif',
+    readex: '"Readex Pro", sans-serif',
+    'noto-kufi': '"Noto Kufi Arabic", sans-serif',
   };
 
   const fontSizeMap: Record<string, string> = {
@@ -384,7 +390,7 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
                       "flex items-center gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all min-h-[52px]",
                       isSelected
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/30 hover:bg-muted/30"
+                        : "border-border hover:bg-muted/30"
                     )}
                   >
                     <input id={optId} type="radio" name={fieldId} className="sr-only" checked={isSelected} onChange={() => handleFieldChange(field.id, opt)} />
@@ -417,7 +423,7 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
                       "flex items-center gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all min-h-[52px]",
                       isSelected
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/30 hover:bg-muted/30"
+                        : "border-border hover:bg-muted/30"
                     )}
                   >
                     <input
@@ -740,17 +746,100 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
   };
 
   // ============================================
+  // Background & Button styles
+  // ============================================
+
+  const getBackgroundStyles = (): React.CSSProperties => {
+    const bgType = theme.backgroundType || 'solid';
+    switch (bgType) {
+      case 'gradient':
+        return { background: theme.backgroundGradient || `linear-gradient(135deg, ${theme.primaryColor}, ${theme.accentColor})` };
+      case 'image':
+        return theme.backgroundImage ? {
+          backgroundImage: theme.backgroundBlur ? undefined : `url(${theme.backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        } : {};
+      case 'video':
+        return {};
+      default:
+        return { backgroundColor: theme.backgroundColor };
+    }
+  };
+
+  const hasBackgroundMedia = theme.backgroundType === 'image' || theme.backgroundType === 'video' || theme.backgroundType === 'preset' || theme.backgroundType === 'gradient';
+
+  const getSubmitButtonStyles = (): React.CSSProperties => {
+    const btn = theme.submitButton;
+    const shapeMap = { square: '8px', rounded: '12px', pill: '9999px' };
+    return {
+      backgroundColor: btn?.color || theme.primaryColor,
+      color: btn?.textColor || '#ffffff',
+      borderRadius: shapeMap[(btn?.shape || 'rounded') as keyof typeof shapeMap] || '12px',
+    };
+  };
+
+  const submitButtonText = theme.submitButton?.text || 'إرسال';
+  const submitButtonFullWidth = theme.submitButton?.fullWidth || false;
+
+  const backgroundStyles = getBackgroundStyles();
+
+  // Glass styles for elements when background media is present
+  const glassCard = hasBackgroundMedia
+    ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-white/30 dark:border-white/10'
+    : 'bg-card border-border';
+  const glassHeader = hasBackgroundMedia
+    ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-white/30 dark:border-white/10'
+    : 'bg-card/95 backdrop-blur-xl border-border/60';
+
+  // ============================================
   // Render — same layout as /f/[slug]
   // ============================================
 
   return (
     <div
-      className={cn("h-full overflow-y-auto transition-colors relative bg-background")}
+      className={cn("h-full overflow-y-auto transition-colors relative")}
       dir="rtl"
-      style={themeStyles}
+      style={{ ...themeStyles, ...backgroundStyles }}
     >
+      {/* Video Background */}
+      {theme.backgroundType === 'video' && theme.backgroundVideo && (
+        <video
+          src={theme.backgroundVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="fixed inset-0 w-full h-full object-cover z-0"
+          style={{
+            filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
+            transform: theme.backgroundBlur ? 'scale(1.1)' : undefined,
+          }}
+        />
+      )}
+      {/* Background Blur (for images) */}
+      {theme.backgroundType === 'image' && theme.backgroundBlur && theme.backgroundBlur > 0 && (
+        <div
+          className="fixed inset-0 z-0"
+          style={{
+            backgroundImage: `url(${theme.backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: `blur(${theme.backgroundBlur}px)`,
+            transform: 'scale(1.1)',
+          }}
+        />
+      )}
+      {/* Background Overlay */}
+      {hasBackgroundMedia && theme.backgroundOverlay && theme.backgroundOverlay > 0 && (
+        <div
+          className="fixed inset-0 z-[1]"
+          style={{ backgroundColor: `rgba(0,0,0,${theme.backgroundOverlay / 100})` }}
+        />
+      )}
       {/* Preview Banner - subtle fixed indicator at bottom */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2" style={{ position: 'fixed' }}>
         {/* Preview indicator pill */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -771,15 +860,14 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
       </div>
 
       {/* Sticky Header — same as /f/[slug] */}
-      <header className="sticky top-2 z-40 mx-4 sm:mx-auto max-w-2xl relative">
-        <div className="bg-card/95 backdrop-blur-xl rounded-4xl border border-border/60 px-4 py-3 flex items-center justify-between gap-3 transition-all duration-300">
-          {/* Form Title */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-foreground truncate">ركني</h1>
+      <header className="sticky top-2 z-10 mx-4 sm:mx-auto max-w-2xl relative">
+        <div className={cn("rounded-4xl border px-4 py-3 flex items-center justify-between gap-3 transition-all duration-300", glassHeader)}>
+          {/* Logo */}
+          <div className="flex items-center">
+            <img src="/ruknylogo.svg" alt="Rukny" className="h-12 w-auto" />
           </div>
-
           {/* Actions */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowInfoSheet(!showInfoSheet)}
               className={cn(
@@ -886,7 +974,7 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
       </header>
 
       {/* Main Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-20 relative z-10">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-20 relative z-[2]">
         {/* Cover Image */}
         {bannerUrl && (
           <motion.div
@@ -905,7 +993,7 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-4xl border border-border p-5 mb-6"
+          className={cn("rounded-4xl border p-5 mb-6", glassCard)}
         >
           {/* Owner */}
           <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
@@ -974,10 +1062,8 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
-          className="rounded-4xl border transition-all duration-300"
+          className={cn("rounded-4xl border transition-all duration-300", glassCard)}
           style={{
-            backgroundColor: theme.backgroundColor,
-            borderColor: theme.borderColor,
             borderRadius: 'var(--form-radius, 24px)',
           }}
         >
@@ -1028,16 +1114,16 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
                 <button
                   type="button"
                   onClick={() => {
-                    toast.warning('هذه معاينة فقط — لا يمكن إرسال البيانات');
+                    toast.warning(' هذه معاينة فقط — لا يمكن إرسال البيانات');
                   }}
-                  className="flex items-center gap-2 px-6 py-2.5 text-white rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px]"
-                  style={{
-                    backgroundColor: theme.primaryColor,
-                    borderRadius: 'var(--form-radius, 12px)',
-                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 min-h-[44px]",
+                    submitButtonFullWidth ? "w-full" : ""
+                  )}
+                  style={getSubmitButtonStyles()}
                 >
                   <Send className="w-4 h-4" />
-                  إرسال
+                  {submitButtonText}
                 </button>
               )}
             </div>
@@ -1045,20 +1131,31 @@ export function FormFullPreview({ data, onClose, formUrl }: FormFullPreviewProps
         </motion.div>
 
         {/* Footer — same as /f/[slug] */}
-        <footer className="mt-8 pt-6 border-t border-border">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-center">
-            <span className="text-xs text-muted-foreground">مدعوم من</span>
-            <a
-              href="/"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors hover:underline underline-offset-2"
-            >
-              ركني
-            </a>
-          </div>
-          <p className="text-center text-xs text-muted-foreground/70 mt-2">
-            © {new Date().getFullYear()} Rukny
-          </p>
-        </footer>
+        {theme.footer?.show !== false && (
+          <footer className={cn("mt-8 pt-6 border-t", hasBackgroundMedia ? 'border-white/20' : 'border-border')}>
+            {theme.footer?.text && (
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                {theme.footer.text}
+              </p>
+            )}
+            {theme.footer?.showBranding !== false && (
+              <>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-center">
+                  <span className="text-xs text-muted-foreground">مدعوم من</span>
+                  <a
+                    href="/"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary transition-colors hover:underline underline-offset-2"
+                  >
+                    ركني
+                  </a>
+                </div>
+                <p className="text-center text-xs text-muted-foreground/70 mt-2">
+                  © {new Date().getFullYear()} Rukny
+                </p>
+              </>
+            )}
+          </footer>
+        )}
       </main>
 
       {/* Share Modal — same as /f/[slug] */}

@@ -71,6 +71,13 @@ export function MobileDock() {
   const toggleMenu = useCallback(() => setIsOpen((v) => !v), []);
   const closeMenu = useCallback(() => setIsOpen(false), []);
 
+  // Hide dock on full-screen form pages (create, preview, edit)
+  const hiddenPaths = ['/app/forms/create', '/app/forms/preview', '/forms/create', '/forms/preview'];
+  const isFormEditRoute = /\/app\/forms\/[^/]+\/edit/.test(pathname) || /\/forms\/[^/]+\/edit/.test(pathname);
+  if (hiddenPaths.some(p => pathname.startsWith(p)) || isFormEditRoute) {
+    return null;
+  }
+
   const isActive = (href: string) => {
     const path = href.split('?')[0];
     if (path === '/app') return pathname === '/app';
@@ -96,56 +103,58 @@ export function MobileDock() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-              className="fixed inset-x-4 z-50 max-h-[70vh] lg:hidden"
+              className="fixed inset-x-4 z-50 max-h-[60vh] lg:hidden"
               style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
               dir="rtl"
             >
               <div className="overflow-y-auto rounded-2xl bg-background border border-border/40 shadow-xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {/* List */}
-                <div className="p-3 space-y-1.5">
+                <div className="p-2 space-y-0.5">
                   {quickActions.map((action, i) => (
                     <motion.div
                       key={action.href + action.label}
-                      initial={{ opacity: 0, y: 6 }}
+                      initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03, duration: 0.2 }}
+                      transition={{ delay: i * 0.025, duration: 0.15 }}
                     >
                       <Link
                         href={action.href}
                         onClick={closeMenu}
-                        className="flex items-center gap-3.5 rounded-xl bg-card p-3.5 border border-border/30 transition-colors active:bg-muted/50"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-muted/50 hover:bg-muted/30"
                       >
-                        <div className={cn('flex size-10 items-center justify-center rounded-full shrink-0', action.iconBg)}>
-                          <action.icon className={cn('size-5', action.iconColor)} />
+                        <div className={cn('flex size-9 items-center justify-center rounded-full shrink-0', action.iconBg)}>
+                          <action.icon className={cn('size-[18px]', action.iconColor)} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold text-foreground">{action.label}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{action.description}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{action.description}</p>
                         </div>
-                        <ChevronLeft className="size-4 text-muted-foreground/40 shrink-0" />
+                        <ChevronLeft className="size-3.5 text-muted-foreground/30 shrink-0" />
                       </Link>
                     </motion.div>
                   ))}
 
+                  {/* Divider */}
+                  <div className="mx-3 h-px bg-border/40" />
+
                   {/* Settings */}
                   <motion.div
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: quickActions.length * 0.03, duration: 0.2 }}
+                    transition={{ delay: quickActions.length * 0.025, duration: 0.15 }}
                   >
                     <Link
                       href="/app/settings"
                       onClick={closeMenu}
-                      className="flex items-center gap-3.5 rounded-xl bg-card p-3.5 border border-border/30 transition-colors active:bg-muted/50"
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors active:bg-muted/50 hover:bg-muted/30"
                     >
-                      <div className="flex size-10 items-center justify-center rounded-full shrink-0 bg-muted">
-                        <Settings className="size-5 text-muted-foreground" />
+                      <div className="flex size-9 items-center justify-center rounded-full shrink-0 bg-muted">
+                        <Settings className="size-[18px] text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-foreground">الإعدادات</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">إدارة حسابك وتفضيلاتك</p>
+                        <p className="text-[11px] text-muted-foreground">إدارة حسابك وتفضيلاتك</p>
                       </div>
-                      <ChevronLeft className="size-4 text-muted-foreground/40 shrink-0" />
+                      <ChevronLeft className="size-3.5 text-muted-foreground/30 shrink-0" />
                     </Link>
                   </motion.div>
                 </div>

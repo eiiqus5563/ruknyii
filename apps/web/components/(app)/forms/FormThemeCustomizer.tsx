@@ -20,6 +20,24 @@ import { cn } from '@/lib/utils';
 // Types
 // ============================================
 
+export type BackgroundType = 'solid' | 'gradient' | 'image' | 'video' | 'preset';
+export type ButtonShape = 'square' | 'rounded' | 'pill';
+export type FontFamily = 'default' | 'modern' | 'classic' | 'playful' | 'cairo' | 'tajawal' | 'almarai' | 'ibm-plex' | 'readex' | 'noto-kufi';
+
+export interface SubmitButtonTheme {
+  shape: ButtonShape;
+  color: string;
+  textColor: string;
+  text: string;
+  fullWidth: boolean;
+}
+
+export interface FooterTheme {
+  show: boolean;
+  text: string;
+  showBranding: boolean;
+}
+
 export interface FormTheme {
   // Colors
   primaryColor: string;
@@ -29,7 +47,7 @@ export interface FormTheme {
   accentColor: string;
   
   // Typography
-  fontFamily: 'default' | 'modern' | 'classic' | 'playful';
+  fontFamily: FontFamily;
   fontSize: 'small' | 'medium' | 'large';
   
   // Layout
@@ -43,6 +61,21 @@ export interface FormTheme {
   
   // Preset
   presetId?: string;
+
+  // Background
+  backgroundType?: BackgroundType;
+  backgroundImage?: string;
+  backgroundVideo?: string;
+  backgroundPreset?: string;
+  backgroundGradient?: string;
+  backgroundBlur?: number;
+  backgroundOverlay?: number;
+
+  // Submit Button
+  submitButton?: SubmitButtonTheme;
+
+  // Footer
+  footer?: FooterTheme;
 }
 
 export const DEFAULT_THEME: FormTheme = {
@@ -58,6 +91,21 @@ export const DEFAULT_THEME: FormTheme = {
   spacing: 'normal',
   appearance: 'light',
   showLogo: true,
+  backgroundType: 'solid',
+  backgroundBlur: 0,
+  backgroundOverlay: 0,
+  submitButton: {
+    shape: 'rounded',
+    color: '#6366f1',
+    textColor: '#ffffff',
+    text: 'إرسال',
+    fullWidth: false,
+  },
+  footer: {
+    show: true,
+    text: '',
+    showBranding: true,
+  },
 };
 
 // ============================================

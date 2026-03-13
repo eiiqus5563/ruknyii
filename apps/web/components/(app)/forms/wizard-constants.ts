@@ -26,7 +26,7 @@ export interface FieldTypeOption {
   description: string;
 }
 
-export const TOTAL_STEPS = 6;
+export const TOTAL_STEPS = 7;
 
 export type StorageOption = 's3' | 'google_drive' | null;
 

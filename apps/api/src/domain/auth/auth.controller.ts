@@ -26,6 +26,7 @@ import {
   generateCsrfToken,
 } from './cookie.config';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 // Throttle policies:
 // - Production: strict
@@ -45,6 +46,7 @@ export class AuthController {
     private webSocketTokenService: WebSocketTokenService,
     private securityLogService: SecurityLogService,
     private prisma: PrismaService,
+    private storageService: StorageService,
   ) {}
 
   @Get('me')
@@ -56,6 +58,28 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async getMe(@CurrentUser() user: any) {
+    // Resolve avatar S3 key to presigned URL
+    if (user.avatar && !user.avatar.startsWith('http')) {
+      try {
+        user.avatar = await this.storageService.getPresignedUrl(user.avatar);
+      } catch {
+        user.avatar = null;
+      }
+    }
+    // Resolve bannerUrls S3 keys to presigned URLs
+    if (user.bannerUrls?.length) {
+      user.bannerUrls = await Promise.all(
+        user.bannerUrls.map(async (url: string) => {
+          if (!url || url.startsWith('http')) return url;
+          try {
+            return await this.storageService.getPresignedUrl(url);
+          } catch {
+            return null;
+          }
+        }),
+      );
+      user.bannerUrls = user.bannerUrls.filter(Boolean);
+    }
     return user;
   }
 

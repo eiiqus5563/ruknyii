@@ -713,8 +713,30 @@ export class FormsService {
     );
   }
 
+  /**
+   * Resolve a form identifier (ID or slug) to the actual form ID
+   */
+  async resolveFormId(idOrSlug: string): Promise<string> {
+    // Try by ID first
+    const byId = await this.prisma.form.findUnique({
+      where: { id: idOrSlug },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+
+    // Fallback: try by slug
+    const bySlug = await this.prisma.form.findUnique({
+      where: { slug: idOrSlug },
+      select: { id: true },
+    });
+    if (bySlug) return bySlug.id;
+
+    throw new NotFoundException('Form not found');
+  }
+
   async findById(formId: string, userId?: string) {
-    const form = await this.prisma.form.findUnique({
+    // Try by ID first, then fallback to slug
+    let form = await this.prisma.form.findUnique({
       where: { id: formId },
       include: {
         fields: {
@@ -760,6 +782,23 @@ export class FormsService {
         },
       },
     });
+
+    if (!form) {
+      // Fallback: try finding by slug
+      form = await this.prisma.form.findUnique({
+        where: { slug: formId },
+        include: {
+          fields: { orderBy: { order: 'asc' } },
+          steps: {
+            orderBy: { order: 'asc' },
+            include: { form_fields: { orderBy: { order: 'asc' } } },
+          },
+          user: { select: { id: true, email: true, profile: { select: { name: true } } } },
+          events: { select: { id: true, title: true, slug: true } },
+          _count: { select: { submissions: true } },
+        },
+      });
+    }
 
     if (!form) {
       throw new NotFoundException('Form not found');
@@ -996,6 +1035,9 @@ export class FormsService {
       coverImage,
       bannerImages,
       bannerDisplayMode,
+      // Integration settings - not stored in Form table
+      enableGoogleSheets,
+      storageProvider,
       ...formData
     } = updateFormDto as any;
 
@@ -1663,6 +1705,106 @@ export class FormsService {
         limit,
         pages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async getSubmissionsSummary(userId: string, formId: string) {
+    const form = await this.prisma.form.findUnique({
+      where: { id: formId },
+      include: {
+        fields: { orderBy: { order: 'asc' } },
+      },
+    });
+
+    if (!form) {
+      throw new NotFoundException('Form not found');
+    }
+
+    if (form.userId !== userId) {
+      throw new ForbiddenException('Not authorized to view submissions');
+    }
+
+    const submissions = await this.prisma.form_submissions.findMany({
+      where: { formId },
+      orderBy: { completedAt: 'desc' },
+    });
+
+    const decorativeTypes = ['HEADING', 'PARAGRAPH', 'DIVIDER', 'TITLE', 'LABEL', 'IMAGE', 'VIDEO', 'AUDIO', 'EMBED'];
+
+    const fieldSummaries = form.fields
+      .filter(field => !decorativeTypes.includes(field.type))
+      .map(field => {
+        const values: any[] = [];
+        for (const sub of submissions) {
+          const data = sub.data as Record<string, any>;
+          const val = data[field.label] ?? data[field.id];
+          if (val !== undefined && val !== null && val !== '') {
+            values.push(val);
+          }
+        }
+
+        const summary: any = {
+          fieldId: field.id,
+          label: field.label,
+          type: field.type,
+          totalResponses: values.length,
+          options: field.options,
+        };
+
+        const choiceTypes = ['SELECT', 'RADIO', 'MULTISELECT', 'CHECKBOX'];
+        if (choiceTypes.includes(field.type)) {
+          const counts: Record<string, number> = {};
+          for (const val of values) {
+            if (Array.isArray(val)) {
+              for (const v of val) {
+                counts[String(v)] = (counts[String(v)] || 0) + 1;
+              }
+            } else {
+              counts[String(val)] = (counts[String(val)] || 0) + 1;
+            }
+          }
+          summary.distribution = Object.entries(counts).map(([name, count]) => ({
+            name,
+            count,
+            percentage: values.length > 0 ? Math.round((count / values.length) * 100) : 0,
+          }));
+        } else if (field.type === 'RATING' || field.type === 'SCALE' || field.type === 'NUMBER') {
+          const nums = values.map(Number).filter(n => !isNaN(n));
+          if (nums.length > 0) {
+            summary.average = Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
+            summary.min = Math.min(...nums);
+            summary.max = Math.max(...nums);
+          }
+          const counts: Record<string, number> = {};
+          for (const v of nums) {
+            counts[String(v)] = (counts[String(v)] || 0) + 1;
+          }
+          summary.distribution = Object.entries(counts)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([name, count]) => ({
+              name,
+              count,
+              percentage: nums.length > 0 ? Math.round((count / nums.length) * 100) : 0,
+            }));
+        } else if (field.type === 'TOGGLE') {
+          const trueCount = values.filter(v => v === true || v === 'true' || v === 'نعم').length;
+          const falseCount = values.length - trueCount;
+          summary.distribution = [
+            { name: 'نعم', count: trueCount, percentage: values.length > 0 ? Math.round((trueCount / values.length) * 100) : 0 },
+            { name: 'لا', count: falseCount, percentage: values.length > 0 ? Math.round((falseCount / values.length) * 100) : 0 },
+          ];
+        } else {
+          summary.textResponses = values.map(String).slice(0, 100);
+        }
+
+        return summary;
+      });
+
+    return {
+      formId,
+      formTitle: form.title,
+      totalSubmissions: submissions.length,
+      fields: fieldSummaries,
     };
   }
 

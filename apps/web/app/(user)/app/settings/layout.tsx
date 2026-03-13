@@ -28,23 +28,9 @@ export default function SettingsLayout({
         </div>
       )}
 
-      {/* Mobile: Back header + sidebar slider on sub-pages */}
-      {!isSettingsRoot && (
-        <div className="sticky top-0 z-10 flex items-center justify-between bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 py-3 lg:hidden" dir="rtl">
-          <Link
-            href="/app/settings"
-            className="flex items-center gap-1.5 text-sm text-primary font-medium"
-          >
-            <ArrowRight className="size-4" />
-            <span>الإعدادات</span>
-          </Link>
-          <SettingsSidebarSlider />
-        </div>
-      )}
-
       {/* Desktop layout + mobile sub-pages */}
       <div className={cn(
-        'flex gap-4 min-h-[calc(100vh-5rem)]',
+        'flex gap-4 mt-6 min-h-[calc(100vh-5rem)]',
         collapsed && 'max-w-7xl',
         isSettingsRoot && 'hidden lg:flex'
       )}>

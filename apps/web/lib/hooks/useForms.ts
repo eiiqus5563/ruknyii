@@ -691,6 +691,65 @@ export function useForms() {
     }
   }, [getAuthHeaders]);
 
+  // Get submissions summary (aggregated per field)
+  const getSubmissionsSummary = useCallback(async (formId: string): Promise<any> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/forms/${formId}/submissions/summary`,
+        {
+          method: 'GET',
+          headers: await getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('فشل في جلب ملخص الردود');
+      }
+
+      return await response.json();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'حدث خطأ أثناء جلب الملخص';
+      setError(message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  // Delete a submission
+  const deleteSubmission = useCallback(async (
+    formId: string,
+    submissionId: string
+  ): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/forms/${formId}/submissions/${submissionId}`,
+        {
+          method: 'DELETE',
+          headers: await getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('فشل في حذف الرد');
+      }
+
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'حدث خطأ أثناء حذف الرد';
+      setError(message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
   // Submit form (public)
   const submitForm = useCallback(async (
     slug: string,
@@ -860,6 +919,8 @@ export function useForms() {
     deleteForm,
     duplicateForm,
     getFormSubmissions,
+    getSubmissionsSummary,
+    deleteSubmission,
     submitForm,
     exportSubmissions,
     getFormAnalytics,

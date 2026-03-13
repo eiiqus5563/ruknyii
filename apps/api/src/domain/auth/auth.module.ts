@@ -23,6 +23,7 @@ import { EmailModule } from '../../integrations/email/email.module';
 import { OAuthCodeService } from './oauth-code.service';
 import { RedisOAuthCodeService } from './redis-oauth-code.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     SecurityModule,
     EmailModule,
     NotificationsModule,
+    StorageModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

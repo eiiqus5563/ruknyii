@@ -15,7 +15,6 @@
 
 export { StatsCard, StatsCardSkeleton } from './stats-card';
 export { RecentOrders, RecentOrdersSkeleton } from './recent-orders';
-export { DashboardHeader, DashboardHeaderSkeleton } from './dashboard-header';
 export { RevenueChart, RevenueChartSkeleton } from './revenue-chart';
 export type { RevenueChartData, ChartDataPoint } from './revenue-chart';
 export { TotalSalesChart, TotalSalesChartSkeleton } from './total-sales-chart';

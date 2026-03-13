@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   FileText,
@@ -25,6 +26,9 @@ import {
   Share2,
   HardDrive,
   Sparkles,
+  Save,
+  ArrowLeft,
+  Eye,
   Link as LinkIcon,
   Clock,
 } from 'lucide-react';
@@ -60,6 +64,7 @@ import { StepEditor, type FormStepInput } from './StepEditor';
 import FormBannersUpload, { type BannerDisplayMode } from './FormBannersUpload';
 import { FormTemplateSelector, type TemplateLanguage, getTemplateById } from './templates';
 import { type FormTheme, DEFAULT_THEME } from './FormThemeCustomizer';
+import { FormDesignCustomizer } from './FormDesignCustomizer';
 import { useGoogleSheets } from '@/lib/hooks/useGoogleSheets';
 import { useAuth } from '@/providers/auth-provider';
 import { isValidFormSlug } from '@/lib/utils/generateFormSlug';
@@ -195,15 +200,22 @@ export type FormDraftRestore = {
 interface CreateFormWizardProps {
   initialDraft?: FormDraftRestore | null;
   initialSlug?: string;
+  mode?: 'create' | 'edit';
+  editFormId?: string;
+  editFormTitle?: string;
 }
 
-export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizardProps = {}) {
+export function CreateFormWizard({ initialDraft, initialSlug, mode = 'create', editFormId, editFormTitle }: CreateFormWizardProps = {}) {
   const router = useRouter();
-  const { createForm, isLoading } = useForms();
+  const { createForm, updateForm, isLoading } = useForms();
+  const isEditMode = mode === 'edit';
+  // In edit mode, skip template selection step (step 1)
+  const EDIT_STEP_OFFSET = isEditMode ? 1 : 0;
+  const effectiveTotalSteps = TOTAL_STEPS - EDIT_STEP_OFFSET;
   const { connect: connectGoogleSheets } = useGoogleSheets();
   const { user, isAuthenticated } = useAuth();
   
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(isEditMode ? 2 : 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Step 1: Template Selection
@@ -538,78 +550,52 @@ export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizard
   }, [currentStep, title, slug, isMultiStep, formSteps, fields, getTotalFieldsCount]);
 
   // Submit form logic (extracted so it can be called from handleContinue on last step)
-  const submitForm = useCallback(async () => {
-    if (currentStep !== TOTAL_STEPS) return;
+  // Build form payload (shared between create and edit)
+  const buildFormPayload = useCallback(async () => {
+    // Convert banner files to base64
+    let coverImageData: string | undefined;
+    let bannerImagesData: string[] = [];
     
-    setIsSubmitting(true);
-    
-    try {
-      // Convert banner files to base64
-      let coverImageData: string | undefined;
-      let bannerImagesData: string[] = [];
-      
-      for (const banner of banners) {
-        if (typeof banner === 'string') {
-          bannerImagesData.push(banner);
-        } else {
-          const base64 = await fileToBase64(banner);
-          bannerImagesData.push(base64);
-        }
-      }
-      
-      // Use first banner as cover image for backwards compatibility
-      if (bannerImagesData.length > 0) {
-        coverImageData = bannerImagesData[0];
-      }
-
-      const formData: any = {
-        title,
-        slug,
-        description: description || undefined,
-        type: formType,
-        status,
-        isMultiStep,
-        allowMultipleSubmissions,
-        requiresAuthentication,
-        showProgressBar,
-        showQuestionNumbers,
-        notifyOnSubmission,
-        notificationEmail: notifyOnSubmission ? notificationEmail : undefined,
-        theme: formTheme,
-        coverImage: coverImageData,
-        bannerImages: bannerImagesData.length > 0 ? bannerImagesData : undefined,
-        bannerDisplayMode: bannerImagesData.length > 0 ? bannerDisplayMode : undefined,
-      };
-
-      // Add fields or steps based on form type
-      if (isMultiStep) {
-        formData.steps = formSteps.map(step => ({
-          title: step.title,
-          description: step.description,
-          order: step.order,
-          fields: step.fields.map(f => ({
-            label: f.label,
-            description: f.description,
-            type: f.type,
-            order: f.order,
-            required: f.required,
-            placeholder: f.placeholder,
-            options: f.options,
-            minValue: f.minValue,
-            maxValue: f.maxValue,
-            matrixRows: f.matrixRows,
-            matrixColumns: f.matrixColumns,
-            signaturePenColor: f.signaturePenColor,
-            signaturePenWidth: f.signaturePenWidth,
-            toggleLabelOn: f.toggleLabelOn,
-            toggleLabelOff: f.toggleLabelOff,
-            allowedFileTypes: f.allowedFileTypes,
-            maxFileSize: f.maxFileSize,
-            maxFiles: f.maxFiles,
-          })),
-        }));
+    for (const banner of banners) {
+      if (typeof banner === 'string') {
+        bannerImagesData.push(banner);
       } else {
-        formData.fields = fields.map(f => ({
+        const base64 = await fileToBase64(banner);
+        bannerImagesData.push(base64);
+      }
+    }
+    
+    // Use first banner as cover image for backwards compatibility
+    if (bannerImagesData.length > 0) {
+      coverImageData = bannerImagesData[0];
+    }
+
+    const formData: any = {
+      title,
+      slug,
+      description: description || undefined,
+      type: formType,
+      status,
+      isMultiStep,
+      allowMultipleSubmissions,
+      requiresAuthentication,
+      showProgressBar,
+      showQuestionNumbers,
+      notifyOnSubmission,
+      notificationEmail: notifyOnSubmission ? notificationEmail : undefined,
+      theme: formTheme,
+      coverImage: coverImageData,
+      bannerImages: bannerImagesData.length > 0 ? bannerImagesData : undefined,
+      bannerDisplayMode: bannerImagesData.length > 0 ? bannerDisplayMode : undefined,
+    };
+
+    // Add fields or steps based on form type
+    if (isMultiStep) {
+      formData.steps = formSteps.map(step => ({
+        title: step.title,
+        description: step.description,
+        order: step.order,
+        fields: step.fields.map(f => ({
           label: f.label,
           description: f.description,
           type: f.type,
@@ -628,56 +614,121 @@ export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizard
           allowedFileTypes: f.allowedFileTypes,
           maxFileSize: f.maxFileSize,
           maxFiles: f.maxFiles,
-        }));
-      }
-      
-      // Add integration preferences
-      formData.enableGoogleSheets = enableGoogleSheets;
-      formData.storageProvider = storageOption || 's3';
+        })),
+      }));
+    } else {
+      formData.fields = fields.map(f => ({
+        label: f.label,
+        description: f.description,
+        type: f.type,
+        order: f.order,
+        required: f.required,
+        placeholder: f.placeholder,
+        options: f.options,
+        minValue: f.minValue,
+        maxValue: f.maxValue,
+        matrixRows: f.matrixRows,
+        matrixColumns: f.matrixColumns,
+        signaturePenColor: f.signaturePenColor,
+        signaturePenWidth: f.signaturePenWidth,
+        toggleLabelOn: f.toggleLabelOn,
+        toggleLabelOff: f.toggleLabelOff,
+        allowedFileTypes: f.allowedFileTypes,
+        maxFileSize: f.maxFileSize,
+        maxFiles: f.maxFiles,
+      }));
+    }
+    
+    // Add integration preferences
+    formData.enableGoogleSheets = enableGoogleSheets;
+    formData.storageProvider = storageOption || 's3';
 
-      const result = await createForm(formData);
-      
+    return formData;
+  }, [banners, title, slug, description, formType, status, isMultiStep, allowMultipleSubmissions, requiresAuthentication, showProgressBar, showQuestionNumbers, notifyOnSubmission, notificationEmail, formTheme, bannerDisplayMode, formSteps, fields, enableGoogleSheets, storageOption]);
+
+  // Quick save for edit mode — saves from any step without navigating to the end
+  const handleQuickSave = useCallback(async () => {
+    if (!isEditMode || !editFormId) return;
+    
+    // Validate current step before saving
+    if (!validateStep()) return;
+    
+    setIsSubmitting(true);
+    try {
+      const formData = await buildFormPayload();
+      const result = await updateForm(editFormId, formData);
       if (result) {
-        toast.success('تم إنشاء النموذج بنجاح! 🎉');
-        
-        // Handle Google Sheets OAuth if enabled
-        if (enableGoogleSheets && result.id) {
-          toast.info('جاري ربط Google Sheets...', { duration: 3000 });
-          try {
-            const gsResult = await connectGoogleSheets(result.id);
-            if (gsResult?.authUrl) {
-              window.location.href = gsResult.authUrl;
-              return;
-            }
-          } catch {
-            toast.error('فشل في ربط Google Sheets. يمكنك ربطه لاحقاً من صفحة الردود.');
-          }
-        }
-        
-        router.push('/app/forms');
+        toast.success('تم حفظ التغييرات ✅');
       }
     } catch (error: any) {
-      toast.error(error.message || 'فشل في إنشاء النموذج');
+      toast.error(error.message || 'فشل في حفظ التغييرات');
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentStep, banners, title, slug, description, formType, status, isMultiStep, allowMultipleSubmissions, requiresAuthentication, showProgressBar, showQuestionNumbers, notifyOnSubmission, notificationEmail, formTheme, bannerDisplayMode, formSteps, fields, enableGoogleSheets, storageOption, createForm, connectGoogleSheets, router]);
+  }, [isEditMode, editFormId, validateStep, buildFormPayload, updateForm]);
+
+  const submitForm = useCallback(async () => {
+    if (currentStep !== effectiveTotalSteps + EDIT_STEP_OFFSET) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const formData = await buildFormPayload();
+
+      if (isEditMode && editFormId) {
+        // Edit mode: update existing form
+        const result = await updateForm(editFormId, formData);
+        if (result) {
+          toast.success('تم تحديث النموذج بنجاح! ✅');
+          router.push('/app/forms');
+        }
+      } else {
+        // Create mode
+        const result = await createForm(formData);
+        if (result) {
+          toast.success('تم إنشاء النموذج بنجاح! 🎉');
+          
+          // Handle Google Sheets OAuth if enabled
+          if (enableGoogleSheets && result.id) {
+            toast.info('جاري ربط Google Sheets...', { duration: 3000 });
+            try {
+              const gsResult = await connectGoogleSheets(result.id);
+              if (gsResult?.authUrl) {
+                window.location.href = gsResult.authUrl;
+                return;
+              }
+            } catch {
+              toast.error('فشل في ربط Google Sheets. يمكنك ربطه لاحقاً من صفحة الردود.');
+            }
+          }
+          
+          router.push('/app/forms');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || (isEditMode ? 'فشل في تحديث النموذج' : 'فشل في إنشاء النموذج'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [currentStep, effectiveTotalSteps, EDIT_STEP_OFFSET, isEditMode, editFormId, buildFormPayload, updateForm, createForm, enableGoogleSheets, connectGoogleSheets, router]);
 
   // Navigation
   const handleContinue = useCallback(() => {
     if (validateStep()) {
-      if (currentStep === TOTAL_STEPS) {
+      const lastStep = effectiveTotalSteps + EDIT_STEP_OFFSET;
+      if (currentStep === lastStep) {
         // On last step, submit the form
         submitForm();
       } else {
-        setCurrentStep(prev => Math.min(prev + 1, TOTAL_STEPS));
+        setCurrentStep(prev => Math.min(prev + 1, lastStep));
       }
     }
-  }, [validateStep, currentStep, submitForm]);
+  }, [validateStep, currentStep, effectiveTotalSteps, EDIT_STEP_OFFSET, submitForm]);
 
   const handleBack = useCallback(() => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-  }, []);
+    const firstStep = isEditMode ? 2 : 1;
+    setCurrentStep(prev => Math.max(prev - 1, firstStep));
+  }, [isEditMode]);
 
   // Form onSubmit handler (also triggers submitForm)
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -1325,7 +1376,7 @@ export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizard
     </motion.div>
   );
 
-  // Step 6: Preview
+  // Step 6: Design Customization
   const renderStep6 = () => (
     <motion.div
       key="step6"
@@ -1335,8 +1386,28 @@ export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizard
       transition={{ duration: 0.3 }}
       className="flex flex-col items-center text-sm text-foreground"
     >
+      <WizardStepHeader step={6} totalSteps={TOTAL_STEPS} title="تخصيص النموذج" description="خصّص مظهر النموذج — الخلفية والخطوط والألوان وزر الإرسال" />
+      <div className="w-full max-w-md px-4">
+        <FormDesignCustomizer
+          theme={formTheme}
+          onChange={setFormTheme}
+        />
+      </div>
+    </motion.div>
+  );
+
+  // Step 7: Preview
+  const renderStep7 = () => (
+    <motion.div
+      key="step7"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col items-center text-sm text-foreground"
+    >
       {/* Step Header */}
-      <WizardStepHeader step={6} totalSteps={TOTAL_STEPS} title="معاينة النموذج" description="راجع النموذج قبل الإنشاء" />
+      <WizardStepHeader step={7} totalSteps={TOTAL_STEPS} title="معاينة النموذج" description="راجع النموذج قبل الإنشاء" />
 
       {/* Preview Card */}
       <div className="w-full max-w-md px-4">
@@ -1476,69 +1547,142 @@ export function CreateFormWizard({ initialDraft, initialSlug }: CreateFormWizard
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-center gap-6 lg:gap-10 min-h-[520px]">
         {/* Form Content Section */}
         <div className="flex-1 order-1 max-w-xl w-full mx-auto lg:mx-0">
-          {/* Preview Button */}
-          <div className="flex items-center justify-end px-4 sm:px-8 pt-4 sm:pt-6">
-            <button
-              type="button"
-              onClick={handleGoToPreview}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/40 hover:bg-muted/60 border border-border/60 text-foreground transition-colors text-sm font-medium"
-              aria-label="معاينة النموذج"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>معاينة</span>
-            </button>
-          </div>
+          {/* Top Bar */}
+          {isEditMode ? (
+            /* Edit Mode: Dashboard-style glassmorphism nav */
+            <header className="sticky top-0 z-20 px-4 sm:px-6 pt-4 pb-2">
+              <div className="flex items-center justify-between gap-3">
+                {/* Right side (RTL): Breadcrumb */}
+                <nav
+                  className="flex items-center gap-1.5 rounded-4xl border border-border/30 px-4 py-2.5 backdrop-blur-xl dark:border-white/10"
+                  aria-label="Breadcrumb"
+                >
+                  <Link href="/app/forms" className="truncate text-muted-foreground/70 transition-colors hover:text-foreground text-sm">
+                    النماذج
+                  </Link>
+                  <span className="text-muted-foreground/30 select-none" aria-hidden>/</span>
+                  <span className="truncate font-semibold text-foreground text-sm">
+                    {title || editFormTitle || 'تعديل النموذج'}
+                  </span>
+                </nav>
+
+                {/* Left side (RTL): Actions */}
+                <div className="flex items-center gap-1.5 rounded-4xl border border-border/30 px-2 py-1.5 backdrop-blur-xl dark:border-white/10">
+                  {/* Preview */}
+                  <button
+                    type="button"
+                    onClick={handleGoToPreview}
+                    className="flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-[13px] text-muted-foreground/70 transition-colors hover:bg-muted/60 hover:text-foreground"
+                  >
+                    <Eye className="size-4" />
+                    <span>معاينة</span>
+                  </button>
+
+                  <div className="h-5 w-px bg-border/20" />
+
+                  {/* Save */}
+                  <button
+                    type="button"
+                    onClick={handleQuickSave}
+                    disabled={isSubmitting}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-[13px] font-medium transition-colors",
+                      "bg-primary text-primary-foreground hover:bg-primary/90",
+                      isSubmitting && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Save className="size-4" />
+                    )}
+                    <span>{isSubmitting ? 'جاري الحفظ...' : 'حفظ التغييرات'}</span>
+                  </button>
+
+                  <div className="h-5 w-px bg-border/20" />
+
+                  {/* Back */}
+                  <Link
+                    href="/app/forms"
+                    className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  >
+                    <span>العودة للنماذج</span>
+                    <ArrowLeft className="size-3" />
+                  </Link>
+                </div>
+              </div>
+            </header>
+          ) : (
+            /* Create Mode: Simple preview button */
+            <div className="flex items-center justify-end gap-2 px-4 sm:px-8 pt-4 sm:pt-6">
+              <button
+                type="button"
+                onClick={handleGoToPreview}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/40 hover:bg-muted/60 border border-border/60 text-foreground transition-colors text-sm font-medium"
+                aria-label="معاينة النموذج"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>معاينة</span>
+              </button>
+            </div>
+          )}
 
           {/* Step Progress Dots - Desktop */}
           <div className="hidden lg:flex items-center justify-center mb-6">
             <div className="flex items-center gap-1">
-              {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-                <motion.div
-                  key={i}
-                  initial={false}
-                  animate={{
-                    width: i + 1 === currentStep ? 24 : 6,
-                    opacity: i + 1 <= currentStep ? 1 : 0.3,
-                  }}
-                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                  className={cn(
-                    "h-1.5 rounded-full",
-                    i + 1 <= currentStep 
-                      ? "bg-foreground" 
-                      : "bg-muted-foreground/30"
-                  )}
-                />
-              ))}
+              {Array.from({ length: effectiveTotalSteps }, (_, i) => {
+                const stepNum = i + 1 + EDIT_STEP_OFFSET;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={false}
+                    animate={{
+                      width: stepNum === currentStep ? 24 : 6,
+                      opacity: stepNum <= currentStep ? 1 : 0.3,
+                    }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    className={cn(
+                      "h-1.5 rounded-full",
+                      stepNum <= currentStep 
+                        ? "bg-foreground" 
+                        : "bg-muted-foreground/30"
+                    )}
+                  />
+                );
+              })}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums mr-2">
-              {currentStep}/{TOTAL_STEPS}
+              {currentStep - EDIT_STEP_OFFSET}/{effectiveTotalSteps}
             </span>
           </div>
 
           {/* Form Content */}
           <div className="p-4 sm:p-8">
             <AnimatePresence mode="wait">
-              {currentStep === 1 && renderStep1()}
+              {currentStep === 1 && !isEditMode && renderStep1()}
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
               {currentStep === 4 && renderStep4()}
               {currentStep === 5 && renderStep5()}
               {currentStep === 6 && renderStep6()}
+              {currentStep === 7 && renderStep7()}
             </AnimatePresence>
           </div>
 
           {/* Progress Indicator */}
           <div className="mt-8">
             <ProgressIndicator
-              currentStep={currentStep}
-              totalSteps={TOTAL_STEPS}
+              currentStep={currentStep - EDIT_STEP_OFFSET}
+              totalSteps={effectiveTotalSteps}
               onBack={handleBack}
               onContinue={handleContinue}
               isLoading={isSubmitting}
-              isBackVisible={currentStep > 1}
+              isBackVisible={currentStep > (isEditMode ? 2 : 1)}
               continueLabel="التالي"
               backLabel="السابق"
-              finishLabel={isSubmitting ? "جاري الإنشاء..." : "إنشاء النموذج"}
+              finishLabel={isSubmitting 
+                ? (isEditMode ? "جاري التحديث..." : "جاري الإنشاء...") 
+                : (isEditMode ? "حفظ التعديلات" : "إنشاء النموذج")}
               disabled={isSubmitting}
             />
           </div>

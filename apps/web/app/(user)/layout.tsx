@@ -18,7 +18,7 @@ export default async function DashboardLayout({
       <SidebarWrapper />
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 flex gap-2 p-2 ps-0">
+      <div className="flex-1 min-w-0 flex gap-2 p-2 md:ps-0">
         {/* CollapsiblePhonePreview wraps content + preview for shared context */}
         <CollapsiblePhonePreview>
           {/* Card Container */}
@@ -28,7 +28,7 @@ export default async function DashboardLayout({
 
             {/* Scrollable content */}
             <main className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="mx-auto w-full max-w-7xl px-4 pt-14 pb-20 lg:pb-6 sm:px-6">
+              <div className="mx-auto w-full max-w-7xl px-4 pt-14 pb-20 md:pb-6 sm:px-6">
                 {children}
               </div>
             </main>

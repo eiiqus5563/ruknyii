@@ -7,10 +7,7 @@ import {
   Calendar, 
   Link2, 
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   Users,
-  CheckCircle2,
   ClipboardList,
   RefreshCw,
   Loader2,
@@ -18,45 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/providers';
-
-// API helpers
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:3001';
-const buildApiPath = (path: string) => {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-  return `${base}${path}`;
-};
-const secureFetch = (url: string, opts?: RequestInit) =>
-  fetch(url, { credentials: 'include', ...opts });
-
-const resolveAvatarUrl = (avatar?: string | null): string | null => {
-  if (!avatar) return null;
-  if (avatar.startsWith('http')) return avatar;
-  if (avatar.startsWith('users/') || avatar.startsWith('profiles/')) {
-    return `${API_BASE_URL}/api/${avatar}`;
-  }
-  const filename = avatar.split('/').pop() || avatar;
-  return `${API_BASE_URL}/uploads/avatars/${filename}`;
-};
-
-const resolveCoverUrl = (cover?: string | null): string | null => {
-  if (!cover) return null;
-  if (cover.startsWith('http')) return cover;
-  if (cover.startsWith('users/') || cover.startsWith('profiles/') || cover.startsWith('covers/')) {
-    return `${API_BASE_URL}/api/${cover}`;
-  }
-  const filename = cover.split('/').pop() || cover;
-  return `${API_BASE_URL}/uploads/covers/${filename}`;
-};
-
-const resolveFormCoverUrl = (cover?: string | null): string | null => {
-  if (!cover) return null;
-  if (cover.startsWith('http')) return cover;
-  if (cover.startsWith('forms/')) {
-    return `${API_BASE_URL}/api/${cover}`;
-  }
-  const filename = cover.split('/').pop() || cover;
-  return `${API_BASE_URL}/uploads/forms/${filename}`;
-};
+import { API_URL } from '@/lib/config';
 
 // Types
 interface SocialLink {
@@ -157,7 +116,6 @@ export function PhonePreview({ className }: PhonePreviewProps) {
   const [contentLoading, setContentLoading] = useState(false);
 
   const themeColor = '#0D9488';
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
   // Fetch profile data (إذا لم يوجد profile نعتمد على user من useAuth للاسم والصورة)
   useEffect(() => {
@@ -166,15 +124,14 @@ export function PhonePreview({ className }: PhonePreviewProps) {
       
       try {
         setLoading(true);
-        const response = await secureFetch(buildApiPath('/profiles/me'));
+        const response = await fetch(`${API_URL}/profiles/me`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           setProfile(data);
         } else {
           setProfile(null);
         }
-      } catch (error) {
-        // Error fetching profile
+      } catch {
         setProfile(null);
       } finally {
         setLoading(false);
@@ -200,13 +157,13 @@ export function PhonePreview({ className }: PhonePreviewProps) {
     
     setLoading(true);
     try {
-      const response = await secureFetch(buildApiPath('/profiles/me'));
+      const response = await fetch(`${API_URL}/profiles/me`, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setProfile(data);
       }
-    } catch (error) {
-      // Error refreshing profile
+    } catch {
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -228,10 +185,10 @@ export function PhonePreview({ className }: PhonePreviewProps) {
         setContentLoading(true);
         const [eventsRes, formsRes] = await Promise.all([
           fetch(`${API_URL}/events?organizerUsername=${encodeURIComponent(username)}&limit=5`, {
-            signal: controller.signal,
+            credentials: 'include', signal: controller.signal,
           }),
           fetch(`${API_URL}/forms/public/user/${encodeURIComponent(username)}?limit=10`, {
-            signal: controller.signal,
+            credentials: 'include', signal: controller.signal,
           }),
         ]);
 
@@ -248,9 +205,8 @@ export function PhonePreview({ className }: PhonePreviewProps) {
         } else {
           setForms([]);
         }
-      } catch (error) {
+      } catch {
         if (!controller.signal.aborted) {
-          // Error fetching preview content
           setEvents([]);
           setForms([]);
         }
@@ -264,7 +220,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
     fetchContent();
 
     return () => controller.abort();
-  }, [API_URL, profile?.username, user?.username]);
+  }, [profile?.username, user?.username]);
 
   // اسم وعرض من Profile أو من بيانات الحساب (auth) كاحتياطي
   const displayName = profile?.name || profile?.user?.name || user?.name || profile?.username || user?.username || (user?.email ? user.email.split('@')[0] : null) || 'المستخدم';
@@ -296,11 +252,11 @@ export function PhonePreview({ className }: PhonePreviewProps) {
               {profile?.coverImage && (
                 <div className="relative h-24 overflow-hidden">
                   <img 
-                    src={resolveCoverUrl(profile.coverImage) || undefined} 
+                    src={profile.coverImage} 
                     alt="Cover"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLElement).parentElement!.style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement!.style.display = 'none';
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -316,7 +272,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                   )}>
                     {displayAvatar && (
                       <AvatarImage 
-                        src={resolveAvatarUrl(displayAvatar) || undefined} 
+                        src={displayAvatar} 
                         alt={displayName}
                       />
                     )}
@@ -328,17 +284,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="mt-2 flex items-center gap-1">
-                    <h1 className="text-sm font-bold text-gray-900">{displayName}</h1>
-                    {profile?.visibility === 'PUBLIC' && (
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 22 22" fill="none">
-                        <path 
-                          d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681.132-.637.075-1.299-.165-1.903.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246-5.683 6.206z" 
-                          fill="#1D9BF0"
-                        />
-                      </svg>
-                    )}
-                  </div>
+                  <h1 className="mt-2 text-sm font-bold text-gray-900">{displayName}</h1>
                   {displayUsername && <p className="text-[10px] text-gray-500">@{displayUsername}</p>}
 
                   {/* Bio (فقط عند وجود profile) */}
@@ -395,6 +341,9 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                           src={profile.banners[currentBanner]}
                           alt={`Banner ${currentBanner + 1}`}
                           className="w-full h-full object-cover absolute inset-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
@@ -543,7 +492,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                           {forms.map((form) => {
                             const submissionsCount = form._count?.submissions || 0;
                             const fieldsCount = form._count?.fields || 0;
-                            const formCoverUrl = resolveFormCoverUrl(form.coverImage);
+                            const formCoverUrl = form.coverImage || null;
                             
                             return (
                               <div

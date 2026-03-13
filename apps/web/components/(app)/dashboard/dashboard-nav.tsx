@@ -70,6 +70,9 @@ export function DashboardNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  // Hide nav on form responses pages (they have their own header)
+  if (/\/app\/forms\/[^/]+\/responses/.test(pathname)) return null;
+
   const breadcrumbs = buildBreadcrumbs(pathname);
   const parent = getParentInfo(pathname);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -105,12 +108,12 @@ export function DashboardNav() {
 
   return (
     <header className="absolute top-0 inset-x-0 z-20 pointer-events-none">
-      <div className="flex items-center justify-center lg:justify-between gap-4 px-4 pt-4 pb-2 sm:px-6 pointer-events-auto">
+      <div className="flex items-center justify-center md:justify-between gap-3 lg:gap-4 px-4 pt-3 lg:pt-4 pb-2 sm:px-6 pointer-events-auto">
 
         {/* ═══════ Right Side (RTL): Breadcrumbs ═══════ */}
         <nav
           className={cn(
-            'hidden lg:flex items-center gap-1.5 rounded-4xl border border-border/30 px-4 py-2.5 backdrop-blur-xl dark:border-white/10 transition-opacity duration-200',
+            'hidden md:flex items-center gap-1.5 rounded-4xl border border-border/30 px-3 lg:px-4 py-2 lg:py-2.5 backdrop-blur-xl dark:border-white/10 transition-opacity duration-200',
             isSearchOpen && 'opacity-0 pointer-events-none',
           )}
           aria-label="Breadcrumb"

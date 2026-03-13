@@ -126,7 +126,8 @@ export class FormsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Form not found' })
   async getForm(@Request() req, @Param('id') id: string) {
-    return this.formsService.findById(id, req.user.id);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.findById(formId, req.user.id);
   }
 
   @Put(':id')
@@ -141,7 +142,8 @@ export class FormsController {
     @Param('id') id: string,
     @Body() updateFormDto: UpdateFormDto,
   ) {
-    return this.formsService.update(req.user.id, id, updateFormDto);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.update(req.user.id, formId, updateFormDto);
   }
 
   @Put(':id/status')
@@ -156,7 +158,8 @@ export class FormsController {
     @Param('id') id: string,
     @Body('status') status: FormStatus,
   ) {
-    return this.formsService.updateStatus(req.user.id, id, status);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.updateStatus(req.user.id, formId, status);
   }
 
   @Delete(':id')
@@ -168,7 +171,8 @@ export class FormsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Form not found' })
   async delete(@Request() req, @Param('id') id: string) {
-    await this.formsService.delete(req.user.id, id);
+    const formId = await this.formsService.resolveFormId(id);
+    await this.formsService.delete(req.user.id, formId);
   }
 
   @Post(':id/duplicate')
@@ -179,7 +183,8 @@ export class FormsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Form not found' })
   async duplicate(@Request() req, @Param('id') id: string) {
-    return this.formsService.duplicateForm(req.user.id, id);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.duplicateForm(req.user.id, formId);
   }
 
   // ==================== SUBMISSIONS ====================
@@ -197,7 +202,8 @@ export class FormsController {
     @Param('id') id: string,
     @Body() submitFormDto: SubmitFormDto,
   ) {
-    return this.formsService.submitForm(id, submitFormDto, req.user.id);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.submitForm(formId, submitFormDto, req.user.id);
   }
 
   @Get(':id/submissions')
@@ -219,12 +225,26 @@ export class FormsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
+    const formId = await this.formsService.resolveFormId(id);
     return this.formsService.getFormSubmissions(
       req.user.id,
-      id,
+      formId,
       page ? Number(page) : undefined,
       limit ? Number(limit) : undefined,
     );
+  }
+
+  @Get(':id/submissions/summary')
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get submissions summary with aggregated data per field' })
+  @ApiResponse({ status: 200, description: 'Summary retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Form not found' })
+  async getSubmissionsSummary(@Request() req, @Param('id') id: string) {
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.getSubmissionsSummary(req.user.id, formId);
   }
 
   @Delete(':id/submissions/:submissionId')
@@ -240,7 +260,8 @@ export class FormsController {
     @Param('id') id: string,
     @Param('submissionId') submissionId: string,
   ) {
-    await this.formsService.deleteSubmission(req.user.id, id, submissionId);
+    const formId = await this.formsService.resolveFormId(id);
+    await this.formsService.deleteSubmission(req.user.id, formId, submissionId);
   }
 
   // ==================== STEPS ====================
@@ -254,7 +275,8 @@ export class FormsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Form not found' })
   async getFormSteps(@Request() req, @Param('id') id: string) {
-    return this.formsService.getFormSteps(req.user.id, id);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.getFormSteps(req.user.id, formId);
   }
 
   @Put(':id/steps')
@@ -269,7 +291,8 @@ export class FormsController {
     @Param('id') id: string,
     @Body() body: { steps: any[] },
   ) {
-    return this.formsService.updateFormSteps(req.user.id, id, body.steps);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.updateFormSteps(req.user.id, formId, body.steps);
   }
 
   // ==================== ANALYTICS ====================
@@ -283,7 +306,8 @@ export class FormsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Form not found' })
   async getAnalytics(@Request() req, @Param('id') id: string) {
-    return this.formsService.getFormAnalytics(req.user.id, id);
+    const formId = await this.formsService.resolveFormId(id);
+    return this.formsService.getFormAnalytics(req.user.id, formId);
   }
 
   @Get(':id/export')
@@ -299,7 +323,8 @@ export class FormsController {
     @Param('id') id: string,
     @Res() res: Response,
   ) {
-    const result = await this.formsService.exportSubmissions(req.user.id, id);
+    const formId = await this.formsService.resolveFormId(id);
+    const result = await this.formsService.exportSubmissions(req.user.id, formId);
 
     // Add BOM for UTF-8 Excel compatibility
     const BOM = '\uFEFF';

@@ -1,31 +1,31 @@
 import { Module } from '@nestjs/common';
-import { AdminController } from './admin.controller';
-import { AdminService } from './admin.service';
-import { AdminUsersController } from './admin-users.controller';
-import { AdminUsersService } from './admin-users.service';
-import { AdminStoresController } from './admin-stores.controller';
-import { AdminStoresService } from './admin-stores.service';
-import { AdminProductsController } from './admin-products.controller';
-import { AdminProductsService } from './admin-products.service';
-import { AdminOrdersController } from './admin-orders.controller';
-import { AdminOrdersService } from './admin-orders.service';
-import { AdminVerificationController } from './admin-verification.controller';
+import { DashboardController } from './dashboard/dashboard.controller';
+import { DashboardService } from './dashboard/dashboard.service';
+import { UsersController } from './users/users.controller';
+import { UsersService } from './users/users.service';
+import { StoresController } from './stores/stores.controller';
+import { StoresService } from './stores/stores.service';
+import { ProductsController } from './products/products.controller';
+import { ProductsService } from './products/products.service';
+import { OrdersController } from './orders/orders.controller';
+import { OrdersService } from './orders/orders.service';
+import { VerificationController } from './verification/verification.controller';
 
 @Module({
   controllers: [
-    AdminController,
-    AdminUsersController,
-    AdminStoresController,
-    AdminProductsController,
-    AdminOrdersController,
-    AdminVerificationController,
+    DashboardController,
+    UsersController,
+    StoresController,
+    ProductsController,
+    OrdersController,
+    VerificationController,
   ],
   providers: [
-    AdminService,
-    AdminUsersService,
-    AdminStoresService,
-    AdminProductsService,
-    AdminOrdersService,
+    DashboardService,
+    UsersService,
+    StoresService,
+    ProductsService,
+    OrdersService,
   ],
 })
 export class AdminModule {}
