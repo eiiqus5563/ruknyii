@@ -481,69 +481,6 @@ export function Sidebar({ className }: SidebarProps) {
             );
           })}
         </div>
-
-        {/* ═══════ Footer — تطبيقات أخرى ═══════ */}
-        <div className={cn(
-          "pb-4 transition-all duration-300",
-          isExpanded ? "px-5" : "px-2",
-        )}>
-          <DropdownMenu>
-            {!isExpanded ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="mx-auto flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground outline-none cursor-pointer"
-                    >
-                      <Grid3X3 className="size-[18px]" />
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="left" sideOffset={8}>
-                  تطبيقات أخرى
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground outline-none cursor-pointer"
-                >
-                  <Grid3X3 className="size-4" />
-                  <span>تطبيقات أخرى</span>
-                </button>
-              </DropdownMenuTrigger>
-            )}
-            <DropdownMenuContent side={isExpanded ? "top" : "left"} align="start" className="w-52 p-3">
-              <DropdownMenuLabel>التطبيقات</DropdownMenuLabel>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { href: "/app/store", label: "المتجر", emoji: "🛍️" },
-                  { href: "/app/forms", label: "النماذج", emoji: "📋" },
-                  { href: "/app/events", label: "الأحداث", emoji: "📅" },
-                  { href: "/app/tasks", label: "المهام", emoji: "✅" },
-                  { href: "/app/analytics", label: "الإحصائيات", emoji: "📊" },
-                  { href: "/app/settings", label: "الإعدادات", emoji: "⚙️" },
-                ].map((app) => (
-                  <Link
-                    key={app.href}
-                    href={app.href}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center transition-colors",
-                      pathname.startsWith(app.href)
-                        ? "bg-accent text-accent-foreground"
-                        : "text-foreground/80 hover:bg-accent/50",
-                    )}
-                  >
-                    <span className="text-xl leading-none">{app.emoji}</span>
-                    <span className="text-[11px] font-medium leading-tight">{app.label}</span>
-                  </Link>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </TooltipProvider>
     </aside>
   );
@@ -714,48 +651,6 @@ export function Sidebar({ className }: SidebarProps) {
             </Link>
           );
         })}
-      </div>
-
-      {/* Footer — تطبيقات أخرى */}
-      <div className="px-5 pb-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground outline-none cursor-pointer"
-            >
-              <Grid3X3 className="size-4" />
-              <span>تطبيقات أخرى</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] p-3">
-            <DropdownMenuLabel>التطبيقات</DropdownMenuLabel>
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                { href: "/app/store", label: "المتجر", emoji: "🛍️" },
-                { href: "/app/forms", label: "النماذج", emoji: "📋" },
-                { href: "/app/events", label: "الأحداث", emoji: "📅" },
-                { href: "/app/tasks", label: "المهام", emoji: "✅" },
-                { href: "/app/analytics", label: "الإحصائيات", emoji: "📊" },
-                { href: "/app/settings", label: "الإعدادات", emoji: "⚙️" },
-              ].map((app) => (
-                <Link
-                  key={app.href}
-                  href={app.href}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 text-center transition-colors",
-                    pathname.startsWith(app.href)
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground/80 hover:bg-accent/50",
-                  )}
-                >
-                  <span className="text-xl leading-none">{app.emoji}</span>
-                  <span className="text-[11px] font-medium leading-tight">{app.label}</span>
-                </Link>
-              ))}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </aside>
   );

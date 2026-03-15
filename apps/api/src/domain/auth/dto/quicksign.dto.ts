@@ -256,7 +256,7 @@ export class CheckUsernameDto {
 
 /**
  * 🔐 Update OAuth User Profile DTO
- * Used by OAuth users to complete their profile (name + username)
+ * Used by OAuth users to complete their profile (name + username + store)
  * After they sign up via Google/LinkedIn
  */
 export class UpdateOAuthProfileDto {
@@ -292,4 +292,63 @@ export class UpdateOAuthProfileDto {
   @IsString()
   @MaxLength(20)
   phone?: string;
+
+  // ─── Store Fields ───────────────────────────────────────
+
+  @ApiProperty({
+    example: 'fashion',
+    description: 'تصنيف المتجر',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  storeCategory?: string;
+
+  @ApiProperty({
+    example: 'متجر متخصص في الأزياء العصرية',
+    description: 'وصف المتجر (اختياري)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500, { message: 'وصف المتجر يجب أن لا يتجاوز 500 حرف' })
+  storeDescription?: string;
+
+  @ApiProperty({
+    example: '2-5',
+    description: 'عدد الموظفين (اختياري)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['solo', '2-5', '6-10', '11-50', '50+'], { message: 'عدد الموظفين غير صحيح' })
+  employeesCount?: string;
+
+  @ApiProperty({ example: 'العراق', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  storeCountry?: string;
+
+  @ApiProperty({ example: 'بغداد', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  storeCity?: string;
+
+  @ApiProperty({ example: 'شارع الرشيد، بغداد', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  storeAddress?: string;
+
+  @ApiProperty({ example: 33.3152, required: false })
+  @IsOptional()
+  @IsNumber()
+  storeLatitude?: number;
+
+  @ApiProperty({ example: 44.3661, required: false })
+  @IsOptional()
+  @IsNumber()
+  storeLongitude?: number;
 }

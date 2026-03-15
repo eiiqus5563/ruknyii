@@ -39,7 +39,7 @@ export default function AuthForm({
   onEmailChange,
   onSubmit,
   isLoading = false,
-  error ,
+  error,
   onGoogleLogin,
   onLinkedInLogin,
 }: AuthFormProps) {
@@ -49,26 +49,26 @@ export default function AuthForm({
     <form
       onSubmit={onSubmit}
       dir="rtl"
-      className="w-full max-w-sm mx-auto px-6 py-8"
+      className="w-full max-w-[400px] mx-auto px-6 py-10"
       style={{ fontFamily: '"IBM Plex Sans Arabic", sans-serif' }}
     >
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+        <h1 className="text-[26px] font-bold text-zinc-900 dark:text-white leading-tight">
           {isLogin ? 'تسجيل الدخول إلى ركني' : 'إنشاء حساب جديد'}
         </h1>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 rounded-4xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-red-600 dark:text-red-400 text-sm text-center">
+        <div className="mb-6 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-red-600 dark:text-red-400 text-sm text-center">
           {error}
         </div>
       )}
 
       {/* Email Field */}
-      <div className="mb-5">
-        <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+      <div className="mb-6">
+        <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2.5">
           البريد الإلكتروني
         </label>
         <div className="relative">
@@ -80,7 +80,7 @@ export default function AuthForm({
             type="email"
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
-            className="w-full h-14 pr-12 pl-4 text-base border border-zinc-300 dark:border-zinc-600 rounded-4xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full h-[52px] pr-12 pl-4 text-[15px] border border-zinc-300 dark:border-zinc-600 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
             placeholder="example@email.com"
             required
             disabled={isLoading}
@@ -93,7 +93,7 @@ export default function AuthForm({
       <button
         type="submit"
         disabled={isLoading}
-        className="flex items-center  justify-center gap-2 h-14 w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-base rounded-4xl font-medium transition-all"
+        className="flex items-center justify-center gap-2 h-[52px] w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-[15px] rounded-2xl font-medium transition-all"
       >
         {isLoading ? (
           <>
@@ -108,9 +108,8 @@ export default function AuthForm({
         )}
       </button>
 
-
       {/* Divider */}
-      <div className="flex items-center gap-4 my-8">
+      <div className="flex items-center gap-4 my-6">
         <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
         <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium whitespace-nowrap">
           أو المتابعة عبر
@@ -123,7 +122,7 @@ export default function AuthForm({
         <button
           type="button"
           onClick={onGoogleLogin}
-          className="flex items-center justify-center gap-2 h-14 rounded-4xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
+          className="flex items-center justify-center gap-2.5 h-[48px] rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
           aria-label="تسجيل الدخول بحساب Google"
         >
           <GoogleIcon />
@@ -133,7 +132,7 @@ export default function AuthForm({
         <button
           type="button"
           onClick={onLinkedInLogin}
-          className="flex items-center justify-center gap-2 h-14 rounded-4xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
+          className="flex items-center justify-center gap-2.5 h-[48px] rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
           aria-label="تسجيل الدخول بحساب LinkedIn"
         >
           <LinkedInIcon />
@@ -142,7 +141,7 @@ export default function AuthForm({
       </div>
 
       {/* Terms */}
-      <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 mt-8 leading-relaxed">
+      <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 mt-6 leading-relaxed">
         بالمتابعة، أنت توافق على{' '}
         <a href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
           شروط الخدمة

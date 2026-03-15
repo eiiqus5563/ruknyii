@@ -88,19 +88,22 @@ export class RedisOAuthCodeService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Generate and store a one-time OAuth code
+   * @param payload - Token data to store
+   * @param ipAddress - IP address that initiated the request (for binding)
    */
-  async generate(payload: CodePayload): Promise<string> {
+  async generate(payload: CodePayload, ipAddress?: string): Promise<string> {
     const code = this.randomCode();
     const key = this.KEY_PREFIX + code;
 
     try {
-      // Store with automatic expiry
+      // Store with automatic expiry + IP binding
       await this.redis.setex(
         key,
         this.TTL_SECONDS,
         JSON.stringify({
           ...payload,
           createdAt: Date.now(),
+          initiatedFromIp: ipAddress || null,
         }),
       );
 

@@ -140,12 +140,52 @@ export class AuthController {
       },
     });
 
+    // 🏪 إنشاء المتجر تلقائياً
+    let store: any = null;
+    try {
+      // تحقق من عدم وجود متجر سابق
+      const existingStore = await this.prisma.store.findFirst({
+        where: { userId: user.id },
+      });
+
+      if (!existingStore) {
+        const storeSlug = dto.username
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .slice(0, 40)
+          || `store-${randomUUID().slice(0, 8)}`;
+
+        store = await this.prisma.store.create({
+          data: {
+            userId: user.id,
+            name: dto.name || 'متجري',
+            slug: storeSlug,
+            description: dto.storeDescription || null,
+            category: dto.storeCategory || null,
+            employeesCount: dto.employeesCount || null,
+            contactEmail: updated.email,
+            country: dto.storeCountry || 'Iraq',
+            city: dto.storeCity || null,
+            address: dto.storeAddress || null,
+            latitude: dto.storeLatitude || null,
+            longitude: dto.storeLongitude || null,
+          },
+        });
+      } else {
+        store = existingStore;
+      }
+    } catch (storeErr) {
+      console.error('[updateOAuthProfile] Failed to create store:', storeErr);
+      // لا تُفشل العملية بسبب فشل إنشاء المتجر
+    }
+
     // Log the update
     await this.securityLogService.createLog({
       userId: user.id,
       action: 'PROFILE_UPDATE' as any,
       status: 'SUCCESS' as any,
-      description: 'تم تحديث الملف الشخصي (OAuth user)',
+      description: 'تم تحديث الملف الشخصي وإنشاء المتجر (OAuth user)',
       ipAddress: req.ip || req.socket.remoteAddress,
       userAgent: req.headers['user-agent'],
     });
@@ -161,6 +201,7 @@ export class AuthController {
         avatar: updated.profile?.avatar,
         profileCompleted: updated.profileCompleted,
       },
+      store: store ? { slug: store.slug } : null,
       message: 'تم تحديث الملف الشخصي بنجاح',
     };
   }
@@ -414,7 +455,7 @@ export class AuthController {
       refresh_token: result.refresh_token, // ✅ أضفنا refresh_token
       user: result.user,
       needsProfileCompletion: result.needsProfileCompletion,
-    });
+    }, ipAddress);
 
     // Redirect with code only — في التطوير استخدم FRONTEND_URL_DEV إن وُجد
     const base =
@@ -427,7 +468,9 @@ export class AuthController {
 
   @Post('oauth/exchange')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 50, ttl: 60000 } }) // 50 requests per minute (lenient for development/debugging)
+  @Throttle(process.env.NODE_ENV === 'production'
+    ? { default: { limit: 10, ttl: 60000 } }   // 🔒 10/min in production
+    : { default: { limit: 50, ttl: 60000 } })   // 50/min in development
   @ApiOperation({ summary: 'Exchange one-time OAuth code for access token' })
   @ApiResponse({ status: 200, description: 'Access token returned in body, refresh token in cookie' })
   @ApiResponse({ status: 400, description: 'Invalid or expired code' })
@@ -436,6 +479,12 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    // 🔒 CSRF Origin validation
+    const csrfCheck = validateCsrfOrigin(req);
+    if (!csrfCheck.valid) {
+      throw new ForbiddenException(`CSRF validation failed: ${csrfCheck.reason}`);
+    }
+
     // 🔒 Debug: Log incoming code exchange request
     console.log('[OAuth Exchange] Code exchange started:', {
       codeLength: body.code?.length,
@@ -529,7 +578,7 @@ export class AuthController {
       refresh_token: result.refresh_token, // ✅ أضفنا refresh_token
       user: result.user,
       needsProfileCompletion: result.needsProfileCompletion,
-    });
+    }, ipAddress);
 
     // Redirect with code only — في التطوير استخدم FRONTEND_URL_DEV إن وُجد
     const base =

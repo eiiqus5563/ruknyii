@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthContext } from '@/lib/auth/auth-provider';
 import { useUsernameCheck } from '@/lib/hooks/auth/use-username-check';
 import { quickSignClient } from '@/lib/auth/quicksign-client';
+import { updateOAuthProfile, setup2FA, enable2FA } from '@/lib/api/auth';
+import type { Setup2FAResponse } from '@/lib/api/auth';
 import { setCsrfToken } from '@/lib/api/client';
 import { sanitizeToken, handleError, logError, formLimiter } from '@/lib/security';
-import { Loader2, CheckCircle2, XCircle, User, AlertTriangle, Store, Sparkles, FileText, MapPin, Phone, ShoppingBag, Utensils, Laptop, Palette, Home, Dumbbell, BookOpen, MoreHorizontal, Briefcase, Heart, Camera, Music, Car, Plane, Shirt, Gift, Gem, PawPrint, Baby, Hammer, Leaf, Coffee, Wrench, Smartphone, UtensilsCrossed, LucideIcon } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, User, AlertTriangle, Store, Sparkles, FileText, MapPin, Phone, ShoppingBag, Utensils, Laptop, Palette, Home, Dumbbell, BookOpen, MoreHorizontal, Briefcase, Heart, Camera, Music, Car, Plane, Shirt, Gift, Gem, PawPrint, Baby, Hammer, Leaf, Coffee, Wrench, Smartphone, UtensilsCrossed, LucideIcon, Shield, Copy, Eye, EyeOff, KeyRound, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProgressIndicator from '@/components/ui/progress-indicator';
 import { triggerCelebration } from '@/components/ui/confetti';
@@ -150,7 +152,7 @@ function CompleteProfileContent() {
 
   // Multi-step state
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 2;
+  const totalSteps = 3;
 
   // Step 1: Profile data
   const [formData, setFormData] = useState({
@@ -189,6 +191,19 @@ function CompleteProfileContent() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Step 3: 2FA setup
+  const [twoFAData, setTwoFAData] = useState<Setup2FAResponse | null>(null);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFAError, setTwoFAError] = useState<string | null>(null);
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [showManualKey, setShowManualKey] = useState(false);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
+
+  // Store slug for redirect after 2FA step
+  const [pendingRedirectSlug, setPendingRedirectSlug] = useState<string | null>(null);
+
   // 🔐 جلب Token عند التحميل
   useEffect(() => {
     const token = getProfileToken(urlToken);
@@ -223,14 +238,25 @@ function CompleteProfileContent() {
   useEffect(() => {
     if (isSubmitting) return;
     
-    if (isAuthenticated) {
+    // OAuth user: authenticated but profile not completed
+    if (isAuthenticated && currentUser && !currentUser.profileCompleted) {
+      setIsOAuthUser(true);
+      // Pre-fill name from OAuth provider
+      if (currentUser.name && !formData.name) {
+        setFormData(prev => ({ ...prev, name: currentUser.name || '' }));
+      }
+      return;
+    }
+
+    // Already completed profile, go to dashboard
+    if (isAuthenticated && currentUser?.profileCompleted) {
       router.push('/');
       return;
     }
 
     if (quickSignToken) {
       setIsOAuthUser(false);
-    } else {
+    } else if (!isAuthenticated) {
       console.warn('⚠️ No token and not authenticated, redirecting to login');
       const timer = setTimeout(() => {
         router.push('/login');
@@ -349,20 +375,95 @@ function CompleteProfileContent() {
       setCurrentStep(2);
       setError(null);
     } else if (currentStep === 2) {
-      // On last step, trigger form submission
+      // On step 2, trigger form submission (creates account + store, then moves to step 3)
       const form = document.querySelector('form');
       if (form) {
         form.requestSubmit();
       }
+    } else if (currentStep === 3) {
+      // On step 3, skip 2FA and go to welcome
+      finishAndRedirect();
     }
   }, [currentStep, validateStep1]);
 
   const handleBack = useCallback(() => {
-    if (currentStep > 1) {
+    if (currentStep > 1 && currentStep < 3) {
       setCurrentStep(currentStep - 1);
       setError(null);
     }
   }, [currentStep]);
+
+  // Finish: trigger celebration and redirect to welcome
+  const finishAndRedirect = useCallback(() => {
+    triggerCelebration();
+    
+    setTimeout(() => {
+      const params = new URLSearchParams();
+      params.set('name', formData.name.trim());
+      
+      const slug = pendingRedirectSlug || createdStoreSlug;
+      if (slug) {
+        params.set('store', slug);
+        params.set('storeCreated', 'true');
+      } else if (storeCreationError) {
+        params.set('storeError', 'true');
+      }
+      
+      router.push(`/welcome?${params.toString()}`);
+    }, 1500);
+  }, [formData.name, pendingRedirectSlug, createdStoreSlug, storeCreationError, router]);
+
+  // Handle 2FA setup initiation
+  const initiate2FA = useCallback(async () => {
+    setTwoFALoading(true);
+    setTwoFAError(null);
+    try {
+      const data = await setup2FA();
+      setTwoFAData(data);
+    } catch (err: unknown) {
+      logError(err, '2FA Setup');
+      const { message } = handleError(err);
+      setTwoFAError(message);
+    } finally {
+      setTwoFALoading(false);
+    }
+  }, []);
+
+  // Handle 2FA verification
+  const handleVerify2FA = useCallback(async () => {
+    if (!twoFACode || twoFACode.length !== 6) {
+      setTwoFAError('الرجاء إدخال رمز مكون من 6 أرقام');
+      return;
+    }
+    
+    setTwoFALoading(true);
+    setTwoFAError(null);
+    try {
+      const result = await enable2FA(twoFACode);
+      if (result.success) {
+        setTwoFAEnabled(true);
+        setBackupCodes(result.backupCodes);
+      }
+    } catch (err: unknown) {
+      logError(err, '2FA Enable');
+      const { message } = handleError(err);
+      setTwoFAError(message);
+    } finally {
+      setTwoFALoading(false);
+    }
+  }, [twoFACode]);
+
+  // Copy backup codes to clipboard
+  const copyBackupCodes = useCallback(async () => {
+    if (backupCodes.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(backupCodes.join('\n'));
+      setBackupCodesCopied(true);
+      setTimeout(() => setBackupCodesCopied(false), 2000);
+    } catch {
+      // Fallback: select text
+    }
+  }, [backupCodes]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,9 +500,31 @@ function CompleteProfileContent() {
       setProgressStep('creating-account');
       
       if (isOAuthUser) {
-        // OAuth user: Update profile via /auth/me endpoint
-        // TODO: Create update profile API call
-        throw new Error('تحديث OAuth profile قيد التطوير');
+        // OAuth user: Update profile via /auth/update-profile endpoint
+        const response = await updateOAuthProfile({
+          name: formData.name.trim(),
+          username: formData.username.trim(),
+          phone: formData.phone || undefined,
+          storeCategory: storeData.category || undefined,
+          storeDescription: storeData.storeDescription.trim() || undefined,
+          employeesCount: storeData.employeesCount || undefined,
+          storeCountry: storeData.country || undefined,
+          storeCity: storeData.city || undefined,
+          storeAddress: storeData.address || undefined,
+          storeLatitude: storeData.latitude !== 0 ? storeData.latitude : undefined,
+          storeLongitude: storeData.longitude !== 0 ? storeData.longitude : undefined,
+        });
+
+        // Reset rate limiter on success
+        formLimiter.reset('complete-profile');
+
+        setUser(response.user);
+
+        // Store created automatically by backend
+        if (response.store) {
+          storeSlug = response.store.slug;
+          setCreatedStoreSlug(storeSlug);
+        }
       } else {
         // QuickSign user: Complete profile with token
         // Backend will automatically create Store with same name as username
@@ -447,26 +570,20 @@ function CompleteProfileContent() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // اكتمال العملية!
+      // اكتمال إنشاء الحساب والمتجر
       setProgressStep('done');
-
-      // Trigger celebration confetti!
-      triggerCelebration();
-
-      // Redirect to welcome page with user name and store info after a short delay for confetti
-      setTimeout(() => {
-        const params = new URLSearchParams();
-        params.set('name', formData.name.trim());
-        
-        if (storeSlug) {
-          params.set('store', storeSlug);
-          params.set('storeCreated', 'true');
-        } else if (storeCreationError) {
-          params.set('storeError', 'true');
-        }
-        
-        router.push(`/welcome?${params.toString()}`);
-      }, 1500);
+      
+      // Save slug for later redirect
+      setPendingRedirectSlug(storeSlug);
+      
+      // Move to Step 3: 2FA (optional)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setProgressStep('idle');
+      setCurrentStep(3);
+      setLoading(false);
+      
+      // Start 2FA setup in background
+      initiate2FA();
     } catch (err: unknown) {
       logError(err, 'CompleteProfile');
       const { message } = handleError(err);
@@ -475,7 +592,7 @@ function CompleteProfileContent() {
     } finally {
       setLoading(false);
     }
-  }, [quickSignToken, isOAuthUser, currentStep, validateStep2, formData, storeData, storeCreationError, setUser, router, handleContinue]);
+  }, [quickSignToken, isOAuthUser, currentStep, validateStep2, formData, storeData, storeCreationError, setUser, router, handleContinue, initiate2FA]);
 
   const displayError = rateLimitError || error;
 
@@ -488,12 +605,12 @@ function CompleteProfileContent() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center text-center max-w-sm"
         >
-          <div className="flex items-center justify-center size-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-6">
-            <XCircle className="h-8 w-8 text-red-500" />
+          <div className="flex items-center justify-center size-16 rounded-full bg-muted mb-6">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-          <h1 className="text-2xl font-light text-foreground mb-2">رابط غير صالح</h1>
+          <h1 className="text-2xl font-light text-foreground mb-2">جاري التحميل...</h1>
           <p className="text-sm text-muted-foreground mb-8">
-            هذه الصفحة تتطلب رابط تسجيل صالح. سيتم توجيهك لصفحة تسجيل الدخول...
+            جاري التحقق من بياناتك. سيتم توجيهك لصفحة تسجيل الدخول إذا لم يتم العثور على حساب.
           </p>
           <button 
             onClick={() => router.push('/login')} 
@@ -800,6 +917,232 @@ function CompleteProfileContent() {
                 </div>
               </motion.div>
             )}
+
+            {/* Step 3: Two-Factor Authentication (Optional) */}
+            {currentStep === 3 && (
+              <motion.div
+                key="step3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-5"
+              >
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <motion.h1 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-3xl sm:text-4xl font-light tracking-tight text-foreground mb-3"
+                  >
+                    حماية حسابك
+                  </motion.h1>
+                  <motion.p 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-sm text-muted-foreground"
+                  >
+                    فعّل المصادقة الثنائية لحماية إضافية
+                  </motion.p>
+                </div>
+
+                {/* 2FA Content */}
+                <AnimatePresence mode="wait">
+                  {twoFAEnabled ? (
+                    /* Success + Backup Codes */
+                    <motion.div
+                      key="2fa-success"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-4"
+                    >
+                      {/* Success Message */}
+                      <div className="text-center p-4 bg-muted/30 rounded-2xl">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                          >
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          </motion.div>
+                          <span className="text-sm font-medium text-foreground">
+                            تم تفعيل المصادقة الثنائية
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground/60 mt-1">
+                          حسابك محمي الآن بطبقة أمان إضافية
+                        </p>
+                      </div>
+
+                      {/* Backup Codes */}
+                      <div className="p-4 bg-muted/30 rounded-2xl">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-foreground">الرموز الاحتياطية</span>
+                          <button
+                            type="button"
+                            onClick={copyBackupCodes}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {backupCodesCopied ? (
+                              <><CheckCircle2 className="h-3.5 w-3.5" /> تم النسخ</>
+                            ) : (
+                              <><Copy className="h-3.5 w-3.5" /> نسخ</>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground/60 mb-3">
+                          احفظها في مكان آمن للدخول عند فقدان تطبيق المصادقة
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {backupCodes.map((code, i) => (
+                            <div key={i} className="py-2 bg-background rounded-xl text-center">
+                              <code className="text-xs font-mono font-medium text-foreground tracking-wider">{code}</code>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+
+                  ) : twoFAData ? (
+                    /* QR Code + OTP Input */
+                    <motion.div
+                      key="2fa-setup"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="w-full space-y-5"
+                    >
+                      {/* QR Code */}
+                      <div className="flex flex-col items-center">
+                        <div className="p-4 bg-white rounded-2xl inline-block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={twoFAData.qrCodeUrl} 
+                            alt="QR Code for 2FA" 
+                            className="w-40 h-40"
+                          />
+                        </div>
+
+                        <div className="text-center p-4 bg-muted/30 rounded-2xl mt-4 w-full">
+                          <p className="text-sm text-muted-foreground">
+                            امسح الرمز بتطبيق المصادقة
+                          </p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">
+                            مثل Google Authenticator أو Authy
+                          </p>
+                        </div>
+                        
+                        {/* Manual Key */}
+                        <button
+                          type="button"
+                          onClick={() => setShowManualKey(!showManualKey)}
+                          className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showManualKey ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          {showManualKey ? 'إخفاء المفتاح' : 'إدخال يدوي'}
+                        </button>
+                        
+                        <AnimatePresence>
+                          {showManualKey && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-2 w-full overflow-hidden"
+                            >
+                              <div className="p-3 bg-muted/30 rounded-2xl text-center">
+                                <code className="text-xs font-mono font-medium text-foreground break-all select-all tracking-wider">
+                                  {twoFAData.manualEntryKey}
+                                </code>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* OTP Input */}
+                      <div className="space-y-4">
+                        <input
+                          id="twofa-code"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="أدخل الرمز المكون من 6 أرقام"
+                          value={twoFACode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                            setTwoFACode(val);
+                            setTwoFAError(null);
+                          }}
+                          disabled={twoFALoading}
+                          maxLength={6}
+                          className="w-full h-12 px-4 border border-border/80 rounded-full bg-background text-foreground placeholder:text-muted-foreground/40 disabled:opacity-50 text-base text-center tracking-[0.4em] font-mono font-medium outline-none focus:border-foreground/30 transition-colors"
+                          dir="ltr"
+                          autoComplete="one-time-code"
+                        />
+
+                        {/* 2FA Error */}
+                        {twoFAError && (
+                          <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl">
+                            <p className="text-sm text-red-500 text-center">{twoFAError}</p>
+                          </div>
+                        )}
+
+                        {/* Verify Button */}
+                        <button
+                          type="button"
+                          onClick={handleVerify2FA}
+                          disabled={twoFALoading || twoFACode.length !== 6}
+                          className="flex items-center justify-center gap-2 w-full h-12 bg-foreground hover:bg-foreground/90 text-background font-medium rounded-full transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {twoFALoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Shield className="h-4 w-4" />
+                          )}
+                          تفعيل المصادقة الثنائية
+                        </button>
+                      </div>
+                    </motion.div>
+
+                  ) : (
+                    /* Loading / Error */
+                    <motion.div
+                      key="2fa-loading"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex flex-col items-center py-10"
+                    >
+                      {twoFAError ? (
+                        <div className="w-full space-y-4">
+                          <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl">
+                            <p className="text-sm text-red-500 text-center">{twoFAError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={initiate2FA}
+                            className="flex items-center justify-center gap-2 w-full h-12 border border-border/80 bg-background hover:bg-muted/50 text-foreground font-medium rounded-full transition-all duration-300"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            إعادة المحاولة
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <Loader2 className="h-6 w-6 animate-spin text-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">جاري التحضير...</p>
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {/* Progress Steps During Creation */}
@@ -907,13 +1250,13 @@ function CompleteProfileContent() {
               currentStep={currentStep}
               totalSteps={totalSteps}
               onBack={handleBack}
-              onContinue={handleContinue}
+              onContinue={currentStep === 3 ? finishAndRedirect : handleContinue}
               isLoading={loading}
-              isBackVisible={currentStep > 1}
-              disabled={loading || checking || !!rateLimitError}
-              continueLabel="استمرار"
+              isBackVisible={currentStep > 1 && currentStep < 3}
+              disabled={loading || checking || !!rateLimitError || (currentStep === 3 && twoFALoading)}
+              continueLabel={currentStep === 2 ? 'إنشاء الحساب والمتجر' : 'استمرار'}
               backLabel="رجوع"
-              finishLabel="إنشاء الحساب والمتجر"
+              finishLabel={twoFAEnabled ? 'متابعة' : 'تخطي الآن'}
             />
           </div>
         </form>

@@ -70,9 +70,9 @@ export class LinkedInStrategy extends PassportStrategy(
         );
       }
 
-      // 🔒 التحقق من email_verified من LinkedIn
+      // 🔒 التحقق من email_verified من LinkedIn (مقارنة صريحة)
       // LinkedIn يوفر هذه المعلومة عبر OpenID Connect
-      if (userInfo.email_verified === false) {
+      if (userInfo.email_verified !== true) {
         return done(
           new UnauthorizedException(
             'البريد الإلكتروني غير مُتحقق منه في LinkedIn',
@@ -84,7 +84,7 @@ export class LinkedInStrategy extends PassportStrategy(
       const user = {
         linkedinId: userInfo.sub,
         email: userInfo.email,
-        emailVerified: userInfo.email_verified !== false, // 🔒 استخدام حالة التحقق من LinkedIn
+        emailVerified: true, // 🔒 نصل هنا فقط إذا كان verified === true
         name:
           userInfo.name ||
           `${userInfo.given_name || ''} ${userInfo.family_name || ''}`.trim(),

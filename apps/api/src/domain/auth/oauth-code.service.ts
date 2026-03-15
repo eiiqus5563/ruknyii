@@ -24,7 +24,7 @@ export class OAuthCodeService {
   private store = new Map<string, CodeRecord>();
   private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-  generate(payload: CodePayload): string {
+  generate(payload: CodePayload, _ipAddress?: string): string {
     const code = this.randomCode();
     const record: CodeRecord = {
       ...payload,

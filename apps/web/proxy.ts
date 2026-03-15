@@ -39,12 +39,17 @@ const SKIP_PATHS = [
   '/uploads/',
   '/_next/',
   '/favicon.ico',
+  '/icon.svg',
   '/manifest.json',
   '/sw.js',
+  '/service-worker.js',
   '/icons/',
   '/logos/',
   '/offline',
 ];
+
+// Static file extensions that should never be rewritten by subdomain routing
+const STATIC_EXTENSIONS = ['.svg', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.css', '.js', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.webm'];
 
 function getSubdomain(hostname: string): string | null {
   try {
@@ -75,7 +80,9 @@ function isAppPath(pathname: string): boolean {
 }
 
 function shouldSkip(pathname: string): boolean {
-  return SKIP_PATHS.some((path) => pathname.startsWith(path));
+  if (SKIP_PATHS.some((path) => pathname.startsWith(path))) return true;
+  const lowerPath = pathname.toLowerCase();
+  return STATIC_EXTENSIONS.some((ext) => lowerPath.endsWith(ext));
 }
 
 function isLocalhost(hostname: string): boolean {

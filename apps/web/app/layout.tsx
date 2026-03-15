@@ -24,6 +24,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Rukny.io | ركني",
   description: "منصة ركني - إدارة الملف الشخصي والمتاجر والفعاليات",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

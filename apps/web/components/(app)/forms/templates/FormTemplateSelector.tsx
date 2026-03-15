@@ -107,11 +107,11 @@ export function FormTemplateSelector({
     : FORM_TEMPLATES.filter(t => t.category === activeCategory);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="text-center space-y-1">
-        <h2 className="text-lg font-semibold text-foreground">اختر قالباً</h2>
-        <p className="text-muted-foreground text-xs">
+      <div className="text-center space-y-1.5">
+        <h2 className="text-xl font-bold text-foreground">اختر قالباً</h2>
+        <p className="text-muted-foreground text-sm">
           ابدأ بقالب جاهز أو أنشئ من الصفر
         </p>
       </div>
@@ -119,15 +119,15 @@ export function FormTemplateSelector({
       {/* Language + Category Row */}
       <div className="flex items-center justify-between gap-3">
         {/* Category Filter */}
-        <div className="flex items-center gap-1 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex items-center gap-1.5 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none' }}>
           <button
             type="button"
             onClick={() => setActiveCategory('all')}
             className={cn(
-              "flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium",
+              "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
               activeCategory === 'all'
                 ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             {selectedLanguage === 'ar' ? 'الكل' : 'All'}
@@ -138,10 +138,10 @@ export function FormTemplateSelector({
               type="button"
               onClick={() => setActiveCategory(key)}
               className={cn(
-                "flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium",
+                "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
                 activeCategory === key
                   ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
               {value[selectedLanguage]}
@@ -150,17 +150,17 @@ export function FormTemplateSelector({
         </div>
 
         {/* Language Switcher */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Globe className="w-3 h-3 text-muted-foreground" />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Globe className="w-3.5 h-3.5 text-muted-foreground" />
           <div className="flex rounded-full bg-muted p-0.5">
             <button
               type="button"
               onClick={() => handleLanguageChange('ar')}
               className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] font-medium",
+                "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
                 selectedLanguage === 'ar' 
                   ? "bg-foreground text-background" 
-                  : "text-muted-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               ع
@@ -169,10 +169,10 @@ export function FormTemplateSelector({
               type="button"
               onClick={() => handleLanguageChange('en')}
               className={cn(
-                "px-2 py-0.5 rounded-full text-[10px] font-medium",
+                "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
                 selectedLanguage === 'en' 
                   ? "bg-foreground text-background" 
-                  : "text-muted-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               En
@@ -182,30 +182,30 @@ export function FormTemplateSelector({
       </div>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {/* Start from Scratch */}
         <button
           type="button"
           onClick={onStartFromScratch}
           className={cn(
-            "relative rounded-xl border-2 border-dashed p-3 flex flex-col justify-center items-center gap-1.5 min-h-[100px]",
+            "relative rounded-2xl border-2 border-dashed p-4 flex flex-col justify-center items-center gap-2.5 min-h-[130px] transition-all duration-200",
             selectedTemplateId === null 
-              ? "border-foreground/50 bg-muted/30" 
-              : "border-border/60 hover:border-muted-foreground/30"
+              ? "border-foreground/50 bg-muted/30 shadow-sm" 
+              : "border-border/60 hover:border-muted-foreground/30 hover:bg-muted/20"
           )}
         >
           <div className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center",
+            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
             selectedTemplateId === null 
               ? "bg-foreground text-background" 
               : "bg-muted text-muted-foreground"
           )}>
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-5 h-5" />
           </div>
-          <span className="font-medium text-foreground text-xs">من الصفر</span>
+          <span className="font-semibold text-foreground text-sm">من الصفر</span>
           {selectedTemplateId === null && (
-            <div className="absolute top-1.5 left-1.5 w-4 h-4 rounded-full bg-foreground flex items-center justify-center">
-              <Check className="w-2.5 h-2.5 text-background" />
+            <div className="absolute top-2.5 left-2.5 w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+              <Check className="w-3 h-3 text-background" />
             </div>
           )}
         </button>
@@ -222,34 +222,39 @@ export function FormTemplateSelector({
               type="button"
               onClick={() => handleSelectTemplate(template)}
               className={cn(
-                "relative rounded-xl border p-3 text-right min-h-[100px] flex flex-col gap-1.5",
+                "relative rounded-2xl border p-4 text-right min-h-[130px] flex flex-col gap-2 transition-all duration-200",
                 isSelected 
-                  ? "border-foreground/50 bg-muted/30" 
-                  : "border-border/60 hover:border-muted-foreground/30"
+                  ? "border-foreground/50 bg-muted/30 shadow-sm" 
+                  : "border-border/60 hover:border-muted-foreground/30 hover:bg-muted/20"
               )}
             >
               {/* Icon */}
               <div className="flex items-center justify-between">
-                <IconComponent className={cn("w-4.5 h-4.5", isSelected ? iconColor : 'text-muted-foreground')} />
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center",
+                  isSelected ? "bg-muted" : "bg-muted/60"
+                )}>
+                  <IconComponent className={cn("w-5 h-5", isSelected ? iconColor : 'text-muted-foreground')} />
+                </div>
                 {isSelected && (
-                  <div className="w-4 h-4 rounded-full bg-foreground flex items-center justify-center">
-                    <Check className="w-2.5 h-2.5 text-background" />
+                  <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center">
+                    <Check className="w-3 h-3 text-background" />
                   </div>
                 )}
               </div>
 
               {/* Content */}
               <div className="flex-1 mt-1">
-                <h3 className="font-medium text-foreground text-[11px] sm:text-xs line-clamp-1">
+                <h3 className="font-semibold text-foreground text-sm line-clamp-1">
                   {template.name[selectedLanguage]}
                 </h3>
-                <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
                   {template.description[selectedLanguage]}
                 </p>
               </div>
 
               {/* Field count */}
-              <span className="text-[9px] text-muted-foreground/70">
+              <span className="text-[11px] text-muted-foreground/70 font-medium">
                 {template.fields.length} {selectedLanguage === 'ar' ? 'حقل' : 'fields'}
               </span>
             </button>

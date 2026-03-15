@@ -170,14 +170,15 @@ export class AuthService {
 
     let isNewUser = false;
     if (!user) {
-      // Create new user with profile
+      // Create new user with temporary profile
+      // profileCompleted = false → user must complete profile & store setup
       user = await this.prisma.user.create({
         data: {
           id: crypto.randomUUID(),
           email,
           googleId,
           emailVerified: true, // Google emails are considered verified
-          profileCompleted: true, // OAuth users have name/email/avatar from provider
+          profileCompleted: false, // Must complete profile first
           profile: {
             create: {
               id: crypto.randomUUID(),
@@ -195,28 +196,7 @@ export class AuthService {
         },
       });
       isNewUser = true;
-
-      // 🏪 إنشاء Store تلقائياً للمستخدم الجديد عبر Google
-      try {
-        const storeSlug = (user.profile?.username || email.split('@')[0])
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '-')
-          .replace(/-+/g, '-')
-          .slice(0, 40)
-          || `store-${crypto.randomUUID().slice(0, 8)}`;
-        await this.prisma.store.create({
-          data: {
-            userId: user.id,
-            name: name || 'متجري',
-            slug: storeSlug,
-            contactEmail: email,
-            country: 'Iraq',
-          },
-        });
-      } catch (storeErr) {
-        // لا تُفشل عملية التسجيل بسبب فشل إنشاء المتجر
-        // سيتم إنشاؤه تلقائياً عند أول زيارة لإعدادات المتجر
-      }
+      // 🏪 المتجر سيتم إنشاؤه عند إكمال الملف الشخصي
     } else if (!user.googleId) {
       // Link existing user account with Google
       user = await this.prisma.user.update({
@@ -245,15 +225,6 @@ export class AuthService {
         include: {
           profile: true,
         },
-      });
-    }
-
-    // Ensure profileCompleted is true for OAuth users with a profile
-    if (!user.profileCompleted && user.profile) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { profileCompleted: true },
-        include: { profile: true },
       });
     }
 
@@ -328,7 +299,7 @@ export class AuthService {
       },
       access_token: accessToken,
       refresh_token: refreshToken,
-      needsProfileCompletion: isNewUser && !user.profile,
+      needsProfileCompletion: !user.profileCompleted,
     };
   }
 
@@ -354,14 +325,15 @@ export class AuthService {
 
     let isNewUser = false;
     if (!user) {
-      // Create new user with profile
+      // Create new user with temporary profile
+      // profileCompleted = false → user must complete profile & store setup
       user = await this.prisma.user.create({
         data: {
           id: crypto.randomUUID(),
           email,
           linkedinId,
           emailVerified: true, // LinkedIn emails are considered verified
-          profileCompleted: true, // OAuth users have name/email/avatar from provider
+          profileCompleted: false, // Must complete profile first
           profile: {
             create: {
               id: crypto.randomUUID(),
@@ -379,28 +351,7 @@ export class AuthService {
         },
       });
       isNewUser = true;
-
-      // 🏪 إنشاء Store تلقائياً للمستخدم الجديد عبر LinkedIn
-      try {
-        const storeSlug = (user.profile?.username || email.split('@')[0])
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '-')
-          .replace(/-+/g, '-')
-          .slice(0, 40)
-          || `store-${crypto.randomUUID().slice(0, 8)}`;
-        await this.prisma.store.create({
-          data: {
-            userId: user.id,
-            name: name || 'متجري',
-            slug: storeSlug,
-            contactEmail: email,
-            country: 'Iraq',
-          },
-        });
-      } catch (storeErr) {
-        // لا تُفشل عملية التسجيل بسبب فشل إنشاء المتجر
-        // سيتم إنشاؤه تلقائياً عند أول زيارة لإعدادات المتجر
-      }
+      // 🏪 المتجر سيتم إنشاؤه عند إكمال الملف الشخصي
     } else if (!user.linkedinId) {
       // Link existing user account with LinkedIn
       user = await this.prisma.user.update({
@@ -429,15 +380,6 @@ export class AuthService {
         include: {
           profile: true,
         },
-      });
-    }
-
-    // Ensure profileCompleted is true for OAuth users with a profile
-    if (!user.profileCompleted && user.profile) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { profileCompleted: true },
-        include: { profile: true },
       });
     }
 
@@ -510,7 +452,7 @@ export class AuthService {
       },
       access_token: accessToken,
       refresh_token: refreshToken,
-      needsProfileCompletion: isNewUser && !user.profile,
+      needsProfileCompletion: !user.profileCompleted,
     };
   }
 

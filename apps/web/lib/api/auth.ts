@@ -130,21 +130,30 @@ export async function completeProfile(input: CompleteProfileInput): Promise<{ su
 }
 
 /**
- * Update OAuth user profile (name + username)
+ * Update OAuth user profile (name + username + store)
  * Called by Google/LinkedIn users during profile completion
  */
 export interface UpdateOAuthProfileInput {
   name: string;
   username: string;
   phone?: string;
+  storeCategory?: string;
+  storeDescription?: string;
+  employeesCount?: string;
+  storeCountry?: string;
+  storeCity?: string;
+  storeAddress?: string;
+  storeLatitude?: number;
+  storeLongitude?: number;
 }
 
 export async function updateOAuthProfile(input: UpdateOAuthProfileInput): Promise<{
   success: boolean;
   user: User;
+  store?: { slug: string } | null;
   message: string;
 }> {
-  const { data } = await api.post<{ success: boolean; user: User; message: string }>(
+  const { data } = await api.post<{ success: boolean; user: User; store?: { slug: string } | null; message: string }>(
     '/auth/update-profile',
     input,
   );
@@ -152,6 +161,7 @@ export async function updateOAuthProfile(input: UpdateOAuthProfileInput): Promis
   const validated = z.object({
     success: z.boolean(),
     user: UserSchema,
+    store: z.object({ slug: z.string() }).nullable().optional(),
     message: z.string(),
   }).parse(data);
   return validated;
@@ -373,4 +383,39 @@ export async function getWebSocketToken(): Promise<{ token: string; expiresIn: n
     token: z.string(),
     expiresIn: z.number(),
   }).parse(data);
+}
+
+// ============ Two-Factor Authentication ============
+
+export const Setup2FAResponseSchema = z.object({
+  secret: z.string(),
+  qrCodeUrl: z.string(),
+  backupCodes: z.array(z.string()),
+  manualEntryKey: z.string(),
+});
+
+export type Setup2FAResponse = z.infer<typeof Setup2FAResponseSchema>;
+
+export const Enable2FAResponseSchema = z.object({
+  success: z.boolean(),
+  backupCodes: z.array(z.string()),
+  message: z.string(),
+});
+
+export type Enable2FAResponse = z.infer<typeof Enable2FAResponseSchema>;
+
+/**
+ * Setup 2FA - generates QR code and secret
+ */
+export async function setup2FA(): Promise<Setup2FAResponse> {
+  const { data } = await api.post<Setup2FAResponse>('/auth/2fa/setup');
+  return Setup2FAResponseSchema.parse(data);
+}
+
+/**
+ * Enable 2FA - verifies OTP code and activates 2FA
+ */
+export async function enable2FA(token: string): Promise<Enable2FAResponse> {
+  const { data } = await api.post<Enable2FAResponse>('/auth/2fa/enable', { token });
+  return Enable2FAResponseSchema.parse(data);
 }

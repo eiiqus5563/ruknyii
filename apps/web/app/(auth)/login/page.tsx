@@ -51,7 +51,7 @@ function LoginContent() {
   // Show loading while checking auth
   if (authLoading || isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#ffffff] dark:bg-zinc-900">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-900">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -63,9 +63,9 @@ function LoginContent() {
     setSessionMessage(null);
 
     try {
-      await sendMagicLink(email);
+      const response = await sendMagicLink(email);
       // Redirect to check-email page
-      router.push(`/check-email?email=${encodeURIComponent(email)}`);
+      router.push(`/check-email?email=${encodeURIComponent(email)}&type=${response.type}`);
     } catch {
       // Error is handled by auth provider
     }
@@ -91,7 +91,7 @@ function LoginContent() {
   const displayError = sessionMessage || error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#ffffff] dark:bg-zinc-900 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-900 px-4">
       <AuthForm
         type="login"
         email={email}
@@ -109,7 +109,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-[#ffffff] dark:bg-zinc-900">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-900">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     }>

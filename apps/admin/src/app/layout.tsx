@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     template: "%s | Rukny Admin",
   },
   description: "Admin dashboard for Rukny platform",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

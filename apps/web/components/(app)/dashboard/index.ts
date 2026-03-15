@@ -24,3 +24,6 @@ export { TopProductsTable, TopProductsTableSkeleton } from './top-products-table
 export { OverviewStats, OverviewStatsSkeleton } from './overview-stats';
 export { ActivityBarChart, ActivityBarChartSkeleton } from './activity-bar-chart';
 export { TasksList, TasksListSkeleton } from './tasks-list';
+
+// Profile
+export { ProfileHeader, ProfileHeaderSkeleton } from './profile-header';

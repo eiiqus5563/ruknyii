@@ -753,7 +753,7 @@ export function CreateFormWizard({ initialDraft, initialSlug, mode = 'create', e
       style={{ willChange: 'transform, opacity' }}
       className="flex flex-col items-center text-sm text-foreground"
     >
-      <div className="w-full max-w-md sm:max-w-xl px-1">
+      <div className="w-full max-w-lg sm:max-w-2xl px-2">
         <FormTemplateSelector
           selectedTemplateId={selectedTemplateId}
           selectedLanguage={templateLanguage}

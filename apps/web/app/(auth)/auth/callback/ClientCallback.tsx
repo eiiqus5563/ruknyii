@@ -68,7 +68,24 @@ function CallbackContent() {
           // Redirect to app — use full URL for cross-subdomain navigation
           const stored = sessionStorage.getItem('oauth_callback');
           sessionStorage.removeItem('oauth_callback');
-          const targetUrl = stored || getAppUrl('/');
+          let targetUrl = stored || getAppUrl('/');
+
+          // 🔒 Security: Validate redirect URL is same-origin to prevent open redirect
+          if (targetUrl.startsWith('http')) {
+            try {
+              const targetOrigin = new URL(targetUrl).hostname;
+              const currentOrigin = window.location.hostname;
+              // Allow same domain and subdomains (e.g., app.rukny.io, accounts.rukny.io)
+              const getRootDomain = (h: string) => h.split('.').slice(-2).join('.');
+              if (getRootDomain(targetOrigin) !== getRootDomain(currentOrigin)) {
+                console.warn('[ClientCallback] ⚠️ Blocked redirect to external URL:', targetOrigin);
+                targetUrl = getAppUrl('/');
+              }
+            } catch {
+              targetUrl = getAppUrl('/');
+            }
+          }
+
           console.log('[ClientCallback] ➡️ Redirecting to:', targetUrl);
 
           // Full URLs (cross-subdomain) must use window.location

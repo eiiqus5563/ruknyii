@@ -164,11 +164,10 @@ export class QuickSignController {
     });
 
     // ⚡ إرجاع الاستجابة فوراً بدون انتظار البريد أو التسجيل
+    // 🔒 Security: Always return the same generic message to prevent email enumeration
     return {
       success: true,
-      message: type === QuickSignType.LOGIN
-        ? 'تم إرسال رابط تسجيل الدخول إلى بريدك الإلكتروني'
-        : 'تم إرسال رابط التسجيل إلى بريدك الإلكتروني',
+      message: 'إذا كان هذا البريد مسجلاً لدينا، سيتم إرسال رابط التوثيق إليه',
       type,
       expiresIn: 600, // 10 minutes in seconds
     };
@@ -212,6 +211,7 @@ export class QuickSignController {
    */
   @Get('verify/:token')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 🔒 5 attempts per minute to prevent brute force
   @ApiOperation({ summary: 'التحقق من صلاحية QuickSign token' })
   @ApiResponse({ status: 200, description: 'Token صالح' })
   @ApiResponse({ status: 401, description: 'Token غير صالح أو منتهي' })
@@ -475,7 +475,7 @@ export class QuickSignController {
         profileCompleted: user.profileCompleted,
       },
       needsProfileCompletion: !user.profileCompleted,
-    });
+    }, ipAddress);
 
     // Redirect مع code فقط - نفس نظام OAuth
     const callbackUrl = `${frontendUrl}/auth/callback?code=${code}`;

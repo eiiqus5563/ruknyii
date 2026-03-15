@@ -12,8 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Settings, Bell, Search, X, ArrowLeft } from 'lucide-react';
+import { LogOut, User, Settings, Search, X, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNotifications } from '@/lib/hooks/use-notifications';
+import { NotificationPanel } from '@/components/(app)/notifications/notification-panel';
 
 /* ------------------------------------------------------------------ */
 /*  Breadcrumb helper                                                  */
@@ -69,34 +71,20 @@ function getParentInfo(pathname: string) {
 export function DashboardNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [notificationCount, setNotificationCount] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const fetchedRef = useRef(false);
 
   const isResponsesPage = /\/app\/forms\/[^/]+\/responses/.test(pathname);
 
-  // Fetch notification count
-  useEffect(() => {
-    if (isResponsesPage) return;
-    const fetchCount = async () => {
-      try {
-        const res = await fetch('/api/notifications/unread-count', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setNotificationCount(data.unreadCount ?? 0);
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    if (user && !fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchCount();
-      const t = setInterval(fetchCount, 5 * 60 * 1000);
-      return () => clearInterval(t);
-    }
-  }, [user, isResponsesPage]);
+  const {
+    notifications,
+    unreadCount,
+    isLoading: notificationsLoading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+  } = useNotifications(!!user && !isResponsesPage);
 
   // Focus search input when opened
   useEffect(() => {
@@ -172,16 +160,15 @@ export function DashboardNav() {
         >
 
           {/* Notifications */}
-          <Link
-            href="/app/notifications"
-            className="relative flex size-9 items-center justify-center rounded-2xl text-muted-foreground/70 transition-colors hover:bg-muted/60 hover:text-foreground"
-            aria-label="الإشعارات"
-          >
-            <Bell className="size-4" />
-            {notificationCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive ring-2 ring-background/60" />
-            )}
-          </Link>
+          <NotificationPanel
+            notifications={notifications}
+            unreadCount={unreadCount}
+            isLoading={notificationsLoading}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onDelete={deleteNotification}
+            onClearAll={clearAll}
+          />
 
           {/* Divider */}
           <div className="h-5 w-px bg-border/20" />

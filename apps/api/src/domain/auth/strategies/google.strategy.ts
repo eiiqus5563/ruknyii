@@ -43,9 +43,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
     const primaryEmail = emails[0];
 
-    // 🔒 التحقق من email_verified من Google
+    // 🔒 التحقق من email_verified من Google (مقارنة صريحة)
     // Google يوفر هذه المعلومة ويجب استخدامها
-    if (primaryEmail.verified === false) {
+    if (primaryEmail.verified !== true) {
       return done(
         new UnauthorizedException('البريد الإلكتروني غير مُتحقق منه في Google'),
         null,
@@ -55,7 +55,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const user = {
       googleId: id,
       email: primaryEmail.value,
-      emailVerified: primaryEmail.verified !== false, // 🔒 استخدام حالة التحقق من Google
+      emailVerified: true, // 🔒 نصل هنا فقط إذا كان verified === true
       name: `${name.givenName} ${name.familyName}`,
       avatar: photos?.[0]?.value || null,
       accessToken,

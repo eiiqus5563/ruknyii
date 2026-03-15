@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PanelRightClose, PanelRightOpen, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,9 +10,15 @@ import { PhonePreviewContext } from './phone-preview-context';
 
 const STORAGE_KEY = 'rukny-phone-preview-collapsed';
 
+/** Routes where the phone preview should always stay open */
+const FORCE_OPEN_ROUTES = ['/app/links'];
+
 export function CollapsiblePhonePreview({ children }: { children?: React.ReactNode }) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const forceOpen = FORCE_OPEN_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -22,8 +29,14 @@ export function CollapsiblePhonePreview({ children }: { children?: React.ReactNo
     setMounted(true);
   }, []);
 
+  // Force open when on specific routes
+  useEffect(() => {
+    if (forceOpen && collapsed) setCollapsed(false);
+  }, [forceOpen, collapsed]);
+
   // Save state to localStorage
   const toggle = useCallback(() => {
+    if (forceOpen) return; // prevent closing on forced routes
     setCollapsed((prev) => {
       const next = !prev;
       try {
@@ -31,7 +44,7 @@ export function CollapsiblePhonePreview({ children }: { children?: React.ReactNo
       } catch {}
       return next;
     });
-  }, []);
+  }, [forceOpen]);
 
   // Prevent hydration mismatch
   if (!mounted) return <>{children}</>;
@@ -49,7 +62,8 @@ export function CollapsiblePhonePreview({ children }: { children?: React.ReactNo
             'bg-card border border-border/50 shadow-sm',
             'text-muted-foreground hover:text-foreground hover:bg-muted/50',
             'transition-all duration-200',
-            collapsed ? 'right-1/2 translate-x-1/2' : '-right-1'
+            collapsed ? 'right-1/2 translate-x-1/2' : '-right-1',
+            forceOpen && 'hidden'
           )}
           title={collapsed ? 'عرض المعاينة' : 'إخفاء المعاينة'}
         >
