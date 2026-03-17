@@ -26,6 +26,9 @@ import {
   Eye,
   ShoppingCart,
   MousePointerClick,
+  LayoutGrid,
+  Images,
+  RefreshCw,
 } from 'lucide-react';
 import { usePhonePreview } from '@/components/(app)/shared/phone-preview-context';
 import { useAuth } from '@/providers';
@@ -51,6 +54,12 @@ import {
   disconnectAnalytics,
   type AnalyticsSettings,
 } from '@/actions/google-analytics';
+import {
+  getInstagramStatus,
+  disconnectInstagram,
+  type InstagramConnection,
+} from '@/lib/api/instagram';
+import { API_EXTERNAL_URL } from '@/lib/config';
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -66,6 +75,12 @@ const SCOPES = ['إنشاء الأحداث', 'تحديث الأحداث', 'حذ�
 const COMING_SOON = [
   { icon: '/icons/telegram.svg', label: 'تيليجرام', desc: 'إشعارات فورية وأوامر سريعة عبر بوت تيليجرام' },
   { icon: '/icons/whatsapp.svg', label: 'واتساب بزنس', desc: 'إرسال تأكيد الطلبات وتحديثات التوصيل للعملاء' },
+];
+
+const IG_FEATURES = [
+  { icon: LayoutGrid, label: 'شبكة 3×3', desc: 'عرض شبكة منشوراتك مع روابط للمنتجات' },
+  { icon: Images, label: 'معرض أفقي', desc: 'عرض أحدث المنشورات والـ Reels' },
+  { icon: Link2, label: 'روابط المنشورات', desc: 'إضافة رابط لكل منشور في الشبكة' },
 ];
 
 const CATEGORY_LABELS: Record<string, { label: string; icon: typeof ImageIcon }> = {
@@ -255,16 +270,24 @@ export default function IntegrationsSettingsPage() {
   const [gaSaving, setGaSaving] = useState(false);
   const [gaDisconnecting, setGaDisconnecting] = useState(false);
 
+  // Instagram state
+  const [igConnected, setIgConnected] = useState(false);
+  const [igConnection, setIgConnection] = useState<InstagramConnection | null>(null);
+  const [igLoading, setIgLoading] = useState(true);
+  const [igDisconnecting, setIgDisconnecting] = useState(false);
+
   // Load all statuses
   useEffect(() => {
     (async () => {
       setIsLoading(true);
       setStorageLoading(true);
       setGaLoading(true);
-      const [calRes, storRes, gaRes] = await Promise.all([
+      setIgLoading(true);
+      const [calRes, storRes, gaRes, igRes] = await Promise.all([
         getGoogleCalendarStatus(),
         getStorageUsage(),
         getAnalyticsSettings(),
+        getInstagramStatus().catch(() => ({ connected: false, connection: null })),
       ]);
       if (calRes.data) {
         setIsLinked(calRes.data.linked);
@@ -275,6 +298,9 @@ export default function IntegrationsSettingsPage() {
         setGaSettings(gaRes.data);
         if (gaRes.data.googleAnalyticsId) setGaMeasurementId(gaRes.data.googleAnalyticsId);
       }
+      setIgConnected(igRes.connected);
+      setIgConnection(igRes.connection);
+      setIgLoading(false);
       setGaLoading(false);
       setStorageLoading(false);
       setIsLoading(false);
@@ -351,6 +377,37 @@ export default function IntegrationsSettingsPage() {
     toast.success('تم إلغاء ربط Google Analytics');
   }, [toast]);
 
+  const handleConnectInstagram = useCallback(() => {
+    window.location.href = `${API_EXTERNAL_URL}/integrations/instagram/auth`;
+  }, []);
+
+  const handleDisconnectInstagram = useCallback(async () => {
+    setIgDisconnecting(true);
+    try {
+      await disconnectInstagram();
+      setIgConnected(false);
+      setIgConnection(null);
+      toast.success('تم إلغاء ربط إنستغرام');
+    } catch {
+      toast.error('فشل في إلغاء ربط إنستغرام');
+    } finally {
+      setIgDisconnecting(false);
+    }
+  }, [toast]);
+
+  const handleReconnectInstagram = useCallback(async () => {
+    setIgDisconnecting(true);
+    try {
+      await disconnectInstagram();
+      setIgConnected(false);
+      setIgConnection(null);
+      window.location.href = `${API_EXTERNAL_URL}/integrations/instagram/auth`;
+    } catch {
+      toast.error('فشل في إعادة الربط');
+      setIgDisconnecting(false);
+    }
+  }, [toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -383,7 +440,7 @@ export default function IntegrationsSettingsPage() {
       </div>
 
       {/* ── Active Integrations Grid ───────────────────────── */}
-      <div className={cn('grid gap-4', collapsed ? 'lg:grid-cols-2 grid-cols-1' : 'grid-cols-1')}>
+      <div className={cn('grid gap-4', collapsed ? 'grid-cols-2' : 'grid-cols-1')}>
 
       {/* ── S3 Cloud Storage ────────────────────────────────── */}
       <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: '#9787F3' }}>
@@ -483,6 +540,108 @@ export default function IntegrationsSettingsPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* ── Instagram ──────────────────────────────────────── */}
+      <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: igConnected ? '#9787F3' : '#C2CBD3' }}>
+        <div className="p-5 sm:p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="relative shrink-0 mt-0.5">
+              <div className="flex size-11 sm:size-13 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' }}>
+                <Image src="/icons/instagram.svg" alt="Instagram" width={24} height={24} />
+              </div>
+              {igConnected && (
+                <div className="absolute -bottom-1 -left-1 flex size-[16px] sm:size-[18px] items-center justify-center rounded-full ring-2 ring-white" style={{ backgroundColor: '#9787F3' }}>
+                  <CheckCircle2 className="size-2 sm:size-2.5 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-[14px] sm:text-[15px] font-semibold leading-tight" style={{ color: '#313851' }}>إنستغرام</h3>
+                {igConnected && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white shrink-0" style={{ backgroundColor: '#9787F3' }}>
+                    <span className="size-1.5 rounded-full bg-white/60 animate-pulse" />
+                    مرتبط
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] sm:text-[12px] line-clamp-2" style={{ color: '#C2CBD3' }}>
+                {igConnected
+                  ? `@${igConnection?.username ?? ''}`
+                  : 'عرض شبكة منشوراتك على صفحتك'
+                }
+              </p>
+              {/* بطاقة ملف إنستقرام المصغرة */}
+              {igConnected && igConnection?.profilePicUrl && (
+                <div className="flex items-center gap-2 mt-2 mb-1">
+                  <Image
+                    src={igConnection.profilePicUrl}
+                    alt={igConnection.username || 'Instagram profile'}
+                    width={32}
+                    height={32}
+                    className="rounded-full border border-[#C2CBD3] bg-white object-cover"
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[13px] font-semibold text-[#313851] truncate">{igConnection.name || igConnection.username}</span>
+                    {typeof igConnection.followersCount === 'number' && (
+                      <span className="text-[11px] text-[#9787F3] font-medium">{igConnection.followersCount.toLocaleString('ar-EG')} متابع</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {igLoading ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="size-4 animate-spin" style={{ color: '#C2CBD3' }} />
+            </div>
+          ) : igConnected ? (
+            <div className="flex gap-2">
+              <button
+                onClick={handleReconnectInstagram}
+                disabled={igDisconnecting}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: '#9787F3' }}
+              >
+                {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                إعادة الربط
+              </button>
+              <button
+                onClick={handleDisconnectInstagram}
+                disabled={igDisconnecting}
+                className="flex items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
+                style={{ borderColor: '#C2CBD3', color: '#313851' }}
+              >
+                {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnectInstagram}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: '#9787F3' }}
+            >
+              <GitMerge className="size-3" />
+              ربط إنستغرام
+            </button>
+          )}
+        </div>
+
+        {/* Feature tags */}
+        <div className="flex items-center gap-1.5 flex-wrap border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
+          {IG_FEATURES.map(({ label, icon: Icon }) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
+              style={{ backgroundColor: '#9787F3' + '12', color: '#9787F3' }}
+            >
+              <Icon className="size-3" />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* ── Google Calendar ─────────────────────────────────── */}

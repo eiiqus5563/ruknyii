@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import {
   Bell,
@@ -12,6 +12,7 @@ import {
   FileText,
   Shield,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -75,10 +76,24 @@ export function NotificationPanel({
 }: NotificationPanelProps) {
   const [open, setOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<NotificationCategory>('all');
+  const [hasMore, setHasMore] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = filterByCategory(notifications, activeCategory);
 
+  const checkScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    setHasMore(el.scrollHeight - el.scrollTop - el.clientHeight > 10);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+  }, [filtered, checkScroll]);
+
   return (
+    <>
+    <style>{`[data-notif-list]::-webkit-scrollbar{display:none}`}</style>
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
         <button
@@ -98,8 +113,9 @@ export function NotificationPanel({
           side="bottom"
           align="start"
           sideOffset={8}
+          collisionPadding={16}
           className={cn(
-            'z-50 w-[380px] rounded-2xl border border-border/40 bg-background shadow-xl',
+            'z-50 w-[calc(100vw-2rem)] sm:w-[380px] max-w-[380px] rounded-2xl border border-border/40 bg-background shadow-xl',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
             'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
             'data-[side=bottom]:slide-in-from-top-2',
@@ -152,7 +168,8 @@ export function NotificationPanel({
           </div>
 
           {/* Notification List */}
-          <div className="max-h-[380px] m-2 rounded-2xl overflow-y-auto border-t border-border/30">
+          <div className="relative m-2 rounded-2xl border-t border-border/30">
+          <div ref={listRef} onScroll={checkScroll} data-notif-list className="max-h-[380px] overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -222,8 +239,20 @@ export function NotificationPanel({
               ))
             )}
           </div>
+
+          {/* More indicator */}
+          {hasMore && filtered.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-2 pt-8 rounded-b-2xl bg-gradient-to-t from-background via-background/80 to-transparent">
+              <span className="pointer-events-auto flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                <ChevronDown className="size-3 animate-bounce" />
+                المزيد من الإشعارات
+              </span>
+            </div>
+          )}
+          </div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
+    </>
   );
 }

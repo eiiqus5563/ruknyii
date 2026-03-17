@@ -235,6 +235,14 @@ export class InstagramService {
     });
     if (!conn) throw new NotFoundException('لا يوجد حساب Instagram مرتبط');
 
+    // Check if token is expired before making the API call
+    if (conn.tokenExpiry && new Date(conn.tokenExpiry) < new Date()) {
+      throw new BadRequestException({
+        message: 'انتهت صلاحية توكن إنستغرام. يرجى إعادة ربط حسابك.',
+        tokenExpired: true,
+      });
+    }
+
     const params = new URLSearchParams({
       fields: 'id,caption,media_type,media_url,thumbnail_url,timestamp,permalink,like_count,comments_count',
       limit: String(limit),
@@ -246,8 +254,22 @@ export class InstagramService {
     );
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new BadRequestException(`Failed to fetch Instagram media: ${err}`);
+      const errText = await res.text();
+      // Detect invalid/expired token or permissions error
+      let parsed: any;
+      try { parsed = JSON.parse(errText); } catch { /* ignore */ }
+      const igCode = parsed?.error?.code;
+      const igSubcode = parsed?.error?.error_subcode;
+
+      if (igCode === 190 || (igCode === 100 && igSubcode === 33)) {
+        throw new BadRequestException({
+          message: 'توكن إنستغرام غير صالح أو منتهي الصلاحية. يرجى إلغاء الربط وإعادة الربط.',
+          tokenExpired: true,
+          igError: parsed?.error,
+        });
+      }
+
+      throw new BadRequestException(`Failed to fetch Instagram media: ${errText}`);
     }
 
     return res.json();
@@ -368,6 +390,11 @@ export class InstagramService {
       where: { userId },
     });
     if (!conn) return null;
+
+    // Skip API call if token is expired
+    if (conn.tokenExpiry && new Date(conn.tokenExpiry) < new Date()) {
+      return null;
+    }
 
     try {
       const params = new URLSearchParams({

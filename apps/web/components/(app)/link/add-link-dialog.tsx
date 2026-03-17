@@ -312,7 +312,7 @@ function InstagramSubView({
       </div>
 
       {/* ── Options list ── */}
-      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden p-4 space-y-2 pb-6">
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden p-3 sm:p-4 space-y-2 pb-8">
         {checkingStatus ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -342,7 +342,7 @@ function InstagramSubView({
                 }}
                 disabled={isAdding}
                 className={cn(
-                  'w-full flex items-start gap-4 p-4 rounded-2xl border text-start transition-all group',
+                  'w-full flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border text-start transition-all group',
                   isSelected
                     ? 'border-foreground/40 bg-foreground/5 shadow-sm'
                     : 'border-border/50 bg-card hover:border-border hover:shadow-sm cursor-pointer',
@@ -351,7 +351,7 @@ function InstagramSubView({
               >
                 <div
                   className={cn(
-                    'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                    'w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
                     isSelected
                       ? 'bg-foreground text-background'
                       : needsAuth
@@ -671,7 +671,7 @@ function LinkItemRow({ item, onClick }: { item: LinkItemData; onClick?: () => vo
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.15 }}
       onClick={onClick}
-      className="flex items-center gap-3 px-3 py-3 rounded-4xl hover:bg-muted/50 transition-colors group text-start w-full"
+      className="flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-muted/50 transition-colors group text-start w-full"
     >
       {/* Icon */}
       {localIconPath ? (
@@ -793,7 +793,7 @@ export function AddLinkDialog({ open, onOpenChange, onAddSuccess }: AddLinkDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-2xl rounded-3xl sm:rounded-4xl p-0 gap-0 overflow-hidden h-[90vh] sm:h-[85vh] max-h-[90vh] sm:max-h-[85vh] flex flex-col"
+        className="sm:max-w-2xl rounded-3xl sm:rounded-4xl p-0 gap-0 overflow-hidden h-[85vh] sm:h-[85vh] max-h-[85vh] flex flex-col"
       >
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-4 sm:px-5 pt-4 sm:pt-5 pb-2 sm:pb-3">
@@ -819,7 +819,7 @@ export function AddLinkDialog({ open, onOpenChange, onAddSuccess }: AddLinkDialo
               transition={{ duration: 0.15 }}
               className="overflow-hidden px-4 sm:px-5 pb-3 sm:pb-4"
             >
-              <div className="flex items-center gap-3 h-11 px-4 rounded-xl bg-muted/60 border border-border/40 focus-within:border-foreground/20 focus-within:bg-muted transition-colors">
+              <div className="flex items-center gap-3 h-11 px-4 rounded-xl bg-muted/60 border border-border/40 shadow-sm focus-within:border-foreground/20 focus-within:bg-muted transition-colors">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0" />
                 <input
                   ref={searchRef}
@@ -866,7 +866,7 @@ export function AddLinkDialog({ open, onOpenChange, onAddSuccess }: AddLinkDialo
             >
           {/* Mobile: horizontal scroll categories */}
           <nav className="sm:hidden shrink-0 border-b border-border/40 overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-1 px-2 py-2 min-w-max">
+            <div className="flex gap-1.5 px-3 py-2.5 min-w-max">
               {categories.map((cat) => {
                 const isActive = activeCategory === cat.id;
                 const Icon = cat.icon;
@@ -875,9 +875,9 @@ export function AddLinkDialog({ open, onOpenChange, onAddSuccess }: AddLinkDialo
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap',
+                      'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium transition-all whitespace-nowrap',
                       isActive
-                        ? 'bg-foreground text-background'
+                        ? 'bg-foreground text-background shadow-sm'
                         : 'text-muted-foreground hover:text-foreground bg-muted/40'
                     )}
                   >
@@ -915,7 +915,7 @@ export function AddLinkDialog({ open, onOpenChange, onAddSuccess }: AddLinkDialo
           </nav>
 
           {/* Content area */}
-          <div className="flex-1 min-w-0 overflow-y-auto overscroll-y-contain [&::-webkit-scrollbar]:hidden py-3 sm:py-4 px-3 sm:px-4 pb-6">
+          <div className="flex-1 min-w-0 overflow-y-auto overscroll-y-contain [&::-webkit-scrollbar]:hidden py-3 sm:py-4 px-3 sm:px-4 pb-8">
             {/* URL auto-detection */}
             {isUrl && detectedPlatformKey && (
               <DetectedUrlCard

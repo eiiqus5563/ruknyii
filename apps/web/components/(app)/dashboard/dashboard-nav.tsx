@@ -138,7 +138,7 @@ export function DashboardNav() {
               ref={searchInputRef}
               type="text"
               placeholder="ابحث عن أي شيء..."
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
+              className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/50 outline-none"
               onKeyDown={(e) => e.key === 'Escape' && setIsSearchOpen(false)}
             />
             <button

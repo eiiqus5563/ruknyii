@@ -43,9 +43,11 @@ function handleAuthFailure(reason: 'expired' | 'invalid' = 'expired'): void {
   
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
+    // Only redirect on protected /app routes
+    const isProtectedRoute = pathname === '/app' || pathname.startsWith('/app/');
     // 🔒 Don't redirect if already on auth pages
     const isAuthPage = AUTH_PAGES.some(page => pathname.startsWith(page));
-    if (!isAuthPage) {
+    if (isProtectedRoute && !isAuthPage) {
       window.location.href = `/login?session=${reason}`;
     }
   }
