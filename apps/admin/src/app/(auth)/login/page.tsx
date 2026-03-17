@@ -101,7 +101,12 @@ function LoginContent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
         {/* Logo / Header */}
-        <div className="mb-8 text-center">
+        <div className="mb-8 text-center flex flex-col items-center gap-3">
+          <svg className="size-12" viewBox="0 0 1080 1080" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <rect x="352.46" y="211.99" width="411.5" height="239.89"/>
+            <rect x="25" y="539.45" width="415.04" height="239.89" transform="translate(891.92 426.88) rotate(90)"/>
+            <path d="m967.42,665.78v175.97c0,13.89-11.26,25.15-25.15,25.15h-190.54c-6.67,0-13.07-2.65-17.78-7.37l-141.2-141.2c-15.84-15.84-4.62-42.93,17.78-42.93h128.24c13.89,0,25.15-11.26,25.15-25.15v-137.68c0-22.41,27.09-33.63,42.93-17.78l153.21,153.21c4.72,4.72,7.37,11.11,7.37,17.78Z"/>
+          </svg>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Rukny Admin
           </h1>

@@ -1,8 +1,11 @@
-"use client";
-
 import Link from "next/link";
+import type { Metadata } from "next";
 import { FileText, Scale, Users, CreditCard, AlertTriangle, ShieldCheck, Ban, RefreshCw, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: 'شروط الاستخدام | Rukny.io',
+  description: 'شروط وأحكام استخدام منصة ركني',
+};
 
 const sections = [
   {
@@ -180,107 +183,89 @@ export default function TermsPage() {
   return (
     <div dir="rtl" className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative pt-28 sm:pt-32 pb-16 sm:pb-24 bg-gradient-to-b from-primary/5 to-background">
-        <div className="container px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Scale className="size-4" />
-              شروط واضحة وعادلة
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6">
-              شروط الاستخدام
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              يرجى قراءة هذه الشروط بعناية قبل استخدام منصة ركني. باستخدامك للمنصة فإنك توافق على الالتزام بهذه الشروط.
-            </p>
-            <p className="text-sm text-muted-foreground mt-4">
-              آخر تحديث: 1 فبراير 2026
-            </p>
+      <section className="relative pt-28 sm:pt-32 pb-12 sm:pb-20">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 via-primary/[0.02] to-background" />
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+            <Scale className="size-4" />
+            شروط واضحة وعادلة
           </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+            شروط الاستخدام
+          </h1>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            يرجى قراءة هذه الشروط بعناية قبل استخدام منصة ركني. باستخدامك للمنصة فإنك توافق على الالتزام بهذه الشروط.
+          </p>
+          <p className="text-sm text-muted-foreground/60 mt-4">
+            آخر تحديث: 1 فبراير 2026
+          </p>
         </div>
       </section>
 
       {/* Table of Contents */}
-      <section className="py-8 border-b bg-muted/30 m-4 rounded-4xl">
-        <div className="container px-4 sm:px-6">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-lg font-semibold mb-4">محتويات الصفحة</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {sections.map((section) => (
-                <a
-                  key={section.id}
-                  href={`#${section.id}`}
-                  className="flex items-center gap-2 p-3 rounded-2xl bg-background border hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm"
-                >
-                  <section.icon className="size-4 text-primary shrink-0" />
-                  <span className="line-clamp-1">{section.title}</span>
-                </a>
-              ))}
-            </div>
+      <section className="py-6 sm:py-8 mx-4 sm:mx-6 md:mx-auto md:max-w-4xl bg-muted/30 rounded-2xl sm:rounded-3xl border border-border/30">
+        <div className="px-4 sm:px-6">
+          <h2 className="text-base font-semibold mb-4">محتويات الصفحة</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+            {sections.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className="flex items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-background border border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-xs sm:text-sm"
+              >
+                <section.icon className="size-4 text-primary shrink-0" />
+                <span className="line-clamp-1">{section.title}</span>
+              </a>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Content Sections */}
       <section className="py-12 sm:py-16">
-        <div className="container px-4 sm:px-6">
-          <div className="max-w-4xl mx-auto space-y-12">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
+          <div className="space-y-10 sm:space-y-12">
             {sections.map((section, index) => (
-              <div
-                key={section.id}
-                id={section.id}
-                className="scroll-mt-20"
-              >
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <section.icon className="size-6 text-primary" />
+              <div key={section.id} id={section.id} className="scroll-mt-24">
+                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                  <div className="size-10 sm:size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <section.icon className="size-5 sm:size-6 text-primary" />
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground">
-                      القسم {index + 1}
-                    </span>
-                    <h2 className="text-2xl font-bold">{section.title}</h2>
+                    <span className="text-xs sm:text-sm text-muted-foreground/60">القسم {index + 1}</span>
+                    <h2 className="text-xl sm:text-2xl font-bold">{section.title}</h2>
                   </div>
                 </div>
-                <div className="pr-16">
-                  <div className="prose prose-gray dark:prose-invert max-w-none">
+                <div className="pr-[52px] sm:pr-16">
+                  <div className="space-y-3">
                     {section.content.split("\n\n").map((paragraph, pIndex) => (
-                      <div key={pIndex} className="mb-4">
+                      <div key={pIndex}>
                         {paragraph.startsWith("**") ? (
                           <div>
                             {paragraph.split("\n").map((line, lIndex) => {
                               if (line.startsWith("**") && line.endsWith("**")) {
                                 return (
-                                  <h3
-                                    key={lIndex}
-                                    className="text-base font-semibold mt-4 mb-2"
-                                  >
+                                  <h3 key={lIndex} className="text-sm sm:text-base font-semibold mt-3 mb-1.5">
                                     {line.replace(/\*\*/g, "")}
                                   </h3>
                                 );
                               }
                               if (line.startsWith("•")) {
                                 return (
-                                  <p
-                                    key={lIndex}
-                                    className="text-muted-foreground text-sm mr-4"
-                                  >
+                                  <p key={lIndex} className="text-muted-foreground text-sm mr-3 leading-relaxed">
                                     {line}
                                   </p>
                                 );
                               }
                               return (
-                                <p
-                                  key={lIndex}
-                                  className="text-muted-foreground text-sm"
-                                >
+                                <p key={lIndex} className="text-muted-foreground text-sm">
                                   {line.replace(/\*\*/g, "")}
                                 </p>
                               );
                             })}
                           </div>
                         ) : (
-                          <p className="text-muted-foreground leading-relaxed">
+                          <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                             {paragraph}
                           </p>
                         )}
@@ -288,9 +273,7 @@ export default function TermsPage() {
                     ))}
                   </div>
                 </div>
-                {index < sections.length - 1 && (
-                  <div className="mt-8 border-b" />
-                )}
+                {index < sections.length - 1 && <div className="mt-8 border-b border-border/30" />}
               </div>
             ))}
           </div>
@@ -298,14 +281,13 @@ export default function TermsPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t">
-        <div className="container px-4 sm:px-6">
+      <footer className="py-8 border-t border-border/30">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} ركني. جميع الحقوق محفوظة.</p>
             <div className="flex gap-6">
-              <Link href="/privacy" className="hover:text-primary transition-colors">
-                سياسة الخصوصية
-              </Link>
+              <Link href="/privacy" className="hover:text-primary transition-colors">سياسة الخصوصية</Link>
+              <Link href="/security" className="hover:text-primary transition-colors">الأمان</Link>
             </div>
           </div>
         </div>

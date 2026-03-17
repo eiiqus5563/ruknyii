@@ -35,7 +35,6 @@ interface SocialLink {
   status?: string;
   totalClicks?: number;
 }
-}
 
 /* ------------------------------------------------------------------ */
 /*  Social platform icons                                              */

@@ -39,15 +39,17 @@ const trustedLogos = [
     { src: "/logos/google-cloud.svg", alt: "Google Cloud" },
     { src: "/logos/tiktok.svg", alt: "TikTok" },
     { src: "/logos/soundcloud-wordmark.svg", alt: "SoundCloud" },
-    { src: "/logos/perplexity_wordmark_dark.svg", alt: "Perplexity AI" },
     { src: "/logos/tL_v571NdZ0.svg", alt: "Meta" },
     { src: "/logos/facebook-wordmark.svg", alt: "Facebook" },
     { src: "/logos/whatsapp-wordmark.svg", alt: "WhatsApp" },
     { src: "/logos/instagram-wordmark.svg", alt: "Instagram" },
+    { src: "/logos/udemy.svg", alt: "Udemy" },
     { src: "/logos/google-wordmark.svg", alt: "Google" },
-    { src: "/logos/openai_wordmark_dark.svg", alt: "OpenAI" },
     { src: "/logos/gemini_wordmark.svg", alt: "Gemini" },
     { src: "/logos/LI-Logo.png", alt: "linkedin" },
+    { src: "/logos/notion-full.svg", alt: "Notion" },
+    { src: "/logos/microsoft.svg", alt: "Microsoft" },
+    
 ];
 
 export function HeroSection() {
@@ -55,196 +57,99 @@ export function HeroSection() {
         <>
             <HeroHeader />
             <main className="overflow-hidden bg-white" dir="rtl">
-                <div
-                    aria-hidden
-                    className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
-                    <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute right-0 top-0 rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(var(--primary)/0.08)_0,hsla(var(--primary)/0.02)_50%,hsla(var(--primary)/0)_80%)]" />
-                    <div className="h-[80rem] absolute right-0 top-0 w-56 rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(var(--primary)/0.06)_0,hsla(var(--primary)/0.02)_80%,transparent_100%)] [translate:-5%_-50%]" />
-                    <div className="h-[80rem] -translate-y-[350px] absolute right-0 top-0 w-56 rotate-45 bg-[radial-gradient(50%_50%_at_50%_50%,hsla(var(--primary)/0.04)_0,hsla(var(--primary)/0.02)_80%,transparent_100%)]" />
-                </div>
                 <section>
-                    <div className="relative pt-20 sm:pt-24 md:pt-36">
-                        <AnimatedGroup
-                            variants={{
-                                container: {
-                                    visible: {
-                                        transition: {
-                                            delayChildren: 1,
-                                        },
-                                    },
-                                },
-                                item: {
-                                    hidden: {
-                                        opacity: 0,
-                                        y: 20,
-                                    },
-                                    visible: {
-                                        opacity: 1,
-                                        y: 0,
-                                        transition: {
-                                            type: 'spring' as const,
-                                            bounce: 0.3,
-                                            duration: 2,
-                                        },
-                                    },
-                                },
-                            }}
-                            className="absolute inset-0 -z-20">
-                            <Image
-                                src="https://images.unsplash.com/photo-1557683316-973673baf926?w=3276&q=80"
-                                alt="خلفية"
-                                className="absolute inset-x-0 top-56 -z-20 hidden lg:top-32 dark:block object-cover"
-                                width={3276}
-                                height={4095}
-                                priority
-                            />
-                        </AnimatedGroup>
-                        <div aria-hidden className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,var(--background)_75%)]" />
-                        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-                            <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
-                                <AnimatedGroup variants={transitionVariants as { item: Variants }}>
-                                    <Link
-                                        href="/features"
-                                        className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-2 sm:gap-4 rounded-full border p-1 pr-3 sm:pr-4 shadow-md shadow-black/5 transition-all duration-300 dark:border-t-white/5 dark:shadow-zinc-950">
-                                        <span className="text-foreground text-xs sm:text-sm">🎉 اكتشف مميزات ركني الجديدة</span>
-                                        <span className="dark:border-background block h-4 w-0.5 border-r bg-white dark:bg-zinc-700 hidden sm:block"></span>
-
-                                        <div className="bg-background group-hover:bg-muted size-5 sm:size-6 overflow-hidden rounded-full duration-500">
-                                            <div className="flex w-10 sm:w-12 translate-x-1/2 duration-500 ease-in-out group-hover:translate-x-0">
-                                                <span className="flex size-5 sm:size-6">
-                                                    <ArrowRight className="m-auto size-2.5 sm:size-3 rotate-180" />
-                                                </span>
-                                                <span className="flex size-5 sm:size-6">
-                                                    <ArrowRight className="m-auto size-2.5 sm:size-3 rotate-180" />
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </Link>
-
-                                    <h1
-                                        className="mt-6 sm:mt-8 max-w-4xl mx-auto text-balance text-3xl sm:text-4xl md:text-5xl font-bold lg:text-6xl lg:mt-16 xl:text-[4.5rem] leading-tight">
-                                        أنشئ صفحتك الاحترافية مع منصة <span className="text-primary">ركني</span>
+                    <div className="relative pt-24 mt-12 sm:pt-28 md:pt-32 lg:pt-36 pb-8 sm:pb-12 md:pb-14">
+                        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                            <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-12 xl:gap-20 items-center lg:items-start">
+                                {/* Right side in RTL - Big Heading */}
+                                <motion.div
+                                    className="flex-1 text-center lg:text-right"
+                                    initial={{ opacity: 0, y: 24 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.2 }}
+                                >
+                                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[4.25rem] font-black leading-[1.1] tracking-tight">
+                                        منصة رقمية
+                                        <br />
+                                        متكاملة{' '}
+                                        <span className="text-primary">لأعمالك</span>
+                                        <br />
+                                        <span className="text-primary">على الانترنت</span>
                                     </h1>
-                                    <p
-                                        className="mx-auto mt-4 sm:mt-6 md:mt-8 max-w-2xl text-balance text-sm sm:text-base md:text-lg text-muted-foreground px-2">
-                                        صفحة واحدة تجمع روابطك ومنتجاتك ونماذجك. كل ما تحتاجه للتواصل مع جمهورك وتنمية أعمالك.
-                                    </p>
-                                </AnimatedGroup>
+                                </motion.div>
 
-                                <AnimatedGroup
-                                    variants={{
-                                        container: {
-                                            visible: {
-                                                transition: {
-                                                    staggerChildren: 0.05,
-                                                    delayChildren: 0.75,
-                                                },
-                                            },
-                                        },
-                                        item: transitionVariants.item,
-                                    }}
-                                    className="mt-8 sm:mt-10 md:mt-12 flex flex-col items-center justify-center gap-2 md:flex-row">
-                                    <div
-                                        key={1}
-                                        className="bg-foreground/10 rounded-[14px] border p-0.5">
+                                {/* Left side in RTL - Description & CTA */}
+                                <motion.div
+                                    className="flex-1 flex flex-col items-center lg:items-start gap-4 sm:gap-5 lg:max-w-sm lg:pt-2"
+                                    initial={{ opacity: 0, y: 24 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.35 }}
+                                >
+                                    <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-3.5 py-1 text-xs sm:text-sm font-medium text-foreground/80">
+                                        نسخة مستقرة
+                                    </span>
+                                    <p className="text-sm sm:text-base text-muted-foreground leading-relaxed text-center lg:text-right">
+                                        أطلق مشروعك على الانترنت خلال دقائق.
+                                        أنشئ متجرك، نظّم فعالياتك، وتواصل مع عملائك.
+                                        أدر مدفوعاتك، زبائنك، ومنتجاتك في مكان واحد.
+                                    </p>
+                                    <div className="bg-foreground/10 rounded-4xl border p-0.5">
                                         <Button
                                             asChild
-                                            size="lg"
-                                            className="rounded-xl px-6 sm:px-8 text-sm sm:text-base h-11 sm:h-12">
+                                            size="default"
+                                            className="rounded-4xl px-6 text-sm h-10 sm:h-11 gap-2">
                                             <Link href="/app">
                                                 <span className="text-nowrap">ابدأ مجاناً</span>
                                             </Link>
                                         </Button>
                                     </div>
-                                </AnimatedGroup>
+                                </motion.div>
                             </div>
                         </div>
 
-                        <AnimatedGroup
-                            variants={{
-                                container: {
-                                    visible: {
-                                        transition: {
-                                            staggerChildren: 0.05,
-                                            delayChildren: 0.75,
-                                        },
-                                    },
-                                },
-                                item: transitionVariants.item,
-                            }}>
-                            <div className="relative mt-8 sm:mt-12 md:mt-20 overflow-hidden px-4 sm:px-6">
-                                <div
-                                    aria-hidden
-                                    className="bg-gradient-to-b to-background absolute inset-0 z-10 from-transparent from-35%"
-                                />
-                                <div className="inset-shadow-2xs ring-background dark:inset-shadow-white/20 bg-background relative mx-auto max-w-6xl overflow-hidden rounded-xl sm:rounded-2xl border p-2 sm:p-4 shadow-lg shadow-zinc-950/15 ring-1">
-                                    <Image
-                                        className="bg-background aspect-[16/10] sm:aspect-[15/8] relative hidden rounded-xl sm:rounded-2xl dark:block object-cover"
-                                        src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=2700&q=80"
-                                        alt="لوحة تحكم ركني"
-                                        width={2700}
-                                        height={1440}
-                                    />
-                                    <Image
-                                        className="z-2 border-border/25 aspect-[16/10] sm:aspect-[15/8] relative rounded-xl sm:rounded-2xl border dark:hidden object-cover"
-                                        src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=2700&q=80"
-                                        alt="لوحة تحكم ركني"
-                                        width={2700}
-                                        height={1440}
-                                    />
-                                </div>
+                        {/* Bottom Stats Bar */}
+                        <motion.div
+                            className="mx-auto max-w-6xl px-4 sm:px-6 mt-12 sm:mt-14 md:mt-16"
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.7 }}
+                        >
+                            <div className="border-t border-border/30 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+                                <p className="text-muted-foreground">
+                                    متاجر، فعاليات، ملفك الشخصي نماذج وتحليلات{' '}
+                                    <span className="text-primary font-semibold">كلها في منصة واحدة</span>
+                                </p>
+                                <p className="text-muted-foreground flex items-center gap-2">
+                                    <span className="size-1.5 rounded-full bg-primary/60" />
+                                    انضم لأكثر من <span className="font-bold text-foreground mx-1">1000+</span> صاحب عمل يدير مشروعه عبر ركني
+                                </p>
                             </div>
-                        </AnimatedGroup>
+                        </motion.div>
                     </div>
                 </section>
 
                 {/* Trusted Companies Section - LogoCloud */}
-                <section className="relative w-full px-4 py-10 sm:py-16 md:py-20 -mt-16 sm:-mt-10 md:mt-0">
-                    {/* Decorative background */}
-                    <div className="absolute inset-0 -z-10">
-                        <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
-                        <div
-                            aria-hidden="true"
-                            className="absolute left-1/2 top-0 -translate-x-1/2 h-px w-3/4 bg-gradient-to-r from-transparent via-border to-transparent"
-                        />
-                        <div
-                            aria-hidden="true"
-                            className="absolute left-1/2 bottom-0 -translate-x-1/2 h-px w-3/4 bg-gradient-to-r from-transparent via-border to-transparent"
-                        />
-                    </div>
-                    
-                    <div className="relative z-10 mx-auto w-full max-w-5xl">
-                        <div className="text-center mb-6 sm:mb-10">
-                            <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs sm:text-sm font-medium text-primary mb-3 sm:mb-4">
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                                موثوق عالمياً
-                            </span>
-                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground md:text-3xl lg:text-4xl">
-                                نستخدم أفضل التقنيات العالمية
-                            </h2>
-                            <p className="mt-2 sm:mt-3 text-sm sm:text-base text-muted-foreground md:text-lg max-w-2xl mx-auto">
-                                نعتمد على أحدث التقنيات من الشركات الرائدة لضمان أفضل تجربة لك
+                <section className="relative w-full px-4 py-8 sm:py-10 md:py-14">
+                    <div className="mx-auto w-full max-w-6xl">
+                        <div className="mb-5 text-center sm:mb-6">
+                            <p className="text-xs sm:text-sm font-medium text-muted-foreground/70 uppercase tracking-widest">
+                                نعتمد على أحدث التقنيات من الشركات الرائدة
                             </p>
                         </div>
-                        <div className="relative" dir="ltr">
-                            {/* Edge fade effects */}
-                            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 sm:w-24 md:w-32 lg:w-40 bg-gradient-to-r from-background via-background/80 to-transparent" />
-                            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 sm:w-24 md:w-32 lg:w-40 bg-gradient-to-l from-background via-background/80 to-transparent" />
-                            
-                            <InfiniteSlider gap={32} duration={25} durationOnHover={50}>
+
+                        <div className="relative overflow-hidden px-2 py-2 sm:px-3 sm:py-3" dir="ltr">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-white to-transparent sm:w-24" />
+                            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent sm:w-24" />
+
+                            <InfiniteSlider gap={40} duration={28} className="py-1">
                                 {trustedLogos.map((logo) => (
-                                    <div
-                                        key={logo.alt}
-                                        className="group flex items-center justify-center"
-                                    >
-                                        <img
-                                            src={logo.src}
-                                            alt={logo.alt}
-                                            className="h-6 w-auto max-w-[100px] sm:h-7 sm:max-w-[120px] md:h-8 md:max-w-[140px] object-contain opacity-50 grayscale transition-all duration-300 ease-out group-hover:opacity-100 group-hover:grayscale-0 group-hover:scale-110"
-                                            loading="lazy"
-                                            decoding="async"
+                                    <div key={logo.alt} className="flex h-12 min-w-[110px] items-center justify-center px-4 sm:h-14 sm:min-w-[130px] md:min-w-[150px]">
+                                       <img
+                                         alt={logo.alt}
+                                         className="pointer-events-none h-5 select-none opacity-60 transition-all duration-300 sm:h-6 md:h-7"
+                                         key={`logo-${logo.alt}`}
+                                         loading="lazy"
+                                         src={logo.src}
                                         />
                                     </div>
                                 ))}
@@ -254,35 +159,96 @@ export function HeroSection() {
                 </section>
 
                 {/* Features Section */}
-                <section className="bg-background py-12 md:py-24">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6">
-                        <div className="text-center mb-8 md:mb-16">
-                            <h2 className="text-2xl sm:text-3xl font-bold md:text-4xl mb-3 md:mb-4">كل ما تحتاجه في مكان واحد</h2>
-                            <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                                أدوات متكاملة لإدارة أعمالك بكفاءة عالية
+                <section className="py-16 md:py-28">
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                        <div className="text-center mb-10 md:mb-16">
+                            <Badge variant="secondary" className="text-xs sm:text-sm mb-4">
+                                المنتجات
+                            </Badge>
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-3 md:mb-4">كل ما تحتاجه في مكان واحد</h2>
+                            <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+                                أدوات متكاملة لإدارة أعمالك الرقمية بكفاءة عالية
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                            <FeatureCard
-                                icon={<Store className="size-5 sm:size-6" />}
-                                title="إنشاء المتاجر"
-                                description="أنشئ متجرك الإلكتروني بسهولة وابدأ البيع فوراً"
-                            />
-                            <FeatureCard
-                                icon={<Calendar className="size-5 sm:size-6" />}
-                                title="إدارة الفعاليات"
-                                description="نظّم فعالياتك واستقبل الحجوزات بشكل آلي"
-                            />
-                            <FeatureCard
-                                icon={<Users className="size-5 sm:size-6" />}
-                                title="تواصل مع العملاء"
-                                description="تابع عملاءك وأرسل لهم التحديثات والعروض"
-                            />
-                            <FeatureCard
-                                icon={<Sparkles className="size-5 sm:size-6" />}
-                                title="تحليلات متقدمة"
-                                description="راقب أداء متجرك واتخذ قرارات ذكية"
-                            />
+
+                        {/* Bento Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                            {/* Card 1 - المتاجر (Large) */}
+                            <div className="sm:col-span-2 lg:col-span-2 group relative rounded-2xl sm:rounded-3xl border border-border/40 bg-muted/20 p-5 sm:p-7 md:p-8 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40 overflow-hidden">
+                                <div className="relative z-10">
+                                    <div className="mb-4 inline-flex size-11 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                        <Store className="size-5 sm:size-6" />
+                                    </div>
+                                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">المتاجر الإلكترونية</h3>
+                                    <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-md">
+                                        أنشئ متجرك الإلكتروني وابدأ البيع فوراً. أضف منتجاتك، أدر طلباتك، واستقبل مدفوعاتك في مكان واحد.
+                                    </p>
+                                </div>
+                                <div className="absolute -left-8 -bottom-8 size-32 sm:size-40 rounded-full bg-primary/5 group-hover:bg-primary/10 transition-colors duration-500" />
+                            </div>
+
+                            {/* Card 2 - الفعاليات */}
+                            <div className="group relative rounded-2xl sm:rounded-3xl border border-border/40 bg-muted/20 p-5 sm:p-7 md:p-8 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40">
+                                <div className="mb-4 inline-flex size-11 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <Calendar className="size-5 sm:size-6" />
+                                </div>
+                                <h3 className="text-base sm:text-lg font-bold mb-1.5">إدارة الفعاليات</h3>
+                                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                                    نظّم فعالياتك واستقبل الحجوزات والتسجيلات بشكل آلي ومتكامل.
+                                </p>
+                            </div>
+
+                            {/* Card 3 - النماذج */}
+                            <div className="group relative rounded-2xl sm:rounded-3xl border border-border/40 bg-muted/20 p-5 sm:p-7 md:p-8 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40">
+                                <div className="mb-4 inline-flex size-11 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <FileText className="size-5 sm:size-6" />
+                                </div>
+                                <h3 className="text-base sm:text-lg font-bold mb-1.5">النماذج الذكية</h3>
+                                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                                    أنشئ نماذج واستبيانات متقدمة لجمع بيانات عملائك بسهولة.
+                                </p>
+                            </div>
+
+                            {/* Card 4 - الملف الشخصي */}
+                            <div className="group relative rounded-2xl sm:rounded-3xl border border-border/40 bg-muted/20 p-5 sm:p-7 md:p-8 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40">
+                                <div className="mb-4 inline-flex size-11 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <User className="size-5 sm:size-6" />
+                                </div>
+                                <h3 className="text-base sm:text-lg font-bold mb-1.5">الملف الشخصي</h3>
+                                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                                    صفحة شخصية احترافية تعرض خدماتك وأعمالك بأفضل شكل.
+                                </p>
+                            </div>
+
+                            {/* Card 5 - التحليلات و الذكاء الاصطناعي (Large) */}
+                            <div className="sm:col-span-2 lg:col-span-2 group relative rounded-2xl sm:rounded-3xl border border-border/40 bg-muted/20 p-5 sm:p-7 md:p-8 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40 overflow-hidden">
+                                <div className="relative z-10 flex flex-col sm:flex-row gap-6 sm:gap-10">
+                                    <div className="flex-1">
+                                        <div className="mb-4 inline-flex size-11 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                            <BarChart3 className="size-5 sm:size-6" />
+                                        </div>
+                                        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">تحليلات وذكاء اصطناعي</h3>
+                                        <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-md">
+                                            راقب أداء أعمالك بتقارير مفصلة، واستفد من أدوات الذكاء الاصطناعي لاتخاذ قرارات أذكى وأسرع.
+                                        </p>
+                                    </div>
+                                    <div className="hidden sm:flex items-center gap-3">
+                                        <div className="flex flex-col gap-2 items-center">
+                                            <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <Bot className="size-5 text-primary" />
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">AI</span>
+                                        </div>
+                                        <div className="flex flex-col gap-2 items-center">
+                                            <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <Sparkles className="size-5 text-primary" />
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground">تحليلات</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="absolute -right-8 -bottom-8 size-32 sm:size-40 rounded-full bg-primary/5 group-hover:bg-primary/10 transition-colors duration-500" />
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -363,17 +329,7 @@ function AdvantageItem({ icon, title, description }: { icon: React.ReactNode; ti
     );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-    return (
-        <div className="group relative rounded-2xl border border-border/50 bg-muted/40 p-4 sm:p-6 transition-all duration-300 hover:shadow-lg hover:border-primary/50 hover:bg-muted/60">
-            <div className="mb-3 sm:mb-4 inline-flex size-10 sm:size-12 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
-                {icon}
-            </div>
-            <h3 className="mb-1 sm:mb-2 text-sm sm:text-lg font-semibold leading-tight">{title}</h3>
-            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed line-clamp-2 sm:line-clamp-none">{description}</p>
-        </div>
-    );
-}
+
 
 const menuItems = [
     { name: 'الأسعار', href: '/pricing' },
@@ -768,7 +724,11 @@ const HeroHeader = () => {
 const RuknyLogo = ({ className }: { className?: string }) => {
     return (
         <div className={cn('flex items-center gap-2', className)}>
-            <span className="text-xl font-bold" style={{ fontFamily: 'var(--font-courgette), cursive' }}>Rukny</span>
+            <svg className="size-7" viewBox="0 0 1080 1080" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <rect x="352.46" y="211.99" width="411.5" height="239.89"/>
+                <rect x="25" y="539.45" width="415.04" height="239.89" transform="translate(891.92 426.88) rotate(90)"/>
+                <path d="m967.42,665.78v175.97c0,13.89-11.26,25.15-25.15,25.15h-190.54c-6.67,0-13.07-2.65-17.78-7.37l-141.2-141.2c-15.84-15.84-4.62-42.93,17.78-42.93h128.24c13.89,0,25.15-11.26,25.15-25.15v-137.68c0-22.41,27.09-33.63,42.93-17.78l153.21,153.21c4.72,4.72,7.37,11.11,7.37,17.78Z"/>
+            </svg>
         </div>
     );
 };

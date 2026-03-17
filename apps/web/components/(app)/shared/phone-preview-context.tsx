@@ -9,6 +9,7 @@ export interface ProfileData {
   bio?: string;
   avatar?: string;
   coverImage?: string;
+  banners?: string[];
   location?: string;
   visibility: string;
   createdAt: string;
