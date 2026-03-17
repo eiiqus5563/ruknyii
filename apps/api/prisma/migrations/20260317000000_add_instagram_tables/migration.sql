@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "InstagramBlockType" AS ENUM ('GRID', 'FEED');
+
 -- CreateTable
 CREATE TABLE "instagram_connections" (
     "id" TEXT NOT NULL,
@@ -19,7 +22,7 @@ CREATE TABLE "instagram_connections" (
 CREATE TABLE "instagram_blocks" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "InstagramBlockType" NOT NULL,
     "displayOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
