@@ -157,7 +157,7 @@ export class StorageController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 uploads per minute
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload profile avatar to S3' })
   @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
@@ -177,7 +177,7 @@ export class StorageController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 uploads per minute
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload cover image to S3' })
   @ApiResponse({ status: 200, description: 'Cover uploaded successfully' })
@@ -194,7 +194,7 @@ export class StorageController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 uploads per minute
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload form cover image' })
   @ApiParam({ name: 'formId', description: 'Form ID' })
@@ -220,7 +220,7 @@ export class StorageController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 uploads per minute
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload event cover image' })
   @ApiParam({ name: 'eventId', description: 'Event ID' })
@@ -249,7 +249,7 @@ export class StorageController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 uploads per minute for products
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload product image' })
   @ApiParam({ name: 'productId', description: 'Product ID' })

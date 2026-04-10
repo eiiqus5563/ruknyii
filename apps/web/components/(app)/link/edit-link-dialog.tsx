@@ -161,25 +161,25 @@ export function EditLinkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-lg rounded-4xl p-0 gap-0 overflow-hidden"
+        className="sm:max-w-lg rounded-2xl p-0 gap-0 overflow-hidden"
       >
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <DialogTitle className="text-lg font-bold">تعديل الرابط</DialogTitle>
+        <div className="flex items-center justify-between px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+          <DialogTitle className="text-base sm:text-lg font-bold">تعديل الرابط</DialogTitle>
           <button
             onClick={() => onOpenChange(false)}
-            className="flex items-center justify-center w-8 h-8 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* ── Body ── */}
-        <div className="px-5 py-6 space-y-5">
+        <div className="px-4 sm:px-5 py-5 sm:py-6 space-y-5">
           {/* Brand info */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/40 border border-border/30">
+          <div className="flex items-center gap-3 p-3 sm:p-4 rounded-2xl bg-card border border-border/60">
             {localIconPath ? (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-white dark:bg-zinc-900">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-white dark:bg-zinc-900">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={localIconPath}
@@ -225,8 +225,8 @@ export function EditLinkDialog({
               onKeyDown={handleKeyDown}
               placeholder={displayBrandTitle}
               className={cn(
-                'w-full px-4 py-3 rounded-xl border border-border/50 bg-card text-foreground placeholder:text-muted-foreground/60',
-                'outline-none transition-colors focus:border-foreground/30 focus:bg-muted/30',
+                'w-full px-4 py-2.5 sm:py-3 rounded-xl border border-border/60 bg-background text-foreground placeholder:text-muted-foreground/50',
+                'outline-none transition-colors focus:ring-2 focus:ring-primary/20 focus:border-primary/40',
                 'text-sm'
               )}
               maxLength={50}
@@ -241,7 +241,7 @@ export function EditLinkDialog({
             <label className="text-sm font-medium text-foreground block">
               الرابط
             </label>
-            <div className="flex items-center gap-2 rounded-xl border border-border/50 bg-card px-4 py-3 focus-within:border-foreground/30 focus-within:bg-muted/30 transition-colors">
+            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4 py-2.5 sm:py-3 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/40 transition-all">
               <input
                 type="text"
                 value={editUrl}
@@ -278,14 +278,14 @@ export function EditLinkDialog({
             <button
               onClick={() => onOpenChange(false)}
               disabled={isSaving}
-              className="flex-1 px-4 py-3 rounded-xl border border-border/50 bg-card text-foreground font-medium transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 sm:py-3 rounded-xl border border-border/60 bg-card text-foreground font-medium transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
             >
               إلغاء
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving || !editUrl.trim()}
-              className="flex-1 px-4 py-3 rounded-xl bg-foreground text-background font-medium transition-colors hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 sm:py-3 rounded-xl bg-foreground text-background font-medium transition-colors hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSaving ? (
                 <>

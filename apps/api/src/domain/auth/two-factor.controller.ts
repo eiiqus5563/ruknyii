@@ -20,6 +20,7 @@ import {
 import { Request, Response } from 'express';
 import { TwoFactorService } from './two-factor.service';
 import { TokenService } from './token.service';
+import { PendingTwoFactorService } from './pending-two-factor.service';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
 import { SecurityLogService } from '../../infrastructure/security/log.service';
 import { SecurityDetectorService } from '../../infrastructure/security/detector.service';
@@ -37,6 +38,8 @@ import { UAParser } from 'ua-parser-js';
 import {
   Verify2FADto,
   Verify2FALoginDto,
+  StartVerifyIdentityDto,
+  StartVerifyIdentityResponseDto,
   Disable2FADto,
   RegenerateBackupCodesDto,
   Setup2FAResponseDto,
@@ -45,6 +48,10 @@ import {
 } from './dto/two-factor.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const VERIFY_IDENTITY_WINDOW_MINUTES = 10;
+const VERIFY_IDENTITY_MAX_ATTEMPTS = 6;
+const GENERIC_VERIFY_IDENTITY_MESSAGE =
+  'تعذر استخدام هذه الطريقة الآن. استخدم البريد الإلكتروني أو حاول لاحقاً.';
 
 /**
  * 🔐 Two-Factor Authentication Controller
@@ -62,10 +69,146 @@ export class TwoFactorController {
   constructor(
     private twoFactorService: TwoFactorService,
     private tokenService: TokenService,
+    private pendingTwoFactorService: PendingTwoFactorService,
     private prisma: PrismaService,
     private securityLogService: SecurityLogService,
     private securityDetectorService: SecurityDetectorService,
   ) {}
+
+  /**
+   * 🧭 بدء تدفق "اختر طريقة التحقق" بدون الاعتماد على رابط البريد
+   *
+   * الهدف: إذا كان المستخدم لا يستطيع الوصول للبريد، يمكنه متابعة
+   * Authenticator / Recovery code مباشرةً إذا كان 2FA مفعلاً.
+   */
+  @Post('start-verify-identity')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'بدء تدفق التحقق البديل (Authenticator / Recovery / Email)' })
+  @ApiResponse({
+    status: 200,
+    description: 'حالة الطرق المتاحة ومعرف جلسة 2FA عند توفرها',
+    type: StartVerifyIdentityResponseDto,
+  })
+  async startVerifyIdentity(
+    @Body() dto: StartVerifyIdentityDto,
+    @Req() req: Request,
+  ): Promise<StartVerifyIdentityResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+
+    const tooManyAttempts = await this.isVerifyIdentityRateLimited(email, ipAddress);
+    if (tooManyAttempts) {
+      return {
+        success: true,
+        availableMethods: {
+          email: true,
+          authenticator: false,
+          recovery: false,
+        },
+        pendingSessionId: null,
+        message: GENERIC_VERIFY_IDENTITY_MESSAGE,
+      };
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        twoFactorEnabled: true,
+      },
+    });
+
+    // استجابة آمنة: لا تكشف صراحةً وجود الحساب من عدمه
+    if (!user || !user.twoFactorEnabled) {
+      await this.prisma.loginAttempt.create({
+        data: {
+          id: crypto.randomUUID(),
+          email,
+          ipAddress,
+          success: false,
+          reason: 'VERIFY_IDENTITY_START',
+          metadata: { reason: 'NOT_ELIGIBLE_OR_UNKNOWN' },
+        },
+      });
+
+      return {
+        success: true,
+        availableMethods: {
+          email: true,
+          authenticator: false,
+          recovery: false,
+        },
+        pendingSessionId: null,
+        message: GENERIC_VERIFY_IDENTITY_MESSAGE,
+      };
+    }
+
+    const pendingSessionId = await this.pendingTwoFactorService.create(
+      user.id,
+      user.email,
+    );
+
+    await this.securityLogService.createLog({
+      userId: user.id,
+      action: 'TWO_FACTOR_SETUP_STARTED',
+      status: 'SUCCESS',
+      description: 'بدء تدفق تحقق بديل عبر صفحة verify-identity',
+      ipAddress,
+      userAgent: req.headers['user-agent'],
+    });
+
+    await this.prisma.loginAttempt.create({
+      data: {
+        id: crypto.randomUUID(),
+        email,
+        ipAddress,
+        success: true,
+        reason: 'VERIFY_IDENTITY_START',
+        metadata: { eligible: true },
+      },
+    });
+
+    return {
+      success: true,
+      availableMethods: {
+        email: true,
+        authenticator: true,
+        recovery: true,
+      },
+      pendingSessionId,
+    };
+  }
+
+  private async isVerifyIdentityRateLimited(
+    email: string,
+    ipAddress: string,
+  ): Promise<boolean> {
+    const windowStart = new Date(Date.now() - VERIFY_IDENTITY_WINDOW_MINUTES * 60 * 1000);
+
+    const [emailAttempts, ipAttempts] = await Promise.all([
+      this.prisma.loginAttempt.count({
+        where: {
+          email,
+          reason: 'VERIFY_IDENTITY_START',
+          createdAt: { gte: windowStart },
+        },
+      }),
+      this.prisma.loginAttempt.count({
+        where: {
+          ipAddress,
+          reason: 'VERIFY_IDENTITY_START',
+          createdAt: { gte: windowStart },
+        },
+      }),
+    ]);
+
+    return (
+      emailAttempts >= VERIFY_IDENTITY_MAX_ATTEMPTS ||
+      ipAttempts >= VERIFY_IDENTITY_MAX_ATTEMPTS * 2
+    );
+  }
 
   /**
    * 📊 حالة المصادقة الثنائية
@@ -383,27 +526,22 @@ export class TwoFactorController {
 
   /**
    * 🔍 التحقق من صلاحية جلسة 2FA المعلقة (Endpoint عام)
-   * يُستخدم من الـ frontend للتحقق من صلاحية الجلسة قبل إدخال الرمز
+   * يُستخدم من الـ frontend كفحص تمهيدي فقط.
+   * 🔒 لا يكشف ما إذا كانت الجلسة موجودة أو صالحة لمنع التعداد.
    */
   @Get('check-session/:sessionId')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 🔒 10 محاولات في الدقيقة (منع تعداد الجلسات)
-  @ApiOperation({ summary: 'التحقق من صلاحية جلسة 2FA المعلقة' })
-  @ApiResponse({ status: 200, description: 'الجلسة صالحة' })
-  @ApiResponse({ status: 404, description: 'الجلسة منتهية أو غير موجودة' })
+  @ApiOperation({ summary: 'فحص تمهيدي لجلسة 2FA بدون كشف حالتها' })
+  @ApiResponse({ status: 200, description: 'استجابة موحدة دائمًا' })
   async checkSession(@Param('sessionId') sessionId: string) {
-    const session = await this.getPendingTwoFactorSession(sessionId);
-    
-    if (!session) {
-      return {
-        valid: false,
-        error: 'جلسة التحقق منتهية أو غير موجودة. يرجى إعادة تسجيل الدخول',
-      };
-    }
+    // 🔒 نقوم بالفحص داخلياً فقط بدون إرجاع نتيجة صريحة لحالة الجلسة
+    await this.getPendingTwoFactorSession(sessionId);
 
-    // 🔒 لا نُرجع البريد الإلكتروني لمنع تسريب المعلومات
+    // 🔒 الاستجابة موحدة لمنع تعداد معرفات الجلسات
     return {
       valid: true,
+      message: 'يمكنك المتابعة لإدخال رمز التحقق',
     };
   }
 

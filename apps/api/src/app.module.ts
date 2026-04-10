@@ -32,6 +32,9 @@ import { SocialModule } from './domain/social/social.module';
 // Domain - Links Management
 import { LinksModule } from './domain/links/links.module';
 
+// Domain - Analytics
+import { AnalyticsModule } from './domain/analytics/analytics.module';
+
 // Domain - Todos (Task Management) - DISABLED
 // import { TodosModule } from './domain/todos/todos.module';
 
@@ -40,6 +43,9 @@ import { AdminModule } from './domain/admin/admin.module';
 
 // Domain - Stores & Products
 import { StoresModule } from './domain/stores/stores.module';
+
+// Domain - Subscriptions
+import { SubscriptionsModule } from './domain/subscriptions/subscriptions.module';
 
 // Domain - Storage (S3)
 import { StorageModule } from './domain/storage/storage.module';
@@ -53,7 +59,10 @@ import { GoogleSheetsModule } from './integrations/google-sheets/google-sheets.m
 import { GoogleDriveModule } from './integrations/google-drive/google-drive.module';
 import { TelegramModule } from './integrations/telegram/telegram.module';
 import { WhatsappModule } from './integrations/whatsapp';
+import { WhatsAppBusinessModule } from './integrations/whatsapp-business/whatsapp-business.module';
 import { InstagramModule } from './integrations/instagram/instagram.module';
+import { YouTubeModule } from './integrations/youtube/youtube.module';
+import { LinkedInModule } from './integrations/linkedin/linkedin.module';
 // import { PushNotificationsModule } from './integrations/push-notifications/push-notifications.module'; // Disabled - needs configuration
 import { DevModule } from './dev/dev.module';
 
@@ -74,7 +83,7 @@ import { SharedModule } from './shared/modules/shared.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // Time window: 60 seconds
-        limit: process.env.NODE_ENV === 'production' ? 30 : 100, // More lenient in development
+        limit: process.env.NODE_ENV === 'production' ? 100 : 200, // Per-user limit
       },
     ]),
     // Core
@@ -107,11 +116,17 @@ import { SharedModule } from './shared/modules/shared.module';
     // Domain - Links
     LinksModule,
 
+    // Domain - Analytics
+    AnalyticsModule,
+
     // Domain - Todos (Task Management) - DISABLED
     // TodosModule,
 
     // Domain - Stores & Products
     StoresModule,
+
+    // Domain - Subscriptions (Global)
+    SubscriptionsModule,
 
     // Domain - Admin
     AdminModule,
@@ -127,8 +142,11 @@ import { SharedModule } from './shared/modules/shared.module';
     GoogleSheetsModule,
     GoogleDriveModule,
     TelegramModule,
-    WhatsappModule, // 📱 WhatsApp Checkout System
+    WhatsappModule, // 📱 WhatsApp Order Notifications
+    WhatsAppBusinessModule, // 🔐 WhatsApp Business OTP (Meta Cloud API)
     InstagramModule,
+    YouTubeModule,
+    LinkedInModule,
     // PushNotificationsModule, // 🔔 Web Push Notifications - Disabled (needs configuration)
     ...(process.env.NODE_ENV !== 'production' ? [DevModule] : []),
   ],

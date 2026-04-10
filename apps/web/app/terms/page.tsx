@@ -42,13 +42,17 @@ const sections = [
     content: `**متطلبات التسجيل:**
 • يجب أن يكون عمرك 18 عاماً على الأقل
 • تقديم معلومات صحيحة ودقيقة
-• الحفاظ على سرية بيانات تسجيل الدخول
+• الحفاظ على سرية وسيلة الوصول للحساب (مثل البريد الإلكتروني وروابط الدخول)
 • إخطارنا فوراً بأي استخدام غير مصرح به
 
 **مسؤولية الحساب:**
 • أنت مسؤول عن جميع الأنشطة التي تتم من خلال حسابك
 • يحق لنا تعليق أو إنهاء حسابك في حالة انتهاك الشروط
 • لا يجوز مشاركة حسابك مع أي شخص آخر
+
+**تسجيل الدخول بدون كلمة مرور:**
+• قد نوفر تسجيل الدخول عبر رابط سحري (Magic Link) أو مزود هوية مثل Google
+• لا تشارك رابط الدخول أو رموز المصادقة مع أي طرف ثالث
 
 **حذف الحساب:**
 • يمكنك طلب حذف حسابك في أي وقت
@@ -82,6 +86,7 @@ const sections = [
 • جمع بيانات المستخدمين بدون موافقتهم
 • إرسال رسائل غير مرغوب فيها (سبام)
 • محاولة اختراق أو تعطيل المنصة
+• التحايل على آليات الحماية أو تجاوز قيود الوصول
 • استخدام برامج آلية للوصول للمنصة
 • إعادة بيع خدمات المنصة بدون إذن
 
@@ -168,8 +173,7 @@ const sections = [
 support@rukny.io
 
 **الدعم الفني:**
-help@rukny.io
-support@rukny.xyz   
+support@rukny.io
 
 **العنوان:**
 العراق - محافظة ميسان
@@ -286,6 +290,7 @@ export default function TermsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} ركني. جميع الحقوق محفوظة.</p>
             <div className="flex gap-6">
+              <Link href="/" className="hover:text-primary transition-colors">الرئيسية</Link>
               <Link href="/privacy" className="hover:text-primary transition-colors">سياسة الخصوصية</Link>
               <Link href="/security" className="hover:text-primary transition-colors">الأمان</Link>
             </div>

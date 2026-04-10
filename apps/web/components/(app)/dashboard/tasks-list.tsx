@@ -47,28 +47,28 @@ interface TasksListProps {
 }
 
 const typeIcons: Record<string, { icon: LucideIcon; color: string }> = {
-  order: { icon: ShoppingBag, color: "text-blue-500" },
-  order_received: { icon: ShoppingBag, color: "text-blue-500" },
-  product: { icon: Package, color: "text-violet-500" },
-  product_created: { icon: Package, color: "text-violet-500" },
-  product_updated: { icon: Package, color: "text-violet-500" },
-  form: { icon: FileText, color: "text-cyan-500" },
-  form_created: { icon: FileText, color: "text-cyan-500" },
-  form_updated: { icon: FileText, color: "text-cyan-500" },
-  form_submission: { icon: FileText, color: "text-cyan-500" },
-  event: { icon: Calendar, color: "text-rose-500" },
-  event_created: { icon: Calendar, color: "text-rose-500" },
-  event_updated: { icon: Calendar, color: "text-rose-500" },
-  event_registration: { icon: Calendar, color: "text-rose-500" },
-  user: { icon: User, color: "text-emerald-500" },
-  profile_created: { icon: User, color: "text-emerald-500" },
-  profile_updated: { icon: User, color: "text-emerald-500" },
-  store: { icon: Store, color: "text-amber-500" },
-  store_created: { icon: Store, color: "text-amber-500" },
-  message: { icon: MessageSquare, color: "text-indigo-500" },
-  review: { icon: Star, color: "text-yellow-500" },
-  alert: { icon: AlertCircle, color: "text-rose-500" },
-  success: { icon: CheckCircle2, color: "text-emerald-500" },
+  order: { icon: ShoppingBag, color: "text-info" },
+  order_received: { icon: ShoppingBag, color: "text-info" },
+  product: { icon: Package, color: "text-accent" },
+  product_created: { icon: Package, color: "text-accent" },
+  product_updated: { icon: Package, color: "text-accent" },
+  form: { icon: FileText, color: "text-mint" },
+  form_created: { icon: FileText, color: "text-mint" },
+  form_updated: { icon: FileText, color: "text-mint" },
+  form_submission: { icon: FileText, color: "text-mint" },
+  event: { icon: Calendar, color: "text-destructive" },
+  event_created: { icon: Calendar, color: "text-destructive" },
+  event_updated: { icon: Calendar, color: "text-destructive" },
+  event_registration: { icon: Calendar, color: "text-destructive" },
+  user: { icon: User, color: "text-success" },
+  profile_created: { icon: User, color: "text-success" },
+  profile_updated: { icon: User, color: "text-success" },
+  store: { icon: Store, color: "text-warning" },
+  store_created: { icon: Store, color: "text-warning" },
+  message: { icon: MessageSquare, color: "text-primary" },
+  review: { icon: Star, color: "text-warning" },
+  alert: { icon: AlertCircle, color: "text-destructive" },
+  success: { icon: CheckCircle2, color: "text-success" },
 };
 
 function getIconConfig(type?: string) {
@@ -86,10 +86,10 @@ export function TasksList({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="rounded-3xl bg-muted/30 p-5 sm:p-6"
+        className="rounded-2xl sm:rounded-3xl bg-card border border-border/60 p-4 sm:p-6"
       >
-        <h3 className="text-base font-bold text-foreground mb-4">{title}</h3>
-        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <h3 className="text-sm sm:text-base font-bold text-foreground mb-3 sm:mb-4">{title}</h3>
+        <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-muted-foreground">
           <Bell className="h-10 w-10 mb-2 opacity-30" />
           <p className="text-sm">لا توجد نشاطات حالياً</p>
         </div>
@@ -102,13 +102,13 @@ export function TasksList({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-3xl bg-muted/30 p-5 sm:p-6"
+      className="rounded-2xl sm:rounded-3xl bg-card border border-border/60 p-4 sm:p-6"
     >
       {/* Header */}
-      <h3 className="text-base font-bold text-foreground mb-4">{title}</h3>
+      <h3 className="text-sm sm:text-base font-bold text-foreground mb-3 sm:mb-4">{title}</h3>
 
       {/* Activities List */}
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         {tasks.map((activity, index) => {
           const iconConfig = getIconConfig(activity.type);
           const IconComponent = iconConfig.icon;
@@ -121,19 +121,19 @@ export function TasksList({
               transition={{ delay: index * 0.05 }}
               onClick={() => onTaskClick?.(activity)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors cursor-pointer",
+                "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl transition-colors cursor-pointer",
                 activity.isNew
-                  ? "bg-primary/10 dark:bg-primary/5"
-                  : "bg-card hover:bg-muted/50"
+                  ? "bg-primary/8 dark:bg-primary/5 border border-primary/15"
+                  : "bg-muted/20 dark:bg-muted/15 border border-transparent hover:border-border/50"
               )}
             >
               {/* Icon */}
               <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0",
                 activity.isNew ? "bg-primary/20" : "bg-muted/60"
               )}>
                 <IconComponent className={cn(
-                  "w-4 h-4",
+                  "w-3.5 h-3.5 sm:w-4 sm:h-4",
                   activity.isNew ? "text-foreground" : iconConfig.color
                 )} />
               </div>
@@ -171,7 +171,7 @@ export function TasksList({
 
 export function TasksListSkeleton() {
   return (
-    <div className="rounded-3xl bg-muted/30 p-5 sm:p-6">
+    <div className="rounded-2xl sm:rounded-3xl bg-muted/30 p-4 sm:p-6">
       <div className="h-5 w-24 bg-muted/60 rounded animate-pulse mb-4" />
       <div className="space-y-2">
         {Array.from({ length: 5 }).map((_, i) => (

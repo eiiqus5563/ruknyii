@@ -91,11 +91,16 @@ export function SettingsField({
 interface SettingsRowProps {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
-export function SettingsRow({ children, className }: SettingsRowProps) {
+export function SettingsRow({ children, className, onClick }: SettingsRowProps) {
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={cn(
         'flex items-center justify-between gap-4 rounded-xl bg-background/50 px-4 py-3 transition-all duration-300',
         className

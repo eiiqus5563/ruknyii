@@ -20,6 +20,8 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
+import { PlanGuard } from '../../core/common/guards/plan.guard';
+import { CheckLimit } from '../../core/common/decorators/auth/plan.decorator';
 import { CouponsService } from './coupons.service';
 import {
   CreateCouponDto,
@@ -36,7 +38,8 @@ export class CouponsController {
   // ============ Store Owner Endpoints ============
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlanGuard)
+  @CheckLimit('coupons')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'إنشاء كود خصم جديد' })
   @ApiResponse({ status: 201, description: 'تم إنشاء الكوبون بنجاح' })

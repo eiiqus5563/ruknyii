@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { formatIQD } from '@/lib/currency';
 import { StoreStats as StatsType } from '@/lib/hooks/useStore';
 
 interface StoreStatsProps {
@@ -27,7 +28,7 @@ export function StoreStatsSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-2xl bg-muted/30 p-4 sm:p-5 animate-pulse">
+        <div key={i} className="rounded-2xl bg-card border border-border/40 p-3.5 sm:p-5 animate-pulse">
           <div className="h-3 w-16 bg-muted rounded mb-3" />
           <div className="h-6 w-12 bg-muted rounded" />
         </div>
@@ -48,15 +49,15 @@ export function StoreStats({ stats, isLoading }: StoreStatsProps) {
           <div
             key={stat.key}
             className={cn(
-              "rounded-2xl p-4 sm:p-5",
+              "rounded-2xl p-3.5 sm:p-5 border",
               stat.highlight
-                ? "bg-[#c8e972]/20 dark:bg-[#c8e972]/10"
-                : "bg-muted/30 dark:bg-muted/20"
+                ? "bg-primary/5 border-primary/10"
+                : "bg-card border-border/60"
             )}
           >
             <p className="text-xs sm:text-sm text-muted-foreground mb-2">{stat.title}</p>
             <h3 className="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-              {stat.isCurrency ? `${formatNumber(value)} د.ع` : formatNumber(value)}
+              {stat.isCurrency ? formatIQD(value) : formatNumber(value)}
             </h3>
           </div>
         );

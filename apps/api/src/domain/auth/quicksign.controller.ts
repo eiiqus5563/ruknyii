@@ -822,6 +822,17 @@ export class QuickSignController {
 
     // 🏪 إنشاء Store تلقائياً للمستخدم
     const storeSlug = dto.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+    // 🔗 ربط التصنيف بالـ categoryId من جدول store_categories
+    let resolvedCategoryId: string | null = null;
+    if (dto.storeCategory) {
+      const storeCategory = await this.prisma.store_categories.findFirst({
+        where: { slug: dto.storeCategory, isActive: true },
+        select: { id: true },
+      });
+      resolvedCategoryId = storeCategory?.id || null;
+    }
+
     const store = await this.prisma.store.create({
       data: {
         id: crypto.randomUUID(),
@@ -830,6 +841,7 @@ export class QuickSignController {
         slug: storeSlug, // نفس username
         description: dto.storeDescription || null,
         category: dto.storeCategory || null,
+        categoryId: resolvedCategoryId,
         employeesCount: dto.employeesCount || null,
         status: 'ACTIVE',
         country: dto.storeCountry || dto.country || 'العراق',

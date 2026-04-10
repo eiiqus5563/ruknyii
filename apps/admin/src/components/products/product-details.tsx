@@ -26,6 +26,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 import { ProductStatusBadge } from "./product-status-badge";
 
 interface ProductDetailData {
@@ -93,10 +94,6 @@ interface ProductDetailsProps {
   onStatusChange: (status: string) => void;
   onToggleFeatured: (isFeatured: boolean) => void;
   onDelete: () => void;
-}
-
-function formatCurrency(amount: number, currency = "IQD"): string {
-  return `${amount.toLocaleString("en-US")} ${currency}`;
 }
 
 function formatDate(dateStr: string): string {

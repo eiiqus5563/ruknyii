@@ -7,7 +7,9 @@ import {
   IsArray,
   ValidateNested,
   IsNumber,
+  IsInt,
   Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -23,10 +25,11 @@ export enum OrderStatus {
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ description: 'Delivery address ID' })
+  @ApiPropertyOptional({ description: 'Delivery address ID (not required for digital products)' })
+  @IsOptional()
   @IsString()
   @IsUUID()
-  addressId: string;
+  addressId?: string;
 
   @ApiPropertyOptional({ description: 'Coupon code to apply' })
   @IsOptional()
@@ -55,6 +58,11 @@ export class CreateDirectOrderDto extends CreateOrderDto {
   @Min(1)
   @Type(() => Number)
   quantity: number;
+
+  @ApiPropertyOptional({ description: 'Variant ID (if product has variants)' })
+  @IsOptional()
+  @IsString()
+  variantId?: string;
 }
 
 export class UpdateOrderStatusDto {
@@ -84,6 +92,31 @@ export class OrderFiltersDto {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
+
+  @ApiPropertyOptional({ description: 'رقم الصفحة', default: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'عدد العناصر في الصفحة', default: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  @Type(() => Number)
+  limit?: number = 10;
+
+  @ApiPropertyOptional({ description: 'ترتيب حسب' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @ApiPropertyOptional({ description: 'اتجاه الترتيب' })
+  @IsOptional()
+  @IsString()
+  sortOrder?: string;
 
   @ApiPropertyOptional({
     description: 'Store ID (for customers viewing orders from specific store)',

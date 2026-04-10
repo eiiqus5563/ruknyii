@@ -26,24 +26,24 @@ import { Button } from '@/components/ui/button';
 type Variant = 'default' | 'success' | 'error' | 'warning';
 
 const variantStyles: Record<Variant, string> = {
-  default: 'bg-card border-border text-foreground',
-  success: 'bg-card border-green-600/50',
-  error: 'bg-card border-destructive/50',
-  warning: 'bg-card border-amber-600/50',
+  default: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  success: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  error: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  warning: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
 };
 
 const titleColor: Record<Variant, string> = {
-  default: 'text-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-zinc-950 dark:text-zinc-50',
+  success: 'text-zinc-950 dark:text-zinc-50',
+  error: 'text-zinc-950 dark:text-zinc-50',
+  warning: 'text-zinc-950 dark:text-zinc-50',
 };
 
 const iconColor: Record<Variant, string> = {
-  default: 'text-muted-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-zinc-600 dark:text-zinc-300',
+  success: 'text-zinc-600 dark:text-zinc-300',
+  error: 'text-zinc-600 dark:text-zinc-300',
+  warning: 'text-zinc-600 dark:text-zinc-300',
 };
 
 const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>> = {
@@ -58,6 +58,9 @@ const toastAnimation = {
   animate: { opacity: 1, y: 0, scale: 1 },
   exit: { opacity: 0, y: 50, scale: 0.95 },
 };
+
+const actionButtonClass =
+  'text-zinc-700 border-zinc-200 hover:bg-zinc-100 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800';
 
 // ============ Custom Toast Component ============
 
@@ -84,7 +87,7 @@ function CustomToast({ toastId, title, message, variant, action, onDismiss }: Cu
       exit="exit"
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn(
-        'flex items-center justify-between w-full max-w-xs p-3 rounded-xl border shadow-md',
+        'flex items-center justify-between w-[min(100%,26rem)] max-w-[min(calc(100vw-1.5rem),26rem)] p-3 rounded-[24px] border shadow-[0_18px_50px_rgba(0,0,0,0.08)]',
         variantStyles[variant]
       )}
       dir="rtl"
@@ -97,7 +100,7 @@ function CustomToast({ toastId, title, message, variant, action, onDismiss }: Cu
               {title}
             </h3>
           )}
-          <p className="text-xs text-muted-foreground">{message}</p>
+          <p className="text-xs leading-6 text-zinc-600 dark:text-zinc-300">{message}</p>
         </div>
       </div>
 
@@ -111,14 +114,8 @@ function CustomToast({ toastId, title, message, variant, action, onDismiss }: Cu
               sonnerToast.dismiss(toastId);
             }}
             className={cn(
-              'cursor-pointer text-xs h-7 px-2',
-              variant === 'success'
-                ? 'text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20'
-                : variant === 'error'
-                ? 'text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20'
-                : variant === 'warning'
-                ? 'text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20'
-                : 'text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20'
+              'cursor-pointer text-xs h-7 px-2 rounded-full',
+              actionButtonClass
             )}
           >
             {action.label}
@@ -130,10 +127,10 @@ function CustomToast({ toastId, title, message, variant, action, onDismiss }: Cu
             sonnerToast.dismiss(toastId);
             onDismiss?.();
           }}
-          className="rounded-full p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:focus:ring-zinc-700"
           aria-label="إغلاق الإشعار"
         >
-          <X className="h-3 w-3 text-muted-foreground" />
+          <X className="h-3 w-3 text-zinc-500 dark:text-zinc-400" />
         </button>
       </div>
     </motion.div>
@@ -151,12 +148,12 @@ export function ToastProvider({ children }: ToastProviderProps) {
     <>
       {children}
       <Toaster
-        position="bottom-right"
+        position="top-center"
         dir="rtl"
         expand={false}
         toastOptions={{
           unstyled: true,
-          className: 'flex justify-end',
+          className: 'flex justify-center px-3',
         }}
       />
     </>
@@ -273,17 +270,17 @@ export const toast = {
           animate="animate"
           exit="exit"
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="flex items-center gap-3 w-full max-w-xs p-3 rounded-xl border border-border bg-card shadow-md"
+          className="flex items-center gap-3 w-[min(100%,26rem)] max-w-[min(calc(100vw-1.5rem),26rem)] p-3 rounded-[24px] border border-zinc-200 bg-white shadow-[0_18px_50px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-950"
           dir="rtl"
         >
-          <Loader2 className="h-4 w-4 animate-spin text-primary flex-shrink-0" />
+          <Loader2 className="h-4 w-4 animate-spin text-zinc-700 dark:text-zinc-200 flex-shrink-0" />
           <div className="space-y-0.5">
             {options?.title && (
-              <h3 className="text-xs font-medium leading-none text-foreground">
+              <h3 className="text-xs font-medium leading-none text-zinc-950 dark:text-zinc-50">
                 {options.title}
               </h3>
             )}
-            <p className="text-xs text-muted-foreground">{message}</p>
+            <p className="text-xs leading-6 text-zinc-600 dark:text-zinc-300">{message}</p>
           </div>
         </motion.div>
       ),
@@ -413,27 +410,27 @@ export function confirmToast({
         exit="exit"
         transition={{ duration: 0.3, ease: 'easeOut' }}
         className={cn(
-          'flex flex-col gap-3 w-full max-w-xs p-3 rounded-xl border shadow-md',
-          destructive ? 'bg-card border-destructive/50' : 'bg-card border-border'
+          'flex flex-col gap-3 w-full max-w-sm p-3 rounded-[24px] border shadow-[0_18px_50px_rgba(0,0,0,0.08)]',
+          'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'
         )}
         dir="rtl"
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-2">
             {destructive ? (
-              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-destructive" />
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-zinc-700 dark:text-zinc-300" />
             ) : (
-              <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+              <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-zinc-700 dark:text-zinc-300" />
             )}
             <div className="space-y-0.5">
               <h3 className={cn(
                 'text-xs font-medium leading-none',
-                destructive ? 'text-destructive' : 'text-foreground'
+                'text-zinc-950 dark:text-zinc-50'
               )}>
                 {title}
               </h3>
               {description && (
-                <p className="text-xs text-muted-foreground">{description}</p>
+                <p className="text-xs leading-6 text-zinc-600 dark:text-zinc-300">{description}</p>
               )}
             </div>
           </div>
@@ -442,10 +439,10 @@ export function confirmToast({
               sonnerToast.dismiss(id);
               onCancel?.();
             }}
-            className="rounded-full p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:focus:ring-zinc-700"
             aria-label="إغلاق"
           >
-            <X className="h-3 w-3 text-muted-foreground" />
+            <X className="h-3 w-3 text-zinc-500 dark:text-zinc-400" />
           </button>
         </div>
         <div className="flex gap-2 justify-end">
@@ -456,18 +453,18 @@ export function confirmToast({
               sonnerToast.dismiss(id);
               onCancel?.();
             }}
-            className="text-xs h-7 px-3"
+            className="text-xs h-7 px-3 rounded-full border-zinc-200 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             {cancelLabel}
           </Button>
           <Button
-            variant={destructive ? 'destructive' : 'default'}
+            variant="outline"
             size="sm"
             onClick={async () => {
               sonnerToast.dismiss(id);
               await onConfirm();
             }}
-            className="text-xs h-7 px-3"
+            className="text-xs h-7 px-3 rounded-full border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-300"
           >
             {confirmLabel}
           </Button>

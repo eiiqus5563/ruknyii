@@ -32,7 +32,8 @@ function isSubdomainMode(): boolean {
   
   // Client-side check
   const host = window.location.hostname;
-  return host !== 'localhost' && host !== '127.0.0.1' && host !== '0.0.0.0';
+  return host !== 'localhost' && host !== '127.0.0.1' && host !== '0.0.0.0' &&
+    !/^192\.168\.\d+\.\d+$/.test(host) && !/^10\.\d+\.\d+\.\d+$/.test(host);
 }
 
 /**
@@ -130,7 +131,8 @@ export function getCurrentSubdomain(): 'app' | 'accounts' | null {
   
   const host = window.location.hostname;
   
-  if (host === 'localhost' || host === '127.0.0.1') return null;
+  if (host === 'localhost' || host === '127.0.0.1' ||
+      /^192\.168\.\d+\.\d+$/.test(host) || /^10\.\d+\.\d+\.\d+$/.test(host)) return null;
   
   const parts = host.split('.');
   if (parts.length > 2) {

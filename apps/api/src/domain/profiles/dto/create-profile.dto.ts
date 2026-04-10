@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsEnum,
   IsBoolean,
+  IsObject,
   MaxLength,
   Matches,
 } from 'class-validator';
@@ -84,4 +85,21 @@ export class CreateProfileDto {
   @IsBoolean()
   @IsOptional()
   hideLocation?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'classic',
+    description: 'Profile page template/theme key (classic, centered, minimal)',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50, { message: 'Theme key must be less than 50 characters' })
+  themeKey?: string;
+
+  @ApiPropertyOptional({
+    example: { headline: 'مطور واجهات', description: 'أساعد الشركات في بناء تجارب رقمية', buttons: [{ label: 'تواصل معي', url: '#', variant: 'dark' }] },
+    description: 'Hero section settings (headline, description, buttons)',
+  })
+  @IsObject()
+  @IsOptional()
+  heroSettings?: Record<string, any>;
 }

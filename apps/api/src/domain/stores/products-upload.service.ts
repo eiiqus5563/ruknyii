@@ -8,6 +8,9 @@ import {
 import { PrismaService } from '../../core/database/prisma/prisma.service';
 import S3Service from '../../services/s3.service';
 import { extname } from 'path';
+import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { Readable } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 
@@ -142,6 +145,80 @@ export class ProductsUploadService {
   }
 
   /**
+   * توحيد مصدر بيانات الملف إلى Buffer صالح
+   * (نفس منطق normalizeFileBuffer الشغال في خدمة البنرات)
+   */
+  private async extractFileBuffer(file: Express.Multer.File): Promise<Buffer> {
+    const fb = (file as any).buffer ?? (file as any).content ?? file;
+
+    // Direct Buffer
+    if (Buffer.isBuffer(fb) && fb.length > 0) return fb;
+
+    // Uint8Array
+    if (fb instanceof Uint8Array && fb.length > 0) return Buffer.from(fb);
+
+    // Blob-like with arrayBuffer
+    if (typeof fb?.arrayBuffer === 'function') {
+      const ab = await fb.arrayBuffer();
+      const buf = Buffer.from(new Uint8Array(ab));
+      if (buf.length > 0) return buf;
+    }
+
+    // Serialized Buffer: { type: 'Buffer', data: [...] }  OR  { data: [...] }
+    if (Array.isArray(fb?.data)) {
+      const buf = Buffer.from(fb.data);
+      if (buf.length > 0) return buf;
+    }
+
+    // Nested buffer
+    if (fb?.buffer && Array.isArray(fb.buffer.data)) {
+      const buf = Buffer.from(fb.buffer.data);
+      if (buf.length > 0) return buf;
+    }
+
+    // ArrayBuffer-like
+    if (fb?.byteLength && fb?.buffer) {
+      const buf = Buffer.from(new Uint8Array(fb.buffer));
+      if (buf.length > 0) return buf;
+    }
+
+    // Numeric keyed object (edge-case serialization)
+    if (fb && typeof fb === 'object') {
+      const keys = Object.keys(fb).filter((k) => /^\d+$/.test(k));
+      if (keys.length > 0) {
+        const arr = new Uint8Array(keys.length);
+        keys.sort((a, b) => Number(a) - Number(b));
+        for (let i = 0; i < keys.length; i++) {
+          arr[i] = Number(fb[keys[i]]) || 0;
+        }
+        const buf = Buffer.from(arr);
+        if (buf.length > 0) return buf;
+      }
+    }
+
+    // Multer diskStorage -> file.path
+    if ((file as any).path && existsSync((file as any).path)) {
+      const buf = await readFile((file as any).path);
+      if (buf.length > 0) return buf;
+    }
+
+    // Readable stream
+    if ((file as any).stream) {
+      const stream: Readable = (file as any).stream;
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const buf = Buffer.concat(chunks);
+      if (buf.length > 0) return buf;
+    }
+
+    throw new BadRequestException(
+      `ملف الصورة غير صالح أو فارغ: ${file?.originalname || 'unknown-file'}`,
+    );
+  }
+
+  /**
    * رفع صور المنتج (Server Upload)
    */
   async uploadProductImages(
@@ -156,8 +233,14 @@ export class ProductsUploadService {
     // Log file info for debugging
     this.logger.debug(`استلام ${files?.length || 0} ملفات للرفع`);
     files?.forEach((file, i) => {
+      const f = file as any;
       this.logger.debug(
-        `ملف ${i + 1}: ${file.originalname}, النوع: ${file.mimetype}, الحجم: ${file.size}, حجم البافر: ${file.buffer?.length || 0}`,
+        `ملف ${i + 1}: ${file.originalname}, النوع: ${file.mimetype}, الحجم: ${file.size}, ` +
+        `حجم البافر: ${f.buffer?.length || 0}, ` +
+        `content: ${f.content?.length || 0}, ` +
+        `path: ${f.path || 'none'}, ` +
+        `stream: ${f.stream ? 'yes' : 'no'}, ` +
+        `keys: ${Object.keys(file).join(',')}`,
       );
     });
 
@@ -182,8 +265,10 @@ export class ProductsUploadService {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
+        const inputBuffer = await this.extractFileBuffer(file);
+
         // معالجة الصورة
-        const processedBuffer = await this.processImage(file.buffer);
+        const processedBuffer = await this.processImage(inputBuffer);
 
         // بناء المفتاح
         const key = this.buildImageKey(userId, productId, file.originalname);

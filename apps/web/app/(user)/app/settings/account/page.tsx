@@ -33,13 +33,9 @@ import {
   ToggleSwitch,
 } from '@/components/(app)/settings';
 import {
-  getUserProfile,
-  getMyProfile,
-  getSessions,
   changeEmail,
   sendEmailVerification,
   verifyEmailCode,
-  getEmailChangeRequest,
   cancelEmailChangeRequest,
   setup2FA,
   verify2FA,
@@ -51,6 +47,12 @@ import {
   type ProfileData,
   type EmailChangeRequestData,
 } from '@/actions/settings';
+import {
+  fetchUserProfile,
+  fetchMyProfile,
+  fetchSessions,
+  fetchEmailChangeRequest,
+} from '@/lib/api/settings-client';
 
 function getDeviceIcon(session: SessionData) {
   const deviceType = session.deviceType?.toLowerCase() || '';
@@ -73,7 +75,7 @@ function formatLastActivity(dateStr: string) {
   if (diffMinutes < 60) return `منذ ${diffMinutes} دقيقة`;
   if (diffHours < 24) return `منذ ${diffHours} ساعة`;
   if (diffDays < 7) return `منذ ${diffDays} يوم`;
-  return date.toLocaleDateString('ar-IQ');
+  return date.toLocaleDateString('en-US');
 }
 
 export default function AccountSecurityPage() {
@@ -115,15 +117,15 @@ export default function AccountSecurityPage() {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
-  // Load data on mount
+  // Load data on mount (client-side GET, not server action POST)
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
       const [userRes, profileRes, sessionsRes, emailReqRes] = await Promise.all([
-        getUserProfile(),
-        getMyProfile(),
-        getSessions(),
-        getEmailChangeRequest(),
+        fetchUserProfile(),
+        fetchMyProfile(),
+        fetchSessions(),
+        fetchEmailChangeRequest(),
       ]);
 
       if (userRes.data) {

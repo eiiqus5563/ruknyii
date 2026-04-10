@@ -10,6 +10,7 @@ import { AuthProvider } from './auth-provider';
 import { PerformanceProvider } from './performance-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { ToastProvider } from '@/components/ui/toast';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SessionTimeoutWarning } from '@/components/session-timeout-warning';
 import { NetworkStatusProvider } from '@/components/network-status';
 
@@ -26,10 +27,12 @@ export function AppProviders({ children }: AppProvidersProps) {
       <QueryProvider>
         <AuthProvider>
           <ToastProvider>
-            <NetworkStatusProvider>
-              <SessionTimeoutWarning warningTime={60} />
-              {children}
-            </NetworkStatusProvider>
+            <TooltipProvider>
+              <NetworkStatusProvider>
+                <SessionTimeoutWarning warningTime={60} />
+                {children}
+              </NetworkStatusProvider>
+            </TooltipProvider>
           </ToastProvider>
         </AuthProvider>
       </QueryProvider>

@@ -9,13 +9,16 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, AlertTriangle, ArrowRight, RefreshCw, Shield, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowRight, RefreshCw, Shield, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { buildApiPath } from '@/lib/config';
+import { InlineErrorNotice, InlineNotice } from '@/components/ui/inline-notice';
+import { useToast } from '@/components/ui/toast';
 
 function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
 
   const [status, setStatus] = useState<'loading' | 'ip-verification' | 'verifying' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,9 @@ function VerifyContent() {
 
     if (errorParam) {
       setStatus('error');
-      setError(messageParam || getErrorMessage(errorParam));
+      const message = messageParam || getErrorMessage(errorParam);
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -48,7 +53,7 @@ function VerifyContent() {
     // No valid parameters - show error
     setStatus('error');
     setError('رابط غير صالح');
-  }, [searchParams]);
+  }, [searchParams, toast]);
 
   function getErrorMessage(errorType: string): string {
     switch (errorType) {
@@ -128,7 +133,9 @@ function VerifyContent() {
 
       if (!response.ok) {
         setStatus('ip-verification');
-        setError(data.message || 'رمز التحقق غير صحيح');
+        const message = data.message || 'رمز التحقق غير صحيح';
+        setError(message);
+        toast.error(message);
         setCode(['', '', '', '', '', '']);
         // Focus first input
         setTimeout(() => {
@@ -139,12 +146,15 @@ function VerifyContent() {
 
       // Success! Redirect to dashboard
       setStatus('success');
+      toast.success('تم التحقق من الجهاز بنجاح.');
       setTimeout(() => {
         router.push('/app');
       }, 1500);
     } catch (err) {
       setStatus('ip-verification');
-      setError('حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى');
+      const message = 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى';
+      setError(message);
+      toast.error(message);
       setCode(['', '', '', '', '', '']);
     }
   };
@@ -164,8 +174,8 @@ function VerifyContent() {
           className="flex flex-col items-center w-full max-w-sm"
         >
           {/* Shield Icon */}
-          <div className="flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-6">
-            <Shield className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center justify-center w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 mb-6">
+            <Shield className="w-10 h-10 text-zinc-700 dark:text-zinc-300" />
           </div>
 
           {/* Header */}
@@ -192,7 +202,7 @@ function VerifyContent() {
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={handlePaste}
                 disabled={status === 'verifying'}
-                className="w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all disabled:opacity-50"
+                className="w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:border-zinc-400 focus:ring-2 focus:ring-zinc-300/60 dark:focus:ring-zinc-700 outline-none transition-all disabled:opacity-50"
                 autoFocus={index === 0}
               />
             ))}
@@ -200,18 +210,18 @@ function VerifyContent() {
 
           {/* Error Message */}
           {error && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-red-500 text-sm text-center mb-4"
+              className="mb-4 w-full"
             >
-              {error}
-            </motion.p>
+              <InlineErrorNotice message={error} />
+            </motion.div>
           )}
 
           {/* Loading state */}
           {status === 'verifying' && (
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>جاري التحقق...</span>
             </div>
@@ -222,7 +232,7 @@ function VerifyContent() {
             لم تستلم الرمز؟{' '}
             <button
               onClick={() => router.push('/login')}
-              className="text-blue-600 hover:underline"
+              className="text-zinc-900 dark:text-zinc-100 hover:underline"
             >
               طلب رابط جديد
             </button>
@@ -246,9 +256,7 @@ function VerifyContent() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center w-full max-w-sm"
         >
-          <div className="flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-6">
-            <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
-          </div>
+          <InlineNotice title="تم التحقق" message="تم التحقق من الجهاز بنجاح، وسيتم تحويلك الآن." className="mb-6" />
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 text-center">
             تم التحقق بنجاح!
           </h1>
@@ -274,20 +282,25 @@ function VerifyContent() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center w-full max-w-sm"
         >
+          <InlineErrorNotice
+            title="الرابط غير صالح"
+            message={error || 'هذا الرابط السحري منتهي الصلاحية أو تم استخدامه مسبقًا.'}
+            className="mb-6 w-full"
+          />
 
           {/* Header */}
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 text-center">
             الرابط منتهي الصلاحية - اطلب رابط جديد
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400 text-center mb-8">
-            {error || 'هذا الرابط السحري منتهي الصلاحية أو تم استخدامه مسبقاً'}
+            اطلب رابطًا جديدًا للمتابعة بشكل آمن.
           </p>
 
           {/* Buttons */}
           <div className="w-full space-y-3">
             <button
               onClick={() => router.push('/login')}
-              className="flex items-center justify-center gap-2 w-full h-14 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-base rounded-2xl font-medium transition-all"
+              className="flex items-center justify-center gap-2 w-full h-14 bg-zinc-950 hover:bg-zinc-800 active:bg-zinc-700 text-white text-base rounded-2xl font-medium transition-all dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-300"
             >
               <RefreshCw className="w-5 h-5" />
               <span>طلب رابط جديد</span>
@@ -316,8 +329,8 @@ function VerifyContent() {
         className="flex flex-col items-center w-full max-w-sm"
       >
         {/* Loading Spinner */}
-        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-6">
-          <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin" />
+        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 mb-6">
+          <Loader2 className="w-10 h-10 text-zinc-700 dark:text-zinc-300 animate-spin" />
         </div>
 
         {/* Header */}
@@ -341,7 +354,7 @@ export default function AuthVerifyPage() {
           className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-900 px-6"
           style={{ fontFamily: '"IBM Plex Sans Arabic", sans-serif' }}
         >
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <Loader2 className="w-8 h-8 text-zinc-700 dark:text-zinc-300 animate-spin" />
         </div>
       }
     >

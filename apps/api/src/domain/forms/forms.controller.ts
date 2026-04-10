@@ -25,6 +25,8 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { FormsService } from './forms.service';
 import { CreateFormDto, UpdateFormDto, SubmitFormDto, FormStatus } from './dto';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
+import { PlanGuard } from '../../core/common/guards/plan.guard';
+import { CheckLimit, CheckFeature } from '../../core/common/decorators/auth/plan.decorator';
 import { OptionalUserId } from '../../core/common/decorators/auth/optional-user.decorator';
 
 @ApiTags('Forms')
@@ -75,7 +77,8 @@ export class FormsController {
   // ==================== AUTHENTICATED ENDPOINTS ====================
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlanGuard)
+  @CheckLimit('forms')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new form' })
   @ApiResponse({ status: 201, description: 'Form created successfully' })

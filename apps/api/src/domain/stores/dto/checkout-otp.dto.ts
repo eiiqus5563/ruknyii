@@ -93,6 +93,29 @@ export class VerifyCheckoutOtpDto {
 }
 
 /**
+ * DTO للتسجيل السريع بدون OTP
+ */
+export class QuickLoginDto {
+  @ApiProperty({
+    description: 'رقم الهاتف بالصيغة الدولية',
+    example: '+9647701234567',
+  })
+  @IsString()
+  @Matches(/^\+964[0-9]{10}$/, {
+    message: 'رقم الهاتف يجب أن يكون بالصيغة العراقية: +964XXXXXXXXXX',
+  })
+  phoneNumber: string;
+
+  @ApiProperty({
+    description: 'الاسم الكامل',
+    example: 'أحمد محمد',
+  })
+  @IsString()
+  @Length(3, 100, { message: 'الاسم يجب أن يكون 3 أحرف على الأقل' })
+  fullName: string;
+}
+
+/**
  * DTO لإعادة إرسال OTP
  */
 export class ResendCheckoutOtpDto {

@@ -29,6 +29,8 @@ import {
   ProductCategoryResponseDto,
 } from './dto/product-category.dto';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
+import { PlanGuard } from '../../core/common/guards/plan.guard';
+import { CheckLimit } from '../../core/common/decorators/auth/plan.decorator';
 
 @ApiTags('Product Categories')
 @Controller('stores/my-store/categories')
@@ -41,6 +43,8 @@ export class ProductCategoriesController {
    * إنشاء فئة منتج جديدة
    */
   @Post()
+  @UseGuards(PlanGuard)
+  @CheckLimit('categories')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'إنشاء فئة منتج جديدة' })
   @ApiResponse({

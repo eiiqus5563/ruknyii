@@ -33,8 +33,11 @@ export class CheckoutSessionGuard implements CanActivate {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
 
-      // التحقق من نوع التوكن
-      if (payload.type !== 'checkout_session' && payload.type !== 'checkout') {
+      // التحقق من نوع التوكن - accept checkout tokens AND regular access tokens
+      const isCheckout = payload.type === 'checkout_session' || payload.type === 'checkout';
+      const isAccess = payload.type === 'access' || !payload.type;
+
+      if (!isCheckout && !isAccess) {
         throw new UnauthorizedException('جلسة الشراء غير صالحة');
       }
 
@@ -44,7 +47,7 @@ export class CheckoutSessionGuard implements CanActivate {
         email: payload.email,
         storeId: payload.storeId,
         sessionId: payload.sessionId,
-        userId: payload.sub,
+        userId: payload.sub || payload.id,
       };
 
       return true;

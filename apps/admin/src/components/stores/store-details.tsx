@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 
 interface StoreDetailData {
   id: string;
@@ -110,10 +111,6 @@ function formatDate(dateStr: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatPrice(price: number, currency: string): string {
-  return `${Number(price).toLocaleString()} ${currency}`;
 }
 
 const orderStatusColors: Record<string, string> = {
@@ -388,10 +385,10 @@ export function StoreDetails({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-foreground truncate">{product.name}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {formatPrice(product.price, product.currency)}
+                    {formatCurrency(product.price, product.currency)}
                     {product.salePrice && (
                       <span className="ml-1 text-emerald-500">
-                        → {formatPrice(product.salePrice, product.currency)}
+                        → {formatCurrency(product.salePrice, product.currency)}
                       </span>
                     )}
                   </p>
@@ -464,7 +461,7 @@ export function StoreDetails({
                   </p>
                 </div>
                 <p className="text-xs font-semibold tabular-nums">
-                  {formatPrice(order.total, order.currency)}
+                  {formatCurrency(order.total, order.currency)}
                 </p>
               </div>
             ))}

@@ -15,16 +15,16 @@ const PRODUCT_SUGGESTIONS = [
 
 export function EmptyStoreState({ onCreateProduct }: EmptyStoreStateProps) {
   return (
-    <div className="rounded-2xl bg-muted/20 p-8 sm:p-12 text-center">
-      <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-muted flex items-center justify-center">
-        <Package className="w-8 h-8 text-muted-foreground" />
+    <div className="rounded-2xl bg-muted/20 p-6 sm:p-12 text-center">
+      <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-5 rounded-2xl bg-muted flex items-center justify-center">
+        <Package className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
       </div>
 
-      <h3 className="text-lg font-semibold text-foreground mb-1.5">
+      <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5">
         ابدأ بإضافة منتجك الأول
       </h3>
 
-      <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-5 sm:mb-6 max-w-xs mx-auto">
         أضف منتجاتك وابدأ البيع عبر متجرك الإلكتروني
       </p>
 

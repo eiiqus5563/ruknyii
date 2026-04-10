@@ -18,3 +18,4 @@ export * from './stores';
 export * from './events';
 export * from './social-links';
 export * from './instagram';
+export * from './subscriptions';

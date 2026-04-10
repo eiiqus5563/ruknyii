@@ -51,24 +51,24 @@ export interface ToasterRef {
 // ─── Variant Styling ──────────────────────────────────────────
 
 const variantStyles: Record<Variant, string> = {
-  default: 'bg-card border-border text-foreground',
-  success: 'bg-card border-green-600/50',
-  error: 'bg-card border-destructive/50',
-  warning: 'bg-card border-amber-600/50',
+  default: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  success: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  error: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
+  warning: 'border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50',
 };
 
 const titleColor: Record<Variant, string> = {
-  default: 'text-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-zinc-950 dark:text-zinc-50',
+  success: 'text-zinc-950 dark:text-zinc-50',
+  error: 'text-zinc-950 dark:text-zinc-50',
+  warning: 'text-zinc-950 dark:text-zinc-50',
 };
 
 const iconColor: Record<Variant, string> = {
-  default: 'text-muted-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  error: 'text-destructive',
-  warning: 'text-amber-600 dark:text-amber-400',
+  default: 'text-zinc-600 dark:text-zinc-300',
+  success: 'text-zinc-600 dark:text-zinc-300',
+  error: 'text-zinc-600 dark:text-zinc-300',
+  warning: 'text-zinc-600 dark:text-zinc-300',
 };
 
 const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>> = {
@@ -79,10 +79,10 @@ const variantIcons: Record<Variant, React.ComponentType<{ className?: string }>>
 };
 
 const actionBtnColor: Record<Variant, string> = {
-  default: 'text-foreground border-border hover:bg-muted/10 dark:hover:bg-muted/20',
-  success: 'text-green-600 border-green-600 hover:bg-green-600/10 dark:hover:bg-green-400/20',
-  error: 'text-destructive border-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20',
-  warning: 'text-amber-600 border-amber-600 hover:bg-amber-600/10 dark:hover:bg-amber-400/20',
+  default: 'text-zinc-700 border-zinc-200 hover:bg-zinc-100 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800',
+  success: 'text-zinc-700 border-zinc-200 hover:bg-zinc-100 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800',
+  error: 'text-zinc-700 border-zinc-200 hover:bg-zinc-100 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800',
+  warning: 'text-zinc-700 border-zinc-200 hover:bg-zinc-100 dark:text-zinc-200 dark:border-zinc-700 dark:hover:bg-zinc-800',
 };
 
 const toastAnimation = {
@@ -94,7 +94,7 @@ const toastAnimation = {
 // ─── Toaster Component ────────────────────────────────────────
 
 const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
-  ({ defaultPosition = 'bottom-right' }, ref) => {
+  ({ defaultPosition = 'top-center' }, ref) => {
     useImperativeHandle(ref, () => ({
       show({
         title,
@@ -117,9 +117,10 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
               exit="exit"
               transition={{ duration: 0.3, ease: 'easeOut' }}
               className={cn(
-                'flex items-center justify-between w-full max-w-xs p-3 rounded-xl border shadow-md',
+                'flex items-center justify-between w-[min(100%,26rem)] max-w-[min(calc(100vw-1.5rem),26rem)] p-3 rounded-[24px] border shadow-[0_18px_50px_rgba(0,0,0,0.08)]',
                 variantStyles[variant]
               )}
+              dir="rtl"
             >
               <div className="flex items-start gap-2 min-w-0">
                 <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', iconColor[variant])} />
@@ -134,7 +135,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                       {title}
                     </h3>
                   )}
-                  <p className="text-xs text-muted-foreground">{message}</p>
+                  <p className="text-xs leading-6 text-zinc-600 dark:text-zinc-300">{message}</p>
                 </div>
               </div>
 
@@ -147,7 +148,7 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                       sonnerToast.dismiss(toastId);
                     }}
                     className={cn(
-                      'cursor-pointer text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors',
+                      'cursor-pointer text-xs font-medium px-2.5 py-1 rounded-full border transition-colors',
                       actionBtnColor[variant]
                     )}
                   >
@@ -161,10 +162,10 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
                     sonnerToast.dismiss(toastId);
                     onDismiss?.();
                   }}
-                  className="rounded-full p-1 hover:bg-muted/50 dark:hover:bg-muted/30 transition-colors focus:outline-none"
+                  className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none"
                   aria-label="إغلاق"
                 >
-                  <X className="h-3 w-3 text-muted-foreground" />
+                  <X className="h-3 w-3 text-zinc-500 dark:text-zinc-400" />
                 </button>
               </div>
             </motion.div>
@@ -177,7 +178,8 @@ const Toaster = forwardRef<ToasterRef, { defaultPosition?: Position }>(
     return (
       <SonnerToaster
         position={defaultPosition}
-        toastOptions={{ unstyled: true, className: 'flex justify-end' }}
+        dir="rtl"
+        toastOptions={{ unstyled: true, className: 'flex justify-center px-3' }}
       />
     );
   }
@@ -202,7 +204,7 @@ const ToastContext = createContext<ToastAPI | null>(null);
 
 export function ToastProvider({
   children,
-  position = 'bottom-right',
+  position = 'top-center',
 }: {
   children: React.ReactNode;
   position?: Position;

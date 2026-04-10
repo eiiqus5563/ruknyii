@@ -59,7 +59,10 @@ export class WallpapersService {
 
   /** Upload file to S3 and create DB record in one step */
   async uploadAndCreate(file: Express.Multer.File, nameAr?: string) {
-    const ext = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
+    // 🔒 Use a safe whitelist of extensions instead of trusting client filename
+    const SAFE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm'];
+    const rawExt = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
+    const ext = SAFE_EXTENSIONS.includes(rawExt) ? rawExt : 'bin';
     const key = `wallpapers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const isVideo = file.mimetype.startsWith('video/');
 

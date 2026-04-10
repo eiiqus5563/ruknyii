@@ -24,10 +24,12 @@ import { NotificationPanel } from '@/components/(app)/notifications/notification
 const labelMap: Record<string, string> = {
   app: 'لوحة التحكم',
   links: 'روابطي',
+  customize: 'تخصيص',
   store: 'المتجر',
   products: 'المنتجات',
   orders: 'الطلبات',
   categories: 'التصنيفات',
+  new: 'جديد',
   forms: 'النماذج',
   responses: 'الردود',
   create: 'إنشاء',
@@ -99,7 +101,7 @@ export function DashboardNav() {
 
   return (
     <header className="absolute top-0 inset-x-0 z-20 pointer-events-none">
-      <div className="flex items-center justify-center md:justify-between gap-3 lg:gap-4 px-4 pt-3 lg:pt-4 pb-2 sm:px-6 pointer-events-auto">
+      <div className="flex items-center justify-center md:justify-between gap-2 lg:gap-4 px-3 pt-2.5 lg:pt-4 pb-1.5 sm:px-6 pointer-events-auto">
 
         {/* ═══════ Right Side (RTL): Breadcrumbs ═══════ */}
         <nav
@@ -154,7 +156,7 @@ export function DashboardNav() {
         {/* ═══════ Left Side (RTL): Glass actions bar ═══════ */}
         <div
           className={cn(
-            'flex items-center gap-1.5 rounded-4xl border border-border/30 px-2 py-1.5 backdrop-blur-xl dark:border-white/10 transition-opacity duration-200',
+            'flex items-center gap-1 sm:gap-1.5 rounded-4xl border border-border/30 px-1.5 sm:px-2 py-1 sm:py-1.5 backdrop-blur-xl dark:border-white/10 transition-opacity duration-200',
             isSearchOpen && 'opacity-0 pointer-events-none',
           )}
         >

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 
 export interface OrderStatsData {
   total: number;
@@ -46,12 +47,6 @@ function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return (n ?? 0).toLocaleString("en-US");
-}
-
-function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M IQD`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K IQD`;
-  return `${(n ?? 0).toLocaleString("en-US")} IQD`;
 }
 
 export function OrderStatsCards({ stats }: { stats: OrderStatsData }) {

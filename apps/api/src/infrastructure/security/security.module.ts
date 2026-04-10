@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SecurityLogService } from './log.service';
 import { SecurityDetectorService } from './detector.service';
 import { SecurityGateway } from './security.gateway';
+import { SessionFingerprintService } from './session-fingerprint.service';
 import { PrismaModule } from '../../core/database/prisma/prisma.module';
 import { EmailModule } from '../../integrations/email/email.module';
 
@@ -19,7 +20,7 @@ import { EmailModule } from '../../integrations/email/email.module';
       inject: [ConfigService],
     }),
   ],
-  providers: [SecurityLogService, SecurityDetectorService, SecurityGateway],
-  exports: [SecurityLogService, SecurityDetectorService, SecurityGateway],
+  providers: [SecurityLogService, SecurityDetectorService, SecurityGateway, SessionFingerprintService],
+  exports: [SecurityLogService, SecurityDetectorService, SecurityGateway, SessionFingerprintService],
 })
 export class SecurityModule {}

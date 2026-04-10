@@ -18,7 +18,7 @@ async function bootstrap() {
     );
     console.log(`   - REDIS: ${env.REDIS_HOST}:${env.REDIS_PORT}`);
   } catch (error) {
-    console.error(error.message);
+    console.error((error as Error).message);
     process.exit(1);
   }
 

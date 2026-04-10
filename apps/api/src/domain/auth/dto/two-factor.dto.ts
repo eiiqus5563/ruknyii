@@ -5,6 +5,8 @@ import {
   Matches,
   IsOptional,
   IsBoolean,
+  IsEmail,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -70,6 +72,7 @@ export class Verify2FALoginDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'معرف الجلسة مطلوب' })
+  @IsUUID('4', { message: 'معرف الجلسة غير صالح' })
   pendingSessionId: string;
 
   @ApiProperty({
@@ -80,6 +83,42 @@ export class Verify2FALoginDto {
   @IsOptional()
   @IsBoolean()
   rememberDevice?: boolean;
+}
+
+export class StartVerifyIdentityDto {
+  @ApiProperty({
+    description: 'البريد الإلكتروني المستخدم للدخول',
+    example: 'user@example.com',
+  })
+  @IsString({ message: 'البريد الإلكتروني يجب أن يكون نصاً' })
+  @IsNotEmpty({ message: 'البريد الإلكتروني مطلوب' })
+  @IsEmail({}, { message: 'صيغة البريد الإلكتروني غير صحيحة' })
+  @Length(5, 254)
+  email: string;
+}
+
+export class StartVerifyIdentityResponseDto {
+  @ApiProperty({ example: true })
+  success: boolean;
+
+  @ApiProperty({
+    example: {
+      email: true,
+      authenticator: false,
+      recovery: false,
+    },
+  })
+  availableMethods: {
+    email: boolean;
+    authenticator: boolean;
+    recovery: boolean;
+  };
+
+  @ApiProperty({ required: false, nullable: true, example: 'uuid-session-id' })
+  pendingSessionId?: string | null;
+
+  @ApiProperty({ required: false, example: 'يمكنك المتابعة عبر البريد الإلكتروني فقط' })
+  message?: string;
 }
 
 // ========== إلغاء تفعيل 2FA ==========

@@ -17,6 +17,14 @@ const BLOCKED_EXTENSIONS = [
   '.vbs', '.wsf', '.hta', '.scr', '.pif', '.com', '.jar', '.war',
 ];
 
+// Dangerous SVG elements/attributes that could execute scripts
+const SVG_DANGEROUS_ELEMENTS = [
+  'script', 'foreignobject', 'iframe', 'object', 'embed',
+  'use', 'animate', 'set',
+];
+const SVG_DANGEROUS_ATTRS = /^(on\w+|href|xlink:href|formaction|action|data|srcdoc)$/i;
+const SVG_DANGEROUS_VALUES = /javascript:|data:text\/html|vbscript:|livescript:/i;
+
 /**
  * Storage Service
  *
@@ -620,6 +628,163 @@ export class StorageService {
 
     this.logger.log(`Cover uploaded for user ${userId}: ${key}`);
     return key;
+  }
+
+  /**
+   * Sanitize SVG content by removing dangerous elements and attributes
+   */
+  private sanitizeSvg(svgContent: string): string {
+    let sanitized = svgContent;
+
+    // Remove dangerous elements and their content
+    for (const el of SVG_DANGEROUS_ELEMENTS) {
+      const regex = new RegExp(`<${el}[\\s\\S]*?(<\/${el}>|\/>)`, 'gi');
+      sanitized = sanitized.replace(regex, '');
+    }
+
+    // Remove event handler attributes (on*) and dangerous href values
+    sanitized = sanitized.replace(
+      /\s(on\w+|formaction|action|srcdoc)\s*=\s*["'][^"']*["']/gi,
+      '',
+    );
+
+    // Remove javascript: / vbscript: / data:text/html from attribute values
+    sanitized = sanitized.replace(
+      /(href|xlink:href|src)\s*=\s*["']\s*(javascript:|vbscript:|data:text\/html)[^"']*["']/gi,
+      '',
+    );
+
+    // Remove processing instructions (<?xml-stylesheet ...?>)
+    sanitized = sanitized.replace(/<\?xml-stylesheet[^?]*\?>/gi, '');
+
+    // Remove external entity references / DOCTYPE
+    sanitized = sanitized.replace(/<!DOCTYPE[^>]*>/gi, '');
+    sanitized = sanitized.replace(/<!ENTITY[^>]*>/gi, '');
+
+    return sanitized;
+  }
+
+  /**
+   * Detect if buffer is an SVG file
+   */
+  private isSvgBuffer(buffer: Buffer): boolean {
+    const head = buffer.subarray(0, 512).toString('utf-8').trim();
+    return head.startsWith('<svg') || head.startsWith('<?xml') && head.includes('<svg');
+  }
+
+  /**
+   * Upload logo image for logo cloud slider
+   * Supports JPEG, PNG, WebP, GIF (raster) and SVG (vector)
+   * Max 500KB, raster images resized to 200px height
+   */
+  async uploadLogo(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<{ key: string; url: string }> {
+    this.validateFileExtension(file?.originalname);
+
+    const buffer = await this.normalizeFileToBuffer(file);
+    const incomingSize =
+      (file && (file.size ?? buffer.length)) || buffer.length;
+
+    if (incomingSize > 500 * 1024) {
+      throw new BadRequestException('حجم الشعار يتجاوز 500KB');
+    }
+
+    const hasSpace = await this.checkStorageLimit(userId, incomingSize);
+    if (!hasSpace) {
+      throw new BadRequestException('لا توجد مساحة تخزين كافية');
+    }
+
+    // Check if SVG
+    const isSvg = this.isSvgBuffer(buffer);
+
+    if (isSvg) {
+      // Sanitize SVG to prevent XSS
+      const rawSvg = buffer.toString('utf-8');
+      const sanitized = this.sanitizeSvg(rawSvg);
+      const sanitizedBuffer = Buffer.from(sanitized, 'utf-8');
+
+      const filename = `${uuidv4()}.svg`;
+      const key = this.s3Service.getLogoKey(userId, filename);
+
+      await this.s3Service.uploadBuffer(
+        this.bucket,
+        key,
+        sanitizedBuffer,
+        'image/svg+xml',
+      );
+
+      await this.trackFile(userId, {
+        key,
+        fileName: file.originalname,
+        fileType: 'image/svg+xml',
+        fileSize: BigInt(sanitizedBuffer.length),
+        category: FileCategory.LOGO,
+      });
+
+      const url = await this.getPresignedUrl(key);
+      this.logger.log(`SVG logo uploaded for user ${userId}: ${key}`);
+      return { key, url };
+    }
+
+    // Raster image validation via magic bytes
+    const fileType = await fileTypeFromBuffer(buffer);
+    if (!fileType || !this.ALLOWED_IMAGE_TYPES.includes(fileType.mime)) {
+      throw new BadRequestException(
+        'نوع الملف غير مسموح. يُسمح فقط بـ JPEG, PNG, WebP, GIF, SVG',
+      );
+    }
+
+    const processedImage = await sharp(buffer)
+      .rotate()
+      .resize({ height: 200, withoutEnlargement: true })
+      .webp({ quality: 90 })
+      .toBuffer();
+
+    const filename = `${uuidv4()}.webp`;
+    const key = this.s3Service.getLogoKey(userId, filename);
+
+    await this.s3Service.uploadBuffer(
+      this.bucket,
+      key,
+      processedImage,
+      'image/webp',
+    );
+
+    await this.trackFile(userId, {
+      key,
+      fileName: file.originalname,
+      fileType: 'image/webp',
+      fileSize: BigInt(processedImage.length),
+      category: FileCategory.LOGO,
+    });
+
+    const url = await this.getPresignedUrl(key);
+
+    this.logger.log(`Logo uploaded for user ${userId}: ${key}`);
+    return { key, url };
+  }
+
+  /**
+   * Delete a specific logo by its S3 key
+   */
+  async deleteLogo(userId: string, logoKey: string): Promise<void> {
+    if (!logoKey.includes(`users/${userId}/logos/`)) {
+      throw new BadRequestException('مفتاح الشعار غير صالح');
+    }
+
+    await this.s3Service.deleteObject(this.bucket, logoKey);
+
+    await this.prisma.userFile.deleteMany({
+      where: {
+        userId,
+        key: logoKey,
+        category: FileCategory.LOGO,
+      },
+    });
+
+    this.logger.log(`Logo deleted for user ${userId}: ${logoKey}`);
   }
 
   /**

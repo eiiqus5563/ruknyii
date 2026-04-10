@@ -63,7 +63,7 @@ export function getCsrfToken(): string | null {
   if (typeof window === "undefined") return null;
   if (csrfToken) return csrfToken;
   const match = document.cookie.match(
-    /(?:^|; )(?:__Secure-)?csrf_token=([^;]*)/,
+    /(?:^|; )(?:__Secure-)?_xid=([^;]*)/,
   );
   if (match) {
     csrfToken = match[1];
@@ -78,7 +78,7 @@ export function setCsrfToken(token: string): void {
   if (typeof window === "undefined") return;
   const isSecure = window.location.protocol === "https:";
   const parts = [
-    `csrf_token=${encodeURIComponent(token)}`,
+    `_xid=${encodeURIComponent(token)}`,
     "Path=/",
     `Max-Age=${24 * 60 * 60}`,
     "SameSite=Lax",
@@ -90,7 +90,7 @@ export function setCsrfToken(token: string): void {
 export function clearCsrfToken(): void {
   csrfToken = null;
   if (typeof window === "undefined") return;
-  document.cookie = "csrf_token=; Path=/; Max-Age=0; SameSite=Lax";
+  document.cookie = "_xid=; Path=/; Max-Age=0; SameSite=Lax";
 }
 
 // ---------- Refresh ----------

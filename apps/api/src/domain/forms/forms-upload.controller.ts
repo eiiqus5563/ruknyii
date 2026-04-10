@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -25,6 +26,8 @@ import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
 import { S3Service } from '../../services/s3.service';
 import { v4 as uuidv4 } from 'uuid';
+import { FileValidationPipe } from '../../core/common/pipes/file-validation.pipe';
+import { generateSecureFilename } from '../../core/common/utils/file-security.util';
 
 interface PresignFileInfo {
   name: string;
@@ -65,18 +68,18 @@ export class FormsUploadController {
           cb(null, uploadPath);
         },
         filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
+          // 🔒 Use secure UUID-based filename instead of client-supplied name
+          const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
+          const ext = extname(file.originalname).toLowerCase();
+          const safeExt = allowedExtensions.includes(ext) ? ext : '.bin';
+          const filename = `${uuidv4()}${safeExt}`;
           cb(null, filename);
         },
       }),
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB default
+        fileSize: 10 * 1024 * 1024, // 10MB
       },
       fileFilter: (req, file, cb) => {
-        // Allow common file types
         const allowedMimes = [
           'image/jpeg',
           'image/jpg',
@@ -84,7 +87,6 @@ export class FormsUploadController {
           'image/gif',
           'image/webp',
           'image/bmp',
-          'image/svg+xml',
           'image/tiff',
           'application/pdf',
           'application/msword',
@@ -95,9 +97,7 @@ export class FormsUploadController {
           'text/csv',
         ];
 
-        // Check for image types more flexibly
-        const isImage = file.mimetype.startsWith('image/');
-        if (allowedMimes.includes(file.mimetype) || isImage) {
+        if (allowedMimes.includes(file.mimetype)) {
           cb(null, true);
         } else {
           cb(
@@ -113,7 +113,17 @@ export class FormsUploadController {
   async uploadFiles(
     @Request() req,
     @Param('id') formId: string,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles(new FileValidationPipe({
+      allowedTypes: [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/tiff',
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain', 'text/csv',
+      ],
+      maxSize: 10 * 1024 * 1024,
+    })) files: Array<Express.Multer.File>,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');
@@ -367,6 +377,7 @@ export class FormsUploadController {
   }
 
   @Post('public/:slug/upload')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 uploads per minute per IP
   @ApiOperation({ summary: 'Upload files for public form (no auth required)' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
@@ -377,12 +388,17 @@ export class FormsUploadController {
 
           // We need to get formId from slug, but we can't use await here
           // So we'll use a temporary folder based on slug
+          // 🔒 Sanitize slug to prevent path traversal
+          const safeSlug = slug.replace(/[^a-zA-Z0-9_-]/g, '');
+          if (!safeSlug) {
+            return cb(new BadRequestException('Invalid form slug'), '');
+          }
           const uploadPath = join(
             process.cwd(),
             'uploads',
             'forms',
             'temp',
-            slug,
+            safeSlug,
           );
 
           if (!existsSync(uploadPath)) {
@@ -392,15 +408,17 @@ export class FormsUploadController {
           cb(null, uploadPath);
         },
         filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
+          // 🔒 Use secure UUID-based filename instead of client-supplied name
+          const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.pdf', '.doc', '.docx', '.txt'];
+          const ext = extname(file.originalname).toLowerCase();
+          const safeExt = allowedExtensions.includes(ext) ? ext : '.bin';
+          const filename = `${uuidv4()}${safeExt}`;
           cb(null, filename);
         },
       }),
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
+        files: 5, // 🔒 Max 5 files per request for public upload
       },
       fileFilter: (req, file, cb) => {
         const allowedMimes = [
@@ -410,16 +428,13 @@ export class FormsUploadController {
           'image/gif',
           'image/webp',
           'image/bmp',
-          'image/svg+xml',
           'application/pdf',
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'text/plain',
         ];
 
-        // Check for image types more flexibly
-        const isImage = file.mimetype.startsWith('image/');
-        if (allowedMimes.includes(file.mimetype) || isImage) {
+        if (allowedMimes.includes(file.mimetype)) {
           cb(null, true);
         } else {
           cb(
@@ -434,7 +449,15 @@ export class FormsUploadController {
   )
   async uploadFilesPublic(
     @Param('slug') slug: string,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles(new FileValidationPipe({
+      allowedTypes: [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+        'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+      ],
+      maxSize: 10 * 1024 * 1024,
+    })) files: Array<Express.Multer.File>,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');

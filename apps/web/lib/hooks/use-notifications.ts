@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getWebSocketToken } from '@/lib/api/auth';
 import { api } from '@/lib/api/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/toast-provider';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -85,14 +85,32 @@ export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
 
 // ─── Hook ────────────────────────────────────────────────────────────
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY = 3_000; // 3 seconds
+const MAX_RECONNECT_DELAY = 120_000; // 2 minutes
+
 export function useNotifications(enabled: boolean) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const socketRef = useRef<Socket | null>(null);
+  const isConnectingRef = useRef(false);
+  const shouldReconnectRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tokenRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const reconnectAttemptsRef = useRef(0);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+  const recentToastKeysRef = useRef<Map<string, number>>(new Map());
+
+  const disconnectSocket = useCallback((socket?: Socket | null) => {
+    if (!socket) return;
+    socket.removeAllListeners();
+    socket.disconnect();
+    if (socketRef.current === socket) {
+      socketRef.current = null;
+    }
+  }, []);
 
   // Fetch initial notifications via REST
   const fetchNotifications = useCallback(async () => {
@@ -104,6 +122,7 @@ export function useNotifications(enabled: boolean) {
       }>('/notifications', { limit: 50 });
       setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
+      seenNotificationIdsRef.current = new Set(data.notifications.map((notification) => notification.id));
     } catch {
       // silent
     } finally {
@@ -113,10 +132,16 @@ export function useNotifications(enabled: boolean) {
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
-    if (socketRef.current?.connected) return;
+    if (!shouldReconnectRef.current || socketRef.current || isConnectingRef.current) return;
+
+    isConnectingRef.current = true;
 
     try {
       const { token, expiresIn } = await getWebSocketToken();
+
+      if (!shouldReconnectRef.current || socketRef.current) {
+        return;
+      }
 
       // Determine WS URL from API external URL or fallback
       const apiExternal = process.env.NEXT_PUBLIC_API_EXTERNAL_URL || 'http://localhost:3001/api/v1';
@@ -128,53 +153,106 @@ export function useNotifications(enabled: boolean) {
         reconnection: false, // We handle reconnection manually for token refresh
       });
 
+      socketRef.current = socket;
+
+      const scheduleReconnect = () => {
+        if (socketRef.current === socket) {
+          socketRef.current = null;
+        }
+
+        setIsConnected(false);
+
+        if (!shouldReconnectRef.current) {
+          return;
+        }
+
+        clearTimeout(reconnectTimerRef.current);
+
+        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current), MAX_RECONNECT_DELAY);
+          reconnectAttemptsRef.current += 1;
+          reconnectTimerRef.current = setTimeout(() => {
+            void connect();
+          }, delay);
+        }
+      };
+
       socket.on('connect', () => {
+        if (socketRef.current !== socket) return;
         setIsConnected(true);
+        reconnectAttemptsRef.current = 0; // Reset on successful connection
       });
 
       socket.on('disconnect', () => {
-        setIsConnected(false);
-        // Reconnect after a delay
-        reconnectTimerRef.current = setTimeout(() => {
-          connect();
-        }, 3000);
+        scheduleReconnect();
       });
 
       socket.on('connect_error', () => {
-        setIsConnected(false);
-        reconnectTimerRef.current = setTimeout(() => {
-          connect();
-        }, 5000);
+        disconnectSocket(socket);
+        scheduleReconnect();
       });
 
       socket.on('new-notification', (notification: Notification) => {
+        if (socketRef.current !== socket) return;
+
+        if (seenNotificationIdsRef.current.has(notification.id)) {
+          return;
+        }
+
+        seenNotificationIdsRef.current.add(notification.id);
         setNotifications((prev) => [notification, ...prev].slice(0, 50));
-        // Toast for incoming notification
-        toast(notification.title, {
-          description: notification.message,
+
+        const now = Date.now();
+        const toastKey = `${notification.type}:${notification.title}:${notification.message}`;
+        const lastShownAt = recentToastKeysRef.current.get(toastKey) ?? 0;
+
+        for (const [key, timestamp] of recentToastKeysRef.current.entries()) {
+          if (now - timestamp > 10_000) {
+            recentToastKeysRef.current.delete(key);
+          }
+        }
+
+        if (now - lastShownAt < 4_000) {
+          return;
+        }
+
+        recentToastKeysRef.current.set(toastKey, now);
+        toast.info(notification.message, {
+          title: notification.title,
           duration: 5000,
         });
       });
 
       socket.on('unread-count', (data: { count: number }) => {
+        if (socketRef.current !== socket) return;
         setUnreadCount(data.count);
       });
 
-      socketRef.current = socket;
-
       // Schedule token refresh before expiry (refresh 30s before)
       const refreshMs = Math.max((expiresIn - 30) * 1000, 60_000);
+      clearTimeout(tokenRefreshTimerRef.current);
       tokenRefreshTimerRef.current = setTimeout(() => {
-        socket.disconnect();
-        connect();
+        if (socketRef.current !== socket) {
+          return;
+        }
+
+        disconnectSocket(socket);
+        setIsConnected(false);
+        void connect();
       }, refreshMs);
     } catch {
-      // Retry after delay
-      reconnectTimerRef.current = setTimeout(() => {
-        connect();
-      }, 10_000);
+      // Retry with exponential backoff
+      if (shouldReconnectRef.current && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current), MAX_RECONNECT_DELAY);
+        reconnectAttemptsRef.current += 1;
+        reconnectTimerRef.current = setTimeout(() => {
+          void connect();
+        }, delay);
+      }
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, []);
+  }, [disconnectSocket]);
 
   // Mark single notification as read
   const markAsRead = useCallback(async (id: string) => {
@@ -209,6 +287,7 @@ export function useNotifications(enabled: boolean) {
         if (removed && !removed.isRead) {
           setUnreadCount((c) => Math.max(0, c - 1));
         }
+        seenNotificationIdsRef.current.delete(id);
         return prev.filter((n) => n.id !== id);
       });
     } catch {
@@ -222,24 +301,35 @@ export function useNotifications(enabled: boolean) {
       await api.delete('/notifications');
       setNotifications([]);
       setUnreadCount(0);
+      seenNotificationIdsRef.current.clear();
     } catch {
       // silent
     }
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
-
-    fetchNotifications();
-    connect();
-
-    return () => {
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+    if (!enabled) {
+      shouldReconnectRef.current = false;
       clearTimeout(reconnectTimerRef.current);
       clearTimeout(tokenRefreshTimerRef.current);
+      disconnectSocket(socketRef.current);
+      isConnectingRef.current = false;
+      return;
+    }
+
+    shouldReconnectRef.current = true;
+
+    fetchNotifications();
+    void connect();
+
+    return () => {
+      shouldReconnectRef.current = false;
+      clearTimeout(reconnectTimerRef.current);
+      clearTimeout(tokenRefreshTimerRef.current);
+      disconnectSocket(socketRef.current);
+      isConnectingRef.current = false;
     };
-  }, [enabled, fetchNotifications, connect]);
+  }, [enabled, fetchNotifications, connect, disconnectSocket]);
 
   return {
     notifications,

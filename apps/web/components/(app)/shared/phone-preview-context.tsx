@@ -19,8 +19,11 @@ export interface ProfileData {
     platform: string;
     url: string;
     title?: string | null;
+    thumbnail?: string | null;
+    layout?: 'classic' | 'featured';
     status?: string;
     totalClicks?: number;
+    isPinned?: boolean;
     displayOrder: number;
   }>;
   _count?: { followers: number; following: number };
@@ -30,7 +33,7 @@ interface PhonePreviewContextValue {
   collapsed: boolean;
   toggle: () => void;
   profile: ProfileData | null;
-  setProfile: (profile: ProfileData | null) => void;
+  setProfile: React.Dispatch<React.SetStateAction<ProfileData | null>>;
 }
 
 export const PhonePreviewContext = createContext<PhonePreviewContextValue>({

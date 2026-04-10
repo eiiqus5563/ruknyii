@@ -83,7 +83,7 @@ function GridLinkEditor({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-background rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4"
+        className="bg-background rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-5 space-y-4"
       >
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm">إضافة رابط للمنشور</h3>
@@ -93,7 +93,7 @@ function GridLinkEditor({
         </div>
 
         {/* Preview */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/60">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={media.thumbnail_url || media.media_url}
@@ -114,7 +114,7 @@ function GridLinkEditor({
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="https://example.com/product"
               dir="ltr"
-              className="w-full h-10 px-3 rounded-xl bg-muted/40 border border-border text-sm outline-none focus:border-foreground/30 transition-colors"
+              className="w-full h-10 px-3 rounded-xl bg-background border border-border/60 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
             />
           </div>
           <div>
@@ -126,7 +126,7 @@ function GridLinkEditor({
               value={linkTitle}
               onChange={(e) => setLinkTitle(e.target.value)}
               placeholder="اسم المنتج أو الفعالية"
-              className="w-full h-10 px-3 rounded-xl bg-muted/40 border border-border text-sm outline-none focus:border-foreground/30 transition-colors"
+              className="w-full h-10 px-3 rounded-xl bg-background border border-border/60 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
             />
           </div>
         </div>
@@ -232,11 +232,11 @@ function InstagramBlockCard({
         'rounded-2xl border overflow-hidden transition-all',
         block.isActive
           ? 'border-border bg-card'
-          : 'border-border/40 bg-muted/30 opacity-70',
+          : 'border-border/50 bg-muted/30 opacity-70',
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/60">
         <div className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/instagram.svg" alt="Instagram" className="w-6 h-6" />
@@ -268,7 +268,7 @@ function InstagramBlockCard({
       </div>
 
       {/* Media Grid/Feed */}
-      <div className="p-3">
+      <div className="p-2.5 sm:p-3">
         {loadingMedia ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

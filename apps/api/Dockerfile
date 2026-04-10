@@ -46,6 +46,7 @@ RUN npx prisma generate --config prisma/prisma.config.ts \
 # Writable directories for the non-root user
 RUN mkdir -p /app/temp/videos /app/uploads/avatars /app/uploads/events \
     /app/uploads/thumbnails /app/uploads/covers /app/uploads/banners \
+    /app/uploads/digital-temp /app/uploads/forms \
  && chown -R nestjs:nodejs /app/temp /app/uploads
 
 USER nestjs

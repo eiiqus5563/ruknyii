@@ -49,7 +49,7 @@ export async function apiClient<T = unknown>(
   // Forward CSRF token for mutating requests
   if (!skipCsrf && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(fetchOptions.method?.toUpperCase() ?? '')) {
     const cookieStore = await cookies();
-    const csrf = cookieStore.get('__Secure-csrf_token')?.value || cookieStore.get('csrf_token')?.value;
+    const csrf = cookieStore.get('__Secure-_xid')?.value || cookieStore.get('_xid')?.value;
     if (csrf) {
       reqHeaders.set('x-csrf-token', csrf);
     }

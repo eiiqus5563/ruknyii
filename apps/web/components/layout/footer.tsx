@@ -66,6 +66,7 @@ const footerConfig = {
       links: [
         { label: "مركز المساعدة", href: "/help" },
         { label: "الأدلة والإرشادات", href: "/guides" },
+        { label: "تتبع الطلب", href: "/track" },
         { label: "حالة النظام", href: "/status" },
         { label: "الأسئلة الشائعة", href: "/faq" },
       ],

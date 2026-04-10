@@ -12,6 +12,7 @@ import {
   Loader2,
   CalendarDays,
   CalendarCheck,
+  Tv,
   Video,
   Users,
   ArrowLeftRight,
@@ -30,10 +31,11 @@ import {
   Images,
   RefreshCw,
 } from 'lucide-react';
-import { usePhonePreview } from '@/components/(app)/shared/phone-preview-context';
+
 import { useAuth } from '@/providers';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ToggleSwitch } from '@/components/(app)/settings';
 import {
   Dialog,
@@ -42,23 +44,31 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  getGoogleCalendarStatus,
   getGoogleCalendarAuthUrl,
   exchangeGoogleCalendarCode,
   unlinkGoogleCalendar,
 } from '@/actions/google-calendar';
-import { getStorageUsage, type StorageUsage } from '@/actions/storage';
+import { type StorageUsage } from '@/actions/storage';
 import {
-  getAnalyticsSettings,
   updateAnalyticsSettings,
   disconnectAnalytics,
   type AnalyticsSettings,
 } from '@/actions/google-analytics';
 import {
+  fetchGoogleCalendarStatus,
+  fetchStorageUsage,
+  fetchAnalyticsSettings,
+} from '@/lib/api/settings-client';
+import {
   getInstagramStatus,
   disconnectInstagram,
   type InstagramConnection,
 } from '@/lib/api/instagram';
+import {
+  getYouTubeStatus,
+  disconnectYouTube,
+  type YouTubeConnection,
+} from '@/lib/api/youtube';
 import { API_EXTERNAL_URL } from '@/lib/config';
 
 // ─── Constants ───────────────────────────────────────────────
@@ -73,14 +83,20 @@ const CAL_FEATURES = [
 const SCOPES = ['إنشاء الأحداث', 'تحديث الأحداث', 'حذف الأحداث', 'روابط Google Meet', 'إدارة الحضور'];
 
 const COMING_SOON = [
-  { icon: '/icons/telegram.svg', label: 'تيليجرام', desc: 'إشعارات فورية وأوامر سريعة عبر بوت تيليجرام' },
-  { icon: '/icons/whatsapp.svg', label: 'واتساب بزنس', desc: 'إرسال تأكيد الطلبات وتحديثات التوصيل للعملاء' },
+  { icon: '/icons/telegram.svg', label: 'تيليجرام', desc: 'إشعارات فورية وأوامر سريعة عبر بوت تيليجرام', color: '#0088CC' },
+  { icon: '/icons/whatsapp.svg', label: 'واتساب بزنس', desc: 'إرسال تأكيد الطلبات وتحديثات التوصيل للعملاء', color: '#25D366' },
 ];
 
 const IG_FEATURES = [
   { icon: LayoutGrid, label: 'شبكة 3×3', desc: 'عرض شبكة منشوراتك مع روابط للمنتجات' },
   { icon: Images, label: 'معرض أفقي', desc: 'عرض أحدث المنشورات والـ Reels' },
   { icon: Link2, label: 'روابط المنشورات', desc: 'إضافة رابط لكل منشور في الشبكة' },
+];
+
+const YT_FEATURES = [
+  { icon: Tv, label: 'أحدث الفيديوهات', desc: 'عرض آخر الفيديوهات تلقائياً' },
+  { icon: Video, label: 'تضمين فيديو', desc: 'تضمين فيديو محدد كبطاقة غنية' },
+  { icon: Link2, label: 'رابط القناة', desc: 'رابط مباشر لقناتك' },
 ];
 
 const CATEGORY_LABELS: Record<string, { label: string; icon: typeof ImageIcon }> = {
@@ -107,7 +123,7 @@ function formatSyncTime(dateStr?: string) {
   if (diffMin < 1) return 'الآن';
   if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
   if (diffHr < 24) return `منذ ${diffHr} ساعة`;
-  return date.toLocaleDateString('ar-IQ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatBytes(bytes: number) {
@@ -140,15 +156,15 @@ function StorageDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2" style={{ color: '#313851' }}>
-            <HardDrive className="size-4" style={{ color: '#9787F3' }} />
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <HardDrive className="size-4 text-primary" />
             تفاصيل التخزين
           </DialogTitle>
         </DialogHeader>
 
         {loading || !usage ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="size-5 animate-spin" style={{ color: '#9787F3' }} />
+            <Loader2 className="size-5 animate-spin text-primary" />
           </div>
         ) : (
           <div className="space-y-5">
@@ -156,27 +172,24 @@ function StorageDialog({
             <div className="space-y-2.5">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-[22px] font-bold" style={{ color: '#313851' }}>
+                  <p className="text-[22px] font-bold text-foreground">
                     {formatBytes(usage.used)}
                   </p>
-                  <p className="text-[11px]" style={{ color: '#C2CBD3' }}>
+                  <p className="text-[11px] text-muted-foreground">
                     من أصل {formatBytes(usage.limit)}
                   </p>
                 </div>
-                <p className="text-[13px] font-semibold" style={{ color: usage.percentage > 85 ? '#ef4444' : '#9787F3' }}>
+                <p className={cn('text-[13px] font-semibold', usage.percentage > 85 ? 'text-destructive' : 'text-primary')}>
                   {usage.percentage}%
                 </p>
               </div>
-              <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#C2CBD3' + '30' }}>
+              <div className="h-2.5 w-full rounded-full overflow-hidden bg-muted">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(usage.percentage, 100)}%`,
-                    backgroundColor: usage.percentage > 85 ? '#ef4444' : '#9787F3',
-                  }}
+                  className={cn('h-full rounded-full transition-all duration-500', usage.percentage > 85 ? 'bg-destructive' : 'bg-primary')}
+                  style={{ width: `${Math.min(usage.percentage, 100)}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[11px]" style={{ color: '#C2CBD3' }}>
+              <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>{usage.files} ملف</span>
                 <span>متاح: {formatBytes(usage.available)}</span>
               </div>
@@ -185,7 +198,7 @@ function StorageDialog({
             {/* Category breakdown */}
             {categories.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[12px] font-medium" style={{ color: '#313851' }}>توزيع التخزين</p>
+                <p className="text-[12px] font-medium text-foreground">توزيع التخزين</p>
                 <div className="space-y-1.5">
                   {categories.map(([cat, size]) => {
                     const meta = CATEGORY_LABELS[cat] || { label: cat, icon: FileText };
@@ -193,16 +206,16 @@ function StorageDialog({
                     const pct = usage.limit > 0 ? Math.round((size / usage.limit) * 100) : 0;
                     return (
                       <div key={cat} className="flex items-center gap-2.5">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: '#9787F3' + '14' }}>
-                          <Icon className="size-3.5" style={{ color: '#9787F3' }} />
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <Icon className="size-3.5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[11px] font-medium" style={{ color: '#313851' }}>{meta.label}</span>
-                            <span className="text-[10px]" style={{ color: '#C2CBD3' }}>{formatBytes(size)}</span>
+                            <span className="text-[11px] font-medium text-foreground">{meta.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{formatBytes(size)}</span>
                           </div>
-                          <div className="h-1 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#C2CBD3' + '20' }}>
-                            <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 1)}%`, backgroundColor: '#9787F3' + '80' }} />
+                          <div className="h-1 w-full rounded-full overflow-hidden bg-muted">
+                            <div className="h-full rounded-full bg-primary/60" style={{ width: `${Math.max(pct, 1)}%` }} />
                           </div>
                         </div>
                       </div>
@@ -214,21 +227,21 @@ function StorageDialog({
 
             {/* Trash */}
             {usage.trashUsed > 0 && (
-              <div className="flex items-center gap-2.5 rounded-2xl p-3" style={{ backgroundColor: '#C2CBD3' + '15' }}>
-                <Trash2 className="size-4 shrink-0" style={{ color: '#C2CBD3' }} />
+              <div className="flex items-center gap-2.5 rounded-2xl p-3 bg-muted/30">
+                <Trash2 className="size-4 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-[11px] font-medium" style={{ color: '#313851' }}>سلة المحذوفات</p>
-                  <p className="text-[10px]" style={{ color: '#C2CBD3' }}>{formatBytes(usage.trashUsed)} — تُحذف نهائياً بعد 30 يوم</p>
+                  <p className="text-[11px] font-medium text-foreground">سلة المحذوفات</p>
+                  <p className="text-[10px] text-muted-foreground">{formatBytes(usage.trashUsed)} — تُحذف نهائياً بعد 30 يوم</p>
                 </div>
               </div>
             )}
 
             {/* Upgrade hint */}
-            <div className="flex items-center gap-2.5 rounded-2xl border p-3" style={{ borderColor: '#9787F3' + '30' }}>
-              <Crown className="size-4 shrink-0" style={{ color: '#9787F3' }} />
+            <div className="flex items-center gap-2.5 rounded-2xl border border-primary/20 p-3">
+              <Crown className="size-4 shrink-0 text-primary" />
               <div className="flex-1">
-                <p className="text-[11px] font-medium" style={{ color: '#313851' }}>تحتاج مساحة أكبر؟</p>
-                <p className="text-[10px]" style={{ color: '#C2CBD3' }}>ترقية إلى باقة مدفوعة للحصول على مساحة إضافية — قريباً</p>
+                <p className="text-[11px] font-medium text-foreground">تحتاج مساحة أكبر؟</p>
+                <p className="text-[10px] text-muted-foreground">ترقية إلى باقة مدفوعة للحصول على مساحة إضافية — قريباً</p>
               </div>
             </div>
           </div>
@@ -241,7 +254,6 @@ function StorageDialog({
 // ─── Page ────────────────────────────────────────────────────
 
 export default function IntegrationsSettingsPage() {
-  const { collapsed } = usePhonePreview();
   const { user } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -276,18 +288,26 @@ export default function IntegrationsSettingsPage() {
   const [igLoading, setIgLoading] = useState(true);
   const [igDisconnecting, setIgDisconnecting] = useState(false);
 
-  // Load all statuses
+  // YouTube state
+  const [ytConnected, setYtConnected] = useState(false);
+  const [ytConnection, setYtConnection] = useState<YouTubeConnection | null>(null);
+  const [ytLoading, setYtLoading] = useState(true);
+  const [ytDisconnecting, setYtDisconnecting] = useState(false);
+
+  // Load all statuses (client-side GET, not server action POST)
   useEffect(() => {
     (async () => {
       setIsLoading(true);
       setStorageLoading(true);
       setGaLoading(true);
       setIgLoading(true);
-      const [calRes, storRes, gaRes, igRes] = await Promise.all([
-        getGoogleCalendarStatus(),
-        getStorageUsage(),
-        getAnalyticsSettings(),
+      setYtLoading(true);
+      const [calRes, storRes, gaRes, igRes, ytRes] = await Promise.all([
+        fetchGoogleCalendarStatus(),
+        fetchStorageUsage(),
+        fetchAnalyticsSettings(),
         getInstagramStatus().catch(() => ({ connected: false, connection: null })),
+        getYouTubeStatus().catch(() => ({ connected: false, connection: null })),
       ]);
       if (calRes.data) {
         setIsLinked(calRes.data.linked);
@@ -300,7 +320,10 @@ export default function IntegrationsSettingsPage() {
       }
       setIgConnected(igRes.connected);
       setIgConnection(igRes.connection);
+      setYtConnected(ytRes.connected);
+      setYtConnection(ytRes.connection);
       setIgLoading(false);
+      setYtLoading(false);
       setGaLoading(false);
       setStorageLoading(false);
       setIsLoading(false);
@@ -345,7 +368,7 @@ export default function IntegrationsSettingsPage() {
     setStorageDialogOpen(true);
     if (!storageUsage) {
       setStorageLoading(true);
-      const { data } = await getStorageUsage();
+      const { data } = await fetchStorageUsage();
       if (data) setStorageUsage(data);
       setStorageLoading(false);
     }
@@ -408,10 +431,41 @@ export default function IntegrationsSettingsPage() {
     }
   }, [toast]);
 
+  const handleConnectYouTube = useCallback(() => {
+    window.location.href = `${API_EXTERNAL_URL}/integrations/youtube/auth`;
+  }, []);
+
+  const handleDisconnectYouTube = useCallback(async () => {
+    setYtDisconnecting(true);
+    try {
+      await disconnectYouTube();
+      setYtConnected(false);
+      setYtConnection(null);
+      toast.success('تم إلغاء ربط YouTube');
+    } catch {
+      toast.error('فشل في إلغاء ربط YouTube');
+    } finally {
+      setYtDisconnecting(false);
+    }
+  }, [toast]);
+
+  const handleReconnectYouTube = useCallback(async () => {
+    setYtDisconnecting(true);
+    try {
+      await disconnectYouTube();
+      setYtConnected(false);
+      setYtConnection(null);
+      window.location.href = `${API_EXTERNAL_URL}/integrations/youtube/auth`;
+    } catch {
+      toast.error('فشل في إعادة الربط');
+      setYtDisconnecting(false);
+    }
+  }, [toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-5 animate-spin" style={{ color: '#9787F3' }} />
+        <Loader2 className="size-5 animate-spin text-primary" />
       </div>
     );
   }
@@ -419,642 +473,467 @@ export default function IntegrationsSettingsPage() {
   const storagePct = storageUsage?.percentage ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Storage Dialog */}
-      <StorageDialog
-        open={storageDialogOpen}
-        onOpenChange={setStorageDialogOpen}
-        usage={storageUsage}
-        loading={storageLoading}
-      />
+    <div className="space-y-5">
+      {/* Dialogs */}
+      <StorageDialog open={storageDialogOpen} onOpenChange={setStorageDialogOpen} usage={storageUsage} loading={storageLoading} />
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mt-4">
-        <div className="flex size-10 items-center justify-center rounded-2xl" style={{ backgroundColor: '#9787F3' }}>
-          <GitMerge className="size-[18px] text-white" />
+      {/* ── التخزين السحابي ──────────────────────────────── */}
+      <div className="rounded-2xl bg-muted/30 p-4 sm:p-6 transition-all duration-300">
+        <div className="mb-4 sm:mb-5">
+          <h2 className="text-sm font-semibold text-foreground">التخزين السحابي</h2>
+          <p className="mt-1 text-xs text-muted-foreground">تخزين سحابي آمن — 5GB مجاناً شهرياً</p>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold" style={{ color: '#313851' }}>التكاملات</h1>
-          <p className="text-[13px]" style={{ color: '#C2CBD3' }}>ربط ركني مع خدمات خارجية لمزامنة الأحداث والمواعيد</p>
-        </div>
-      </div>
 
-      {/* ── Active Integrations Grid ───────────────────────── */}
-      <div className={cn('grid gap-4', collapsed ? 'grid-cols-2' : 'grid-cols-1')}>
-
-      {/* ── S3 Cloud Storage ────────────────────────────────── */}
-      <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: '#9787F3' }}>
-        {/* Header */}
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="relative shrink-0 mt-0.5">
-              <div className="flex size-11 sm:size-13 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' }}>
-                <Image src="/icons/aws-s3.svg" alt="Cloud Storage" width={24} height={24} />
+        <div className="space-y-3">
+          {/* Status row */}
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-background/50 px-3 sm:px-4 py-2.5 sm:py-3 transition-all duration-300">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <HardDrive className="size-4 text-primary" />
               </div>
-              <div className="absolute -bottom-1 -left-1 flex size-[16px] sm:size-[18px] items-center justify-center rounded-full ring-2 ring-white" style={{ backgroundColor: '#9787F3' }}>
-                <CheckCircle2 className="size-2 sm:size-2.5 text-white" />
+              <div>
+                <p className="text-[13px] font-medium text-foreground">S3 Cloud Storage</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {storageLoading ? 'جاري التحميل...' : storageUsage ? `${formatBytes(storageUsage.used)} / ${formatBytes(storageUsage.limit)}` : 'غير متاح'}
+                </p>
               </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-[14px] sm:text-[15px] font-semibold leading-tight" style={{ color: '#313851' }}>التخزين السحابي</h3>
-                <span className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white shrink-0" style={{ backgroundColor: '#9787F3' }}>
-                  <span className="size-1.5 rounded-full bg-white/60 animate-pulse" />
-                  مفعّل
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-[12px] line-clamp-2" style={{ color: '#C2CBD3' }}>
-                تخزين سحابي آمن — 5GB مجاناً شهرياً
-              </p>
-            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-600">
+              <CheckCircle2 className="size-3" />
+              مفعّل
+            </span>
           </div>
-          <button
-            onClick={handleOpenStorageDialog}
-            className="flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
-            style={{ backgroundColor: '#9787F3' }}
-          >
-            <BarChart3 className="size-3" />
-            تفاصيل الاستخدام
-          </button>
-        </div>
 
-        {/* Usage bar */}
-        <div className="border-t px-5 sm:px-6 py-4" style={{ borderColor: '#C2CBD3' + '40' }}>
-          {storageLoading ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="size-4 animate-spin" style={{ color: '#C2CBD3' }} />
-            </div>
-          ) : storageUsage ? (
-            <div className="space-y-2">
+          {/* Usage bar */}
+          {!storageLoading && storageUsage && (
+            <div className="rounded-xl bg-background/50 px-3 sm:px-4 py-2.5 sm:py-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[12px] font-medium" style={{ color: '#313851' }}>
+                <span className="text-[12px] font-medium text-foreground">
                   {formatBytes(storageUsage.used)} / {formatBytes(storageUsage.limit)}
                 </span>
-                <span className="text-[11px] font-medium" style={{ color: storagePct > 85 ? '#ef4444' : '#9787F3' }}>
+                <span className={cn('text-[11px] font-semibold', storagePct > 85 ? 'text-destructive' : 'text-primary')}>
                   {storagePct}%
                 </span>
               </div>
-              <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#C2CBD3' + '30' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(storagePct, 100)}%`, backgroundColor: storagePct > 85 ? '#ef4444' : '#9787F3' }}
-                />
+              <div className="h-2 w-full rounded-full overflow-hidden bg-muted">
+                <div className={cn('h-full rounded-full transition-all duration-500', storagePct > 85 ? 'bg-destructive' : 'bg-primary')} style={{ width: `${Math.min(storagePct, 100)}%` }} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px]" style={{ color: '#C2CBD3' }}>{storageUsage.files} ملف مرفوع</span>
-                <span className="text-[10px]" style={{ color: '#C2CBD3' }}>متاح: {formatBytes(storageUsage.available)}</span>
+                <span className="text-[10px] text-muted-foreground">{storageUsage.files} ملف مرفوع</span>
+                <span className="text-[10px] text-muted-foreground">متاح: {formatBytes(storageUsage.available)}</span>
               </div>
             </div>
-          ) : (
-            <p className="text-[11px] text-center py-1" style={{ color: '#C2CBD3' }}>لا يمكن تحميل البيانات</p>
           )}
-        </div>
 
-        {/* Feature tags */}
-        <div className="flex items-center gap-1.5 flex-wrap border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
-          {[
-            { icon: ImageIcon, label: 'صور المنتجات' },
-            { icon: HardDrive, label: 'ملفات آمنة' },
-            { icon: CalendarDays, label: 'صور الأحداث' },
-          ].map(({ label, icon: Icon }) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
-              style={{ backgroundColor: '#9787F3' + '12', color: '#9787F3' }}
-            >
-              <Icon className="size-3" />
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {/* Upgrade hint */}
-        {storagePct > 70 && (
-          <div className="flex items-center gap-2.5 border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
-            <Crown className="size-3.5 shrink-0" style={{ color: '#9787F3' }} />
-            <p className="text-[11px]" style={{ color: '#C2CBD3' }}>
-              {storagePct > 85
-                ? 'المساحة على وشك الامتلاء — ترقية الباقة قريباً'
-                : 'تجاوزت 70% — يمكنك شراء وحدات إضافية أو الاشتراك بالباقات قريباً'
-              }
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Instagram ──────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: igConnected ? '#9787F3' : '#C2CBD3' }}>
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="relative shrink-0 mt-0.5">
-              <div className="flex size-11 sm:size-13 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' }}>
-                <Image src="/icons/instagram.svg" alt="Instagram" width={24} height={24} />
-              </div>
-              {igConnected && (
-                <div className="absolute -bottom-1 -left-1 flex size-[16px] sm:size-[18px] items-center justify-center rounded-full ring-2 ring-white" style={{ backgroundColor: '#9787F3' }}>
-                  <CheckCircle2 className="size-2 sm:size-2.5 text-white" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-[14px] sm:text-[15px] font-semibold leading-tight" style={{ color: '#313851' }}>إنستغرام</h3>
-                {igConnected && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white shrink-0" style={{ backgroundColor: '#9787F3' }}>
-                    <span className="size-1.5 rounded-full bg-white/60 animate-pulse" />
-                    مرتبط
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] sm:text-[12px] line-clamp-2" style={{ color: '#C2CBD3' }}>
-                {igConnected
-                  ? `@${igConnection?.username ?? ''}`
-                  : 'عرض شبكة منشوراتك على صفحتك'
-                }
-              </p>
-              {/* بطاقة ملف إنستقرام المصغرة */}
-              {igConnected && igConnection?.profilePicUrl && (
-                <div className="flex items-center gap-2 mt-2 mb-1">
-                  <Image
-                    src={igConnection.profilePicUrl}
-                    alt={igConnection.username || 'Instagram profile'}
-                    width={32}
-                    height={32}
-                    className="rounded-full border border-[#C2CBD3] bg-white object-cover"
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[13px] font-semibold text-[#313851] truncate">{igConnection.name || igConnection.username}</span>
-                    {typeof igConnection.followersCount === 'number' && (
-                      <span className="text-[11px] text-[#9787F3] font-medium">{igConnection.followersCount.toLocaleString('ar-EG')} متابع</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {igLoading ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="size-4 animate-spin" style={{ color: '#C2CBD3' }} />
-            </div>
-          ) : igConnected ? (
-            <div className="flex gap-2">
-              <button
-                onClick={handleReconnectInstagram}
-                disabled={igDisconnecting}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: '#9787F3' }}
-              >
-                {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                إعادة الربط
-              </button>
-              <button
-                onClick={handleDisconnectInstagram}
-                disabled={igDisconnecting}
-                className="flex items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-                style={{ borderColor: '#C2CBD3', color: '#313851' }}
-              >
-                {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleConnectInstagram}
-              className="flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: '#9787F3' }}
-            >
-              <GitMerge className="size-3" />
-              ربط إنستغرام
-            </button>
-          )}
-        </div>
-
-        {/* Feature tags */}
-        <div className="flex items-center gap-1.5 flex-wrap border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
-          {IG_FEATURES.map(({ label, icon: Icon }) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
-              style={{ backgroundColor: '#9787F3' + '12', color: '#9787F3' }}
-            >
-              <Icon className="size-3" />
-              {label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Google Calendar ─────────────────────────────────── */}
-      <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: isLinked ? '#9787F3' : '#C2CBD3' }}>
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="relative shrink-0 mt-0.5">
-              <div className="flex size-11 sm:size-13 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' }}>
-                <Image src="/icons/google-calendar.svg" alt="Google Calendar" width={24} height={24} />
-              </div>
-              {isLinked && (
-                <div className="absolute -bottom-1 -left-1 flex size-[16px] sm:size-[18px] items-center justify-center rounded-full ring-2 ring-white" style={{ backgroundColor: '#9787F3' }}>
-                  <CheckCircle2 className="size-2 sm:size-2.5 text-white" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-[14px] sm:text-[15px] font-semibold leading-tight" style={{ color: '#313851' }}>تقويم Google</h3>
-                {isLinked && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white shrink-0" style={{ backgroundColor: '#9787F3' }}>
-                    <span className="size-1.5 rounded-full bg-white/60 animate-pulse" />
-                    مرتبط
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] sm:text-[12px] line-clamp-2" style={{ color: '#C2CBD3' }}>
-                {isLinked ? 'مرتبطة ويتم مزامنتها تلقائياً' : 'مزامنة الأحداث تلقائياً مع تقويم Google'}
-              </p>
-              {isLinked && lastSync && (
-                <p className="flex items-center gap-1 text-[10px] sm:text-[11px] mt-1" style={{ color: '#C2CBD3' }}>
-                  <Clock className="size-3" />
-                  آخر مزامنة: {formatSyncTime(lastSync)}
-                </p>
-              )}
-            </div>
-          </div>
-          {isLinked ? (
-            <button
-              onClick={handleUnlink}
-              disabled={isUnlinking}
-              className="flex w-full items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-              style={{ borderColor: '#C2CBD3', color: '#313851' }}
-            >
-              {isUnlinking ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
-              إلغاء الربط
-            </button>
-          ) : (
-            <button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#9787F3' }}
-            >
-              {isConnecting ? <Loader2 className="size-3 animate-spin" /> : <GitMerge className="size-3" />}
-              ربط التقويم
-            </button>
-          )}
-        </div>
-
-        {/* Connected extras */}
-        {isLinked && (
-          <>
-            <div className="border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {CAL_FEATURES.map(({ label, icon: Icon }) => (
-                  <span key={label} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium" style={{ backgroundColor: '#9787F3' + '12', color: '#9787F3' }}>
-                    <Icon className="size-3" />
-                    {label}
-                  </span>
-                ))}
-              </div>
-
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setCalendarDialogOpen(true)}
-              className="flex w-full items-center justify-center gap-1.5 border-t py-2.5 text-[11px] font-medium transition-colors hover:opacity-80"
-              style={{ borderColor: '#C2CBD3' + '40', color: '#C2CBD3' }}
-            >
-              عرض التفاصيل
-            </button>
-
-            <Dialog open={calendarDialogOpen} onOpenChange={setCalendarDialogOpen}>
-              <DialogContent className="max-w-[95vw] sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2" style={{ color: '#313851' }}>
-                    <Image src="/icons/google-calendar.svg" alt="Google Calendar" width={18} height={18} />
-                    تفاصيل تقويم Google
-                  </DialogTitle>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  {/* Account */}
-                  <div className="space-y-1.5">
-                    <p className="text-[12px] font-medium" style={{ color: '#313851' }}>الحساب المرتبط</p>
-                    <div className="flex items-center gap-2.5 rounded-xl border px-3 py-2.5" style={{ borderColor: '#C2CBD3' + '50' }}>
-                      <Image src="/icons/google.svg" alt="Google" width={16} height={16} />
-                      <span className="text-[12px]" style={{ color: '#313851' }} dir="ltr">{user?.email || '—'}</span>
-                    </div>
-                  </div>
-
-                  {/* Auto-sync */}
-                  <div className="flex items-center justify-between rounded-2xl border px-3.5 py-3" style={{ borderColor: '#C2CBD3' + '40' }}>
-                    <span className="text-[12px] font-medium" style={{ color: '#313851' }}>مزامنة تلقائية</span>
-                    <ToggleSwitch checked={autoSync} onChange={() => { setAutoSync(!autoSync); toast.success(!autoSync ? 'تم تفعيل المزامنة التلقائية' : 'تم تعطيل المزامنة التلقائية'); }} />
-                  </div>
-
-                  {/* Features */}
-                  <div className="space-y-1.5">
-                    <p className="text-[12px] font-medium" style={{ color: '#313851' }}>المميزات</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {CAL_FEATURES.map(({ icon: Icon, label, desc }) => (
-                        <div key={label} className="flex items-start gap-2 rounded-xl p-2.5" style={{ backgroundColor: '#9787F3' + '08' }}>
-                          <Icon className="size-3.5 shrink-0 mt-0.5" style={{ color: '#9787F3' }} />
-                          <div>
-                            <p className="text-[11px] font-medium" style={{ color: '#313851' }}>{label}</p>
-                            <p className="text-[10px]" style={{ color: '#C2CBD3' }}>{desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Note */}
-                  <div className="flex gap-2.5 rounded-2xl p-3" style={{ backgroundColor: '#C2CBD3' + '18' }}>
-                    <AlertCircle className="size-4 shrink-0 mt-0.5" style={{ color: '#C2CBD3' }} />
-                    <p className="text-[11px] leading-relaxed" style={{ color: '#313851' }}>
-                      يتم مزامنة الأحداث مباشرةً عند إنشائها أو تعديلها. إلغاء الربط لن يحذف الأحداث الموجودة في تقويم Google.
-                    </p>
-                  </div>
-
-                  {/* Unlink button */}
-                  <button
-                    onClick={() => { handleUnlink(); setCalendarDialogOpen(false); }}
-                    disabled={isUnlinking}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-                    style={{ borderColor: '#C2CBD3', color: '#313851' }}
-                  >
-                    {isUnlinking ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
-                    إلغاء ربط التقويم
-                  </button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-
-        {/* Not connected features */}
-        {!isLinked && (
-          <div className="border-t px-4 sm:px-5 py-4" style={{ borderColor: '#C2CBD3' + '40' }}>
-            <div className={cn('grid gap-3', collapsed ? 'sm:grid-cols-2' : 'grid-cols-1')}>
-              {CAL_FEATURES.map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-start gap-3 rounded-2xl border p-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: '#9787F3' + '14' }}>
-                    <Icon className="size-4" style={{ color: '#9787F3' }} />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-medium" style={{ color: '#313851' }}>{label}</p>
-                    <p className="text-[11px]" style={{ color: '#C2CBD3' }}>{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Google Analytics ────────────────────────────────── */}
-      <div className="overflow-hidden rounded-[2rem] border" style={{ borderColor: gaSettings?.isConnected ? '#9787F3' : '#C2CBD3' }}>
-        <div className="p-5 sm:p-6">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="relative shrink-0 mt-0.5">
-              <div className="flex size-11 sm:size-13 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' }}>
-                <Image src="/icons/google-analytics.svg" alt="Google Analytics" width={24} height={24} />
-              </div>
-              {gaSettings?.isConnected && (
-                <div className="absolute -bottom-1 -left-1 flex size-[16px] sm:size-[18px] items-center justify-center rounded-full ring-2 ring-white" style={{ backgroundColor: '#9787F3' }}>
-                  <CheckCircle2 className="size-2 sm:size-2.5 text-white" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-[14px] sm:text-[15px] font-semibold leading-tight" style={{ color: '#313851' }}>Google Analytics</h3>
-                {gaSettings?.isConnected && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-medium text-white shrink-0" style={{ backgroundColor: '#9787F3' }}>
-                    <span className="size-1.5 rounded-full bg-white/60 animate-pulse" />
-                    مرتبط
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] sm:text-[12px] line-clamp-2" style={{ color: '#C2CBD3' }}>
-                {gaSettings?.isConnected
-                  ? `تتبع الزيارات — ${gaSettings.googleAnalyticsId}`
-                  : 'تتبع زيارات المتجر وسلوك العملاء عبر GA4'
-                }
-              </p>
-            </div>
-          </div>
-
-          {gaLoading ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="size-4 animate-spin" style={{ color: '#C2CBD3' }} />
-            </div>
-          ) : gaSettings?.isConnected ? (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setGaDialogOpen(true)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
-                style={{ backgroundColor: '#9787F3' }}
-              >
-                <BarChart3 className="size-3" />
-                التفاصيل
-              </button>
-              <button
-                onClick={handleDisconnectGA}
-                disabled={gaDisconnecting}
-                className="flex items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-                style={{ borderColor: '#C2CBD3', color: '#313851' }}
-              >
-                {gaDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setGaDialogOpen(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: '#9787F3' }}
-            >
-              <Link2 className="size-3" />
-              ربط Analytics
-            </button>
-          )}
-        </div>
-
-        {/* Connected: tracked events summary */}
-        {gaSettings?.isConnected && (
-          <div className="flex items-center gap-1.5 flex-wrap border-t px-5 sm:px-6 py-3.5" style={{ borderColor: '#C2CBD3' + '40' }}>
+          {/* Features */}
+          <div className="flex items-center gap-1.5 flex-wrap px-1">
             {[
-              { icon: Eye, label: 'مشاهدات الصفحات' },
-              { icon: ShoppingCart, label: 'التجارة الإلكترونية' },
-              { icon: MousePointerClick, label: 'أحداث مخصصة' },
+              { icon: ImageIcon, label: 'صور المنتجات' },
+              { icon: HardDrive, label: 'ملفات آمنة' },
+              { icon: CalendarDays, label: 'صور الأحداث' },
             ].map(({ label, icon: Icon }) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium"
-                style={{ backgroundColor: '#9787F3' + '12', color: '#9787F3' }}
-              >
+              <span key={label} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">
                 <Icon className="size-3" />
                 {label}
               </span>
             ))}
           </div>
-        )}
 
-        {/* Not connected: features preview */}
-        {!gaSettings?.isConnected && !gaLoading && (
-          <div className="border-t px-5 sm:px-6 py-4" style={{ borderColor: '#C2CBD3' + '40' }}>
-            <div className="space-y-2">
-              {[
-                { icon: Eye, label: 'تتبع مشاهدات الصفحات', desc: 'معرفة أكثر الصفحات زيارة في متجرك' },
-                { icon: ShoppingCart, label: 'تتبع التجارة الإلكترونية', desc: 'تتبع المبيعات والمنتجات وسلة المشتريات' },
-                { icon: TrendingUp, label: 'تحليلات الأداء', desc: 'بيانات حية عن سلوك الزوار والتحويلات' },
-              ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-start gap-2.5 rounded-xl p-2.5" style={{ backgroundColor: '#9787F3' + '08' }}>
-                  <Icon className="size-3.5 shrink-0 mt-0.5" style={{ color: '#9787F3' }} />
-                  <div>
-                    <p className="text-[11px] font-medium" style={{ color: '#313851' }}>{label}</p>
-                    <p className="text-[10px]" style={{ color: '#C2CBD3' }}>{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+          {/* Action */}
+          <button onClick={handleOpenStorageDialog} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            <BarChart3 className="size-3.5" />
+            تفاصيل الاستخدام
+          </button>
 
-      {/* Google Analytics Dialog */}
-      <Dialog open={gaDialogOpen} onOpenChange={setGaDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2" style={{ color: '#313851' }}>
-              <Image src="/icons/google-analytics.svg" alt="Google Analytics" width={18} height={18} />
-              {gaSettings?.isConnected ? 'تفاصيل Google Analytics' : 'ربط Google Analytics'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Measurement ID input */}
-            <div className="space-y-1.5">
-              <p className="text-[12px] font-medium" style={{ color: '#313851' }}>معرّف القياس (Measurement ID)</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={gaMeasurementId}
-                  onChange={(e) => setGaMeasurementId(e.target.value.toUpperCase())}
-                  placeholder="G-XXXXXXXXXX"
-                  dir="ltr"
-                  disabled={gaSettings?.isConnected}
-                  className="flex-1 rounded-xl border px-3 py-2.5 text-[12px] outline-none transition-colors focus:ring-2 disabled:opacity-60"
-                  style={{
-                    borderColor: '#C2CBD3' + '50',
-                    color: '#313851',
-                    // @ts-expect-error -- CSS custom focus ring
-                    '--tw-ring-color': '#9787F3' + '40',
-                  }}
-                />
-              </div>
-              <p className="text-[10px]" style={{ color: '#C2CBD3' }}>
-                تجده في Google Analytics → الإدارة → مصادر البيانات → تفاصيل البث
+          {/* Upgrade hint */}
+          {storagePct > 70 && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 px-4 py-3">
+              <Crown className="size-3.5 shrink-0 text-amber-500" />
+              <p className="text-[11px] text-muted-foreground">
+                {storagePct > 85 ? 'المساحة على وشك الامتلاء — ترقية الباقة قريباً' : 'تجاوزت 70% — يمكنك شراء وحدات إضافية قريباً'}
               </p>
             </div>
+          )}
+        </div>
+      </div>
 
-            {gaSettings?.isConnected ? (
-              <>
-                {/* Tracked events */}
-                <div className="space-y-1.5">
-                  <p className="text-[12px] font-medium" style={{ color: '#313851' }}>الأحداث المتتبعة</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { icon: Eye, label: 'مشاهدات الصفحات', desc: 'تتبع تلقائي لكل صفحة' },
-                      { icon: ShoppingCart, label: 'التجارة الإلكترونية', desc: 'مبيعات، سلة، شراء' },
-                      { icon: MousePointerClick, label: 'أحداث مخصصة', desc: 'نماذج، بحث، تسجيل' },
-                      { icon: TrendingUp, label: 'التحويلات', desc: 'تتبع أهداف الأعمال' },
-                    ].map(({ icon: Icon, label, desc }) => (
-                      <div key={label} className="flex items-start gap-2 rounded-xl p-2.5" style={{ backgroundColor: '#9787F3' + '08' }}>
-                        <Icon className="size-3.5 shrink-0 mt-0.5" style={{ color: '#9787F3' }} />
-                        <div>
-                          <p className="text-[11px] font-medium" style={{ color: '#313851' }}>{label}</p>
-                          <p className="text-[10px]" style={{ color: '#C2CBD3' }}>{desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+      {/* ── التكاملات ──────────────────────────────────────── */}
+      <div className="rounded-2xl bg-muted/30 p-4 sm:p-6 transition-all duration-300">
+        <div className="mb-4 sm:mb-5">
+          <h2 className="text-sm font-semibold text-foreground">التكاملات</h2>
+          <p className="mt-1 text-xs text-muted-foreground">ربط ركني مع خدمات خارجية لمزامنة الأحداث والمواعيد</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          {/* ── Instagram ────────────────────────────── */}
+          <div className="rounded-xl bg-background/50 px-3 sm:px-4 py-3 sm:py-4 transition-all duration-300 space-y-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Image src="/icons/instagram.svg" alt="Instagram" width={20} height={20} />
                 </div>
-
-                {/* Note */}
-                <div className="flex gap-2.5 rounded-2xl p-3" style={{ backgroundColor: '#C2CBD3' + '18' }}>
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" style={{ color: '#C2CBD3' }} />
-                  <p className="text-[11px] leading-relaxed" style={{ color: '#313851' }}>
-                    البيانات تُرسل مباشرةً إلى حسابك في Google Analytics. يمكنك مراجعة التقارير من لوحة تحكم GA4. إلغاء الربط لن يحذف البيانات المسجلة سابقاً.
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">إنستغرام</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {igConnected ? `@${igConnection?.username ?? ''}` : 'عرض شبكة منشوراتك على صفحتك'}
                   </p>
                 </div>
+              </div>
+              {igConnected ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-600 shrink-0">
+                  <CheckCircle2 className="size-3" />
+                  مرتبط
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground shrink-0">غير مرتبط</span>
+              )}
+            </div>
 
-                {/* Disconnect */}
-                <button
-                  onClick={handleDisconnectGA}
-                  disabled={gaDisconnecting}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-full border py-2.5 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
-                  style={{ borderColor: '#C2CBD3', color: '#313851' }}
-                >
-                  {gaDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3" />}
-                  إلغاء ربط Analytics
-                </button>
-              </>
-            ) : (
-              <>
-                {/* How it works */}
-                <div className="space-y-1.5">
-                  <p className="text-[12px] font-medium" style={{ color: '#313851' }}>كيف يعمل؟</p>
-                  <div className="space-y-2">
-                    {[
-                      { step: '1', text: 'أنشئ حساب Google Analytics 4 مجاني' },
-                      { step: '2', text: 'أنشئ مصدر بيانات (Data Stream) لموقعك' },
-                      { step: '3', text: 'انسخ معرّف القياس (G-XXXXXXXXXX) والصقه هنا' },
-                    ].map(({ step, text }) => (
-                      <div key={step} className="flex items-center gap-2.5">
-                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#9787F3' }}>
-                          {step}
-                        </div>
-                        <p className="text-[11px]" style={{ color: '#313851' }}>{text}</p>
-                      </div>
-                    ))}
-                  </div>
+            {/* Connected profile */}
+            {igConnected && igConnection?.profilePicUrl && (
+              <div className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5">
+                <Image src={igConnection.profilePicUrl} alt={igConnection.username || ''} width={36} height={36} className="rounded-full border border-border object-cover" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-foreground truncate">{igConnection.name || igConnection.username}</p>
+                  {typeof igConnection.followersCount === 'number' && (
+                    <p className="text-[10px] font-medium text-primary">{igConnection.followersCount.toLocaleString('en-US')} متابع</p>
+                  )}
                 </div>
+              </div>
+            )}
 
-                {/* Connect button */}
-                <button
-                  onClick={handleConnectGA}
-                  disabled={gaSaving || !gaMeasurementId.trim()}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: '#9787F3' }}
-                >
-                  {gaSaving ? <Loader2 className="size-3 animate-spin" /> : <Link2 className="size-3" />}
-                  ربط Google Analytics
+            {/* Feature tags */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {IG_FEATURES.map(({ label, icon: Icon }) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
+                  <Icon className="size-3" />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Actions */}
+            {igLoading ? (
+              <div className="flex items-center justify-center py-1"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
+            ) : igConnected ? (
+              <div className="flex gap-2">
+                <button onClick={handleReconnectInstagram} disabled={igDisconnecting} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                  {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  إعادة الربط
                 </button>
-              </>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button onClick={handleDisconnectInstagram} disabled={igDisconnecting} className="flex items-center justify-center rounded-xl border border-border/30 bg-background/50 px-3 py-2.5 text-xs text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50">
+                      {igDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>إلغاء الربط</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              <button onClick={handleConnectInstagram} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <GitMerge className="size-3.5" />
+                ربط إنستغرام
+              </button>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
 
-      </div>{/* end grid */}
+          {/* ── YouTube ──────────────────────────────── */}
+          <div className="rounded-xl bg-background/50 px-3 sm:px-4 py-3 sm:py-4 transition-all duration-300 space-y-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Image src="/icons/youtube.svg" alt="YouTube" width={20} height={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">YouTube</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {ytConnected ? ytConnection?.channelTitle ?? '' : 'عرض فيديوهاتك الأخيرة أو تضمين فيديو محدد'}
+                  </p>
+                </div>
+              </div>
+              {ytConnected ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-600 shrink-0">
+                  <CheckCircle2 className="size-3" />
+                  مرتبط
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground shrink-0">غير مرتبط</span>
+              )}
+            </div>
 
-      {/* ── Coming Soon ─────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold" style={{ color: '#313851' }}>تكاملات قادمة</h2>
-          <div className="h-px flex-1" style={{ backgroundColor: '#C2CBD3' + '40' }} />
+            {/* Connected channel */}
+            {ytConnected && ytConnection && (
+              <div className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5">
+                {ytConnection.channelThumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ytConnection.channelThumbnail} alt={ytConnection.channelTitle || ''} width={36} height={36} className="rounded-full border border-border object-cover size-9" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="flex size-9 items-center justify-center rounded-full bg-primary"><Tv className="size-4 text-primary-foreground" /></div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-foreground truncate">{ytConnection.channelTitle}</p>
+                  {typeof ytConnection.subscriberCount === 'number' && (
+                    <p className="text-[10px] font-medium text-primary">{ytConnection.subscriberCount.toLocaleString('en-US')} مشترك</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Feature tags */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {YT_FEATURES.map(({ label, icon: Icon }) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
+                  <Icon className="size-3" />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Actions */}
+            {ytLoading ? (
+              <div className="flex items-center justify-center py-1"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
+            ) : ytConnected ? (
+              <div className="flex gap-2">
+                <button onClick={handleReconnectYouTube} disabled={ytDisconnecting} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                  {ytDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  إعادة الربط
+                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button onClick={handleDisconnectYouTube} disabled={ytDisconnecting} className="flex items-center justify-center rounded-xl border border-border/30 bg-background/50 px-3 py-2.5 text-xs text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50">
+                      {ytDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>إلغاء الربط</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              <button onClick={handleConnectYouTube} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <GitMerge className="size-3.5" />
+                ربط YouTube
+              </button>
+            )}
+          </div>
+
+          {/* ── Google Calendar ───────────────────────── */}
+          <div className="rounded-xl bg-background/50 px-3 sm:px-4 py-3 sm:py-4 transition-all duration-300 space-y-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Image src="/icons/google-calendar.svg" alt="Google Calendar" width={20} height={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">تقويم Google</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isLinked ? 'مرتبطة ويتم مزامنتها تلقائياً' : 'مزامنة الأحداث تلقائياً مع تقويم Google'}
+                  </p>
+                  {isLinked && lastSync && (
+                    <p className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                      <Clock className="size-2.5" />
+                      آخر مزامنة: {formatSyncTime(lastSync)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {isLinked ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-600 shrink-0">
+                  <CheckCircle2 className="size-3" />
+                  مرتبط
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground shrink-0">غير مرتبط</span>
+              )}
+            </div>
+
+            {/* Feature tags */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {CAL_FEATURES.map(({ label, icon: Icon }) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
+                  <Icon className="size-3" />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Actions */}
+            {isLinked ? (
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setCalendarDialogOpen(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                  <BarChart3 className="size-3.5" />
+                  عرض التفاصيل
+                </button>
+                <button onClick={handleUnlink} disabled={isUnlinking} className="flex items-center justify-center rounded-xl border border-border/30 bg-background/50 px-3 py-2.5 text-xs text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50">
+                  {isUnlinking ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3.5" />}
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleConnect} disabled={isConnecting} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                {isConnecting ? <Loader2 className="size-3 animate-spin" /> : <GitMerge className="size-3.5" />}
+                ربط التقويم
+              </button>
+            )}
+          </div>
+
+          {/* ── Google Analytics ──────────────────────── */}
+          <div className="rounded-xl bg-background/50 px-3 sm:px-4 py-3 sm:py-4 transition-all duration-300 space-y-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Image src="/icons/google-analytics.svg" alt="Google Analytics" width={20} height={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">Google Analytics</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {gaSettings?.isConnected ? `تتبع الزيارات — ${gaSettings.googleAnalyticsId}` : 'تتبع زيارات المتجر وسلوك العملاء عبر GA4'}
+                  </p>
+                </div>
+              </div>
+              {gaSettings?.isConnected ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-600 shrink-0">
+                  <CheckCircle2 className="size-3" />
+                  مرتبط
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-muted/50 px-2.5 py-1 text-[10px] font-medium text-muted-foreground shrink-0">غير مرتبط</span>
+              )}
+            </div>
+
+            {/* Feature tags */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { icon: Eye, label: 'مشاهدات الصفحات' },
+                { icon: ShoppingCart, label: 'التجارة الإلكترونية' },
+                { icon: MousePointerClick, label: 'أحداث مخصصة' },
+              ].map(({ label, icon: Icon }) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
+                  <Icon className="size-3" />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Actions */}
+            {gaLoading ? (
+              <div className="flex items-center justify-center py-1"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
+            ) : gaSettings?.isConnected ? (
+              <div className="flex gap-2">
+                <button onClick={() => setGaDialogOpen(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                  <BarChart3 className="size-3.5" />
+                  التفاصيل
+                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button onClick={handleDisconnectGA} disabled={gaDisconnecting} className="flex items-center justify-center rounded-xl border border-border/30 bg-background/50 px-3 py-2.5 text-xs text-foreground transition-colors hover:bg-muted/50 disabled:opacity-50">
+                      {gaDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3.5" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>إلغاء الربط</TooltipContent>
+                </Tooltip>
+              </div>
+            ) : (
+              <button onClick={() => setGaDialogOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <Link2 className="size-3.5" />
+                ربط Analytics
+              </button>
+            )}
+          </div>
+
         </div>
-        <div className={cn('grid gap-3', collapsed ? 'sm:grid-cols-2' : 'grid-cols-1')}>
+
+        {/* Google Analytics Dialog */}
+        <Dialog open={gaDialogOpen} onOpenChange={setGaDialogOpen}>
+            <DialogContent className="max-w-[95vw] sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-foreground">
+                  <Image src="/icons/google-analytics.svg" alt="Google Analytics" width={18} height={18} />
+                  {gaSettings?.isConnected ? 'تفاصيل Google Analytics' : 'ربط Google Analytics'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-[12px] font-medium text-foreground">معرّف القياس (Measurement ID)</p>
+                  <input type="text" value={gaMeasurementId} onChange={(e) => setGaMeasurementId(e.target.value.toUpperCase())} placeholder="G-XXXXXXXXXX" dir="ltr" disabled={gaSettings?.isConnected} className="w-full rounded-xl bg-background/50 border border-border/30 px-3 py-2.5 text-[12px] text-foreground outline-none transition-colors focus:ring-2 focus:ring-primary/20 disabled:opacity-60" />
+                  <p className="text-[10px] text-muted-foreground">تجده في Google Analytics → الإدارة → مصادر البيانات → تفاصيل البث</p>
+                </div>
+                {gaSettings?.isConnected ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-[12px] font-medium text-foreground">الأحداث المتتبعة</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[
+                          { icon: Eye, label: 'مشاهدات الصفحات', desc: 'تتبع تلقائي لكل صفحة' },
+                          { icon: ShoppingCart, label: 'التجارة الإلكترونية', desc: 'مبيعات، سلة، شراء' },
+                          { icon: MousePointerClick, label: 'أحداث مخصصة', desc: 'نماذج، بحث، تسجيل' },
+                          { icon: TrendingUp, label: 'التحويلات', desc: 'تتبع أهداف الأعمال' },
+                        ].map(({ icon: Icon, label, desc }) => (
+                          <div key={label} className="flex items-start gap-2 rounded-xl bg-muted/30 p-2.5">
+                            <Icon className="size-3.5 shrink-0 mt-0.5 text-primary" />
+                            <div>
+                              <p className="text-[11px] font-medium text-foreground">{label}</p>
+                              <p className="text-[10px] text-muted-foreground">{desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 p-3">
+                      <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                      <p className="text-[11px] leading-relaxed text-foreground">البيانات تُرسل مباشرةً إلى حسابك في Google Analytics. إلغاء الربط لن يحذف البيانات المسجلة سابقاً.</p>
+                    </div>
+                    <button onClick={handleDisconnectGA} disabled={gaDisconnecting} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 py-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50">
+                      {gaDisconnecting ? <Loader2 className="size-3 animate-spin" /> : <Unlink className="size-3.5" />}
+                      إلغاء ربط Analytics
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-[12px] font-medium text-foreground">كيف يعمل؟</p>
+                      <div className="space-y-2">
+                        {[
+                          { step: '1', text: 'أنشئ حساب Google Analytics 4 مجاني' },
+                          { step: '2', text: 'أنشئ مصدر بيانات (Data Stream) لموقعك' },
+                          { step: '3', text: 'انسخ معرّف القياس (G-XXXXXXXXXX) والصقه هنا' },
+                        ].map(({ step, text }) => (
+                          <div key={step} className="flex items-center gap-2.5">
+                            <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-primary-foreground bg-primary">{step}</div>
+                            <p className="text-[11px] text-foreground">{text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <button onClick={handleConnectGA} disabled={gaSaving || !gaMeasurementId.trim()} className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                      {gaSaving ? <Loader2 className="size-3 animate-spin" /> : <Link2 className="size-3.5" />}
+                      ربط Google Analytics
+                    </button>
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+      </div>
+
+      {/* ── تكاملات قادمة ──────────────────────────────────── */}
+      <div className="rounded-2xl bg-muted/30 p-4 sm:p-6 transition-all duration-300">
+        <div className="mb-4 sm:mb-5">
+          <h2 className="text-sm font-semibold text-foreground">تكاملات قادمة</h2>
+          <p className="mt-1 text-xs text-muted-foreground">تكاملات جديدة سيتم دعمها قريباً</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {COMING_SOON.map((item) => (
-            <div key={item.label} className="relative flex items-center gap-3.5 rounded-[2rem] border p-4 opacity-60" style={{ borderColor: '#C2CBD3' + '50' }}>
-              <span className="absolute top-3 left-3 inline-flex rounded-full px-2 py-0.5 text-[9px] font-medium" style={{ backgroundColor: '#C2CBD3' + '25', color: '#C2CBD3' }}>قريباً</span>
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border" style={{ borderColor: '#C2CBD3' + '40' }}>
-                <Image src={item.icon} alt={item.label} width={24} height={24} />
+            <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-background/50 px-3 sm:px-4 py-2.5 sm:py-3 transition-all duration-300">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/50">
+                  <Image src={item.icon} alt={item.label} width={20} height={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-foreground">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2">{item.desc}</p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium" style={{ color: '#313851' }}>{item.label}</p>
-                <p className="text-[11px] mt-0.5" style={{ color: '#C2CBD3' }}>{item.desc}</p>
-              </div>
+              <span className="inline-flex rounded-full bg-amber-500/20 px-2.5 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 shrink-0">قريباً</span>
             </div>
           ))}
         </div>

@@ -33,6 +33,27 @@ export default function LinksPage() {
     }
   }, [searchParams, showToast]);
 
+  // Handle LinkedIn OAuth callback
+  useEffect(() => {
+    const liStatus = searchParams.get('linkedin');
+
+    if (liStatus === 'success') {
+      showToast({
+        title: 'تم ربط لينكدإن',
+        message: 'تم ربط حساب لينكدإن بنجاح',
+        variant: 'success',
+      });
+      window.history.replaceState({}, '', '/app/links');
+    } else if (liStatus === 'error') {
+      showToast({
+        title: 'خطأ في ربط لينكدإن',
+        message: 'فشل ربط حساب لينكدإن. حاول مرة أخرى.',
+        variant: 'error',
+      });
+      window.history.replaceState({}, '', '/app/links');
+    }
+  }, [searchParams, showToast]);
+
   return (
     <div className="space-y-6">
       <ProfileHeader />

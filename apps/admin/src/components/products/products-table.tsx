@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 import { ProductStatusBadge } from "./product-status-badge";
 
 interface ProductItem {
@@ -76,10 +77,6 @@ function timeAgo(dateStr: string): string {
   if (days < 30) return `${days}d ago`;
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
-}
-
-function formatCurrency(amount: number, currency = "IQD"): string {
-  return `${amount.toLocaleString("en-US")} ${currency}`;
 }
 
 export function ProductsTable({

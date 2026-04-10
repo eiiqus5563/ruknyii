@@ -138,6 +138,14 @@ export class CreateProductDto {
   trackInventory?: boolean;
 
   @ApiPropertyOptional({
+    description: 'هل المنتج رقمي (كتاب، ملف، دورة)',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isDigital?: boolean;
+
+  @ApiPropertyOptional({
     description: 'متغيرات المنتج (المقاسات، الألوان)',
     type: [CreateProductVariantDto],
     example: [

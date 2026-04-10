@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import "./globals.css";
@@ -21,9 +21,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "Rukny.io | ركني",
-  description: "منصة ركني - إدارة الملف الشخصي والمتاجر والفعاليات",
+  title: "Rukny | ركني",
+  description: "منصة ركني - إدارة الملف الشخصي والمتاجر ",
   icons: {
     icon: "/icon.svg",
   },

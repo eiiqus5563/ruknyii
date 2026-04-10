@@ -83,7 +83,7 @@ export default function StoreMarketingPage() {
                   <div>
                     <h3 className="font-medium">{campaign.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      ينتهي: {new Date(campaign.endDate).toLocaleDateString('ar-IQ')}
+                      ينتهي: {new Date(campaign.endDate).toLocaleDateString('en-US')}
                     </p>
                   </div>
                 </div>

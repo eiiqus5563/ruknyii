@@ -5,6 +5,7 @@ import { PrismaService } from '../../core/database/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { UAParser } from 'ua-parser-js';
 import { updateSessionActivityThrottled } from './utils/session-activity.util';
+import { SessionFingerprintService } from '../../infrastructure/security/session-fingerprint.service';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -45,9 +46,9 @@ export interface SessionInfo {
 export class TokenService {
   // 🔒 إعدادات الأمان
   private readonly ACCESS_TOKEN_EXPIRY = '30m'; // 30 دقيقة
-  private readonly REFRESH_TOKEN_EXPIRY_DAYS = 14; // 14 يوم - ✅ موحد مع AuthService
+  private readonly REFRESH_TOKEN_EXPIRY_DAYS = 7; // 7 أيام - تقليل من 14 يوم لتقليل نافذة الهجوم
   private readonly MAX_ROTATION_COUNT = 100; // الحد الأقصى للتدوير قبل إجبار إعادة تسجيل الدخول
-  private readonly GRACE_PERIOD_MS = 30000; // 30 ثانية سماح لاستخدام token قديم (race condition)
+  private readonly GRACE_PERIOD_MS = 5000; // 5 ثواني سماح لاستخدام token قديم (race condition) - تقليل من 30 ثانية
   /** تقييد عدد الجلسات النشطة لكل مستخدم (أمان بدون تعقيد كبير) */
   private readonly MAX_ACTIVE_SESSIONS =
     this.configService.get<number>('MAX_ACTIVE_SESSIONS') ?? 5;
@@ -56,6 +57,7 @@ export class TokenService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private prisma: PrismaService,
+    private sessionFingerprintService: SessionFingerprintService,
   ) {}
 
   /**
@@ -371,6 +373,17 @@ export class TokenService {
       throw new UnauthorizedException(
         'تجاوزت الجلسة الحد الأقصى للتجديد. يرجى تسجيل الدخول مرة أخرى',
       );
+    }
+
+    // 5.5 🔒 كشف تغيير IP Address - تسجيل تحذير أمني
+    if (ipAddress && session.ipAddress && ipAddress !== session.ipAddress) {
+      await this.logSecurityAlert({
+        type: 'IP_ADDRESS_CHANGED',
+        userId: session.userId,
+        ipAddress,
+        userAgent,
+        details: `IP changed from ${session.ipAddress} to ${ipAddress} during token refresh`,
+      });
     }
 
     if (!isProduction) {

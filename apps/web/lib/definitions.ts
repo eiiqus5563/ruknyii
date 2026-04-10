@@ -9,6 +9,7 @@ export interface AuthUser {
   name?: string;
   username?: string;
   avatar?: string;
+  phone?: string;
   profileCompleted?: boolean;
 }
 

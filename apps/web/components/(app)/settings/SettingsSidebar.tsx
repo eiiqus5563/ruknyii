@@ -9,6 +9,7 @@ import {
   Shield,
   ShieldCheck,
   Smartphone,
+  CreditCard,
   History,
   GitMerge,
   Bell,
@@ -221,6 +222,21 @@ function SettingsSidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           >
             <GitMerge className={cn('size-4', isItemActive('/app/settings/integrations') ? 'text-primary' : 'text-muted-foreground')} />
             <span>التكاملات</span>
+          </Link>
+
+          {/* Direct Billing Link */}
+          <Link
+            href="/app/settings/billing"
+            onClick={onItemClick}
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors',
+              isItemActive('/app/settings/billing')
+                ? 'bg-primary/5 font-semibold text-foreground'
+                : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground'
+            )}
+          >
+            <CreditCard className={cn('size-4', isItemActive('/app/settings/billing') ? 'text-primary' : 'text-muted-foreground')} />
+            <span>الاشتراك والباقة</span>
           </Link>
 
           {settingsSections.map((section) => {

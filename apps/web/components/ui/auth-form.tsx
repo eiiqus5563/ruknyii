@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -46,111 +46,107 @@ export default function AuthForm({
   const isLogin = type === 'login';
 
   return (
-    <form
-      onSubmit={onSubmit}
-      dir="rtl"
-      className="w-full max-w-[400px] mx-auto px-6 py-10"
-      style={{ fontFamily: '"IBM Plex Sans Arabic", sans-serif' }}
-    >
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-[26px] font-bold text-zinc-900 dark:text-white leading-tight">
-          {isLogin ? 'تسجيل الدخول إلى ركني' : 'إنشاء حساب جديد'}
-        </h1>
-      </div>
+    <div className="w-full" dir="rtl">
+      {/* Title */}
+      <h1 className="text-center text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-2 leading-tight">
+        {isLogin ? 'تسجيل الدخول إلى ركني' : 'إنشاء حساب جديد'}
+      </h1>
+      <p className="text-center text-[13px] text-zinc-500 dark:text-zinc-400 mb-6">
+        {isLogin
+          ? 'أدخل بريدك الإلكتروني للمتابعة'
+          : 'أنشئ حسابك للبدء'}
+      </p>
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-red-600 dark:text-red-400 text-sm text-center">
+        <div className="mb-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-red-600 dark:text-red-400 text-sm text-center">
           {error}
         </div>
       )}
 
-      {/* Email Field */}
-      <div className="mb-6">
-        <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2.5">
-          البريد الإلكتروني
-        </label>
-        <div className="relative">
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-            <Mail className="w-5 h-5 text-zinc-400" />
-          </span>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            className="w-full h-[52px] pr-12 pl-4 text-[15px] border border-zinc-300 dark:border-zinc-600 rounded-2xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-            placeholder="example@email.com"
-            required
-            disabled={isLoading}
-            dir="ltr"
-          />
+      <form onSubmit={onSubmit} className="space-y-3">
+        {/* Email Field */}
+        <div>
+          <div className="relative">
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              className="w-full h-[48px] px-4 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-full bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400/20 transition-all text-center"
+              placeholder="البريد الإلكتروني"
+              required
+              disabled={isLoading}
+              dir="ltr"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="flex items-center justify-center gap-2 h-[52px] w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-[15px] rounded-2xl font-medium transition-all"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>جاري الإرسال...</span>
-          </>
-        ) : (
-          <>
-            <span>المتابعة بالبريد الإلكتروني</span>
-            <ArrowLeft className="w-5 h-5" />
-          </>
-        )}
-      </button>
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="flex items-center justify-center gap-2 h-[48px] w-full bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 active:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-zinc-900 text-[14px] rounded-full font-semibold transition-all"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>جاري الإرسال...</span>
+            </>
+          ) : (
+            <span>المتابعة</span>
+          )}
+        </button>
+      </form>
 
       {/* Divider */}
       <div className="flex items-center gap-4 my-6">
         <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
         <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium whitespace-nowrap">
-          أو المتابعة عبر
+          أو
         </span>
         <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
       </div>
 
       {/* Social Login Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={onGoogleLogin}
-          className="flex items-center justify-center gap-2.5 h-[48px] rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
-          aria-label="تسجيل الدخول بحساب Google"
-        >
-          <GoogleIcon />
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Google</span>
-        </button>
+      <div className="space-y-3">
+        {onGoogleLogin && (
+          <button
+            type="button"
+            onClick={onGoogleLogin}
+            className="flex items-center justify-center gap-3 h-[48px] w-full rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 transition-all"
+            aria-label="تسجيل الدخول بحساب Google"
+          >
+            <GoogleIcon />
+            <span className="text-[14px] font-medium text-zinc-700 dark:text-zinc-200">المتابعة مع Google</span>
+          </button>
+        )}
 
-        <button
-          type="button"
-          onClick={onLinkedInLogin}
-          className="flex items-center justify-center gap-2.5 h-[48px] rounded-2xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 dark:active:bg-zinc-600 transition-all"
-          aria-label="تسجيل الدخول بحساب LinkedIn"
-        >
-          <LinkedInIcon />
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">LinkedIn</span>
-        </button>
+        {onLinkedInLogin && (
+          <button
+            type="button"
+            onClick={onLinkedInLogin}
+            className="flex items-center justify-center gap-3 h-[48px] w-full rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 transition-all"
+            aria-label="تسجيل الدخول بحساب LinkedIn"
+          >
+            <LinkedInIcon />
+            <span className="text-[14px] font-medium text-zinc-700 dark:text-zinc-200">المتابعة مع LinkedIn</span>
+          </button>
+        )}
       </div>
 
       {/* Terms */}
-      <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 mt-6 leading-relaxed">
-        بالمتابعة، أنت توافق على{' '}
-        <a href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">
-          شروط الخدمة
-        </a>{' '}
-        و{' '}
-        <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
-          سياسة الخصوصية
-        </a>
-      </p>
-    </form>
+      <div className="mt-8 pt-5 border-t border-zinc-100 dark:border-zinc-800">
+        <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">
+          <a href="/terms" className="text-zinc-500 dark:text-zinc-400 hover:underline">
+            شروط الخدمة
+          </a>
+          <span className="mx-2">|</span>
+          <a href="/privacy" className="text-zinc-500 dark:text-zinc-400 hover:underline">
+            سياسة الخصوصية
+          </a>
+        </p>
+      </div>
+    </div>
   );
 }

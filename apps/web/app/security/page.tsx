@@ -67,8 +67,7 @@ const sections = [
 • ستدخل لحسابك فوراً
 
 **ملاحظات أمنية:**
-• يتم تشفير جميع بيانات تسجيل الدخول
-• نستخدم بروتوكول HTTPS لحماية الاتصال
+• يتم تشفير بيانات تسجيل الدخول أثناء النقل (TLS/HTTPS)
 • كل رابط سحري يعمل مرة واحدة فقط`,
   },
   {
@@ -97,6 +96,25 @@ const sections = [
 • استخدمها إذا فقدت الوصول لتطبيق المصادقة`,
   },
   {
+    id: "verify-identity",
+    title: "التحقق من الهوية عند تسجيل الدخول",
+    icon: Shield,
+    content: `أحياناً قد نطلب منك خطوة إضافية للتحقق من الهوية قبل إكمال تسجيل الدخول، خصوصاً عند:
+• تسجيل الدخول من جهاز/متصفح جديد
+• تكرار محاولات الدخول
+• رصد نشاط غير معتاد على الحساب
+
+**طرق التحقق المتاحة:**
+• تطبيق المصادقة (Authenticator) أو ما يشابهه
+• رمز الاسترداد (Recovery Code)
+• البريد الإلكتروني (العودة لطريقة الرابط السحري)
+
+**ملاحظات مهمة:**
+• لا تشارك رموز التحقق أو رموز الاسترداد مع أي شخص
+• استخدم خيار البريد الإلكتروني إذا لم يكن لديك وصول لتطبيق المصادقة
+• إذا واجهت مشكلة في التحقق، تواصل معنا عبر security@rukny.io`,
+  },
+  {
     id: "protection",
     title: "حماية حسابك",
     icon: ShieldCheck,
@@ -111,6 +129,7 @@ const sections = [
 **الأجهزة:**
 • سجّل الخروج من الأجهزة غير المستخدمة
 • راجع الأجهزة المتصلة بحسابك من الإعدادات
+• أنهِ الجلسات النشطة عند الاشتباه بأي نشاط غير معتاد
 • لا تنقر على روابط الدخول من أجهزة عامة
 
 **التنبيهات:**
@@ -365,6 +384,7 @@ export default function SecurityPage() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} ركني. جميع الحقوق محفوظة.</p>
             <div className="flex gap-6">
+              <Link href="/" className="hover:text-primary transition-colors">الرئيسية</Link>
               <Link href="/privacy" className="hover:text-primary transition-colors">سياسة الخصوصية</Link>
               <Link href="/terms" className="hover:text-primary transition-colors">شروط الاستخدام</Link>
             </div>

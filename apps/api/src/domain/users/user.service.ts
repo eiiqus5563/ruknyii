@@ -213,7 +213,7 @@ export class UserService {
     await this.notificationsGateway.sendNotification({
       userId,
       type: 'TWO_FACTOR_ENABLED',
-      title: 'تم تفعيل المصادقة الثنائية ✅',
+      title: 'تم تفعيل المصادقة الثنائية',
       message:
         'تم تفعيل المصادقة الثنائية على حسابك بنجاح. حسابك الآن أكثر أماناً!',
     });

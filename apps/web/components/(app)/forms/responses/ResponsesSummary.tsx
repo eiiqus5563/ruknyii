@@ -1,18 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
 import { cn } from '@/lib/utils';
-import { MessageSquareText, Hash, ToggleRight, Star, ListChecks } from 'lucide-react';
+import {
+  MessageSquareText, Hash, ToggleRight, Star, ListChecks,
+  TrendingUp, Clock, BarChart3, Inbox,
+} from 'lucide-react';
 
-const CHART_COLORS = [
-  'hsl(var(--primary))',
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
-  '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316',
-];
+const BAR_COLORS = ['#5a9a56', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
 
 interface ResponsesSummaryProps {
   summary: {
@@ -20,6 +15,7 @@ interface ResponsesSummaryProps {
     fields: FieldSummary[];
   } | null;
   totalSubmissions: number;
+  submissions?: any[];
 }
 
 interface FieldSummary {
@@ -49,169 +45,157 @@ function getFieldIcon(type: string) {
   }
 }
 
-function FieldSummaryCard({ field, index }: { field: FieldSummary; index: number }) {
+function FieldCard({ field, index }: { field: FieldSummary; index: number }) {
   const Icon = getFieldIcon(field.type);
-  const isChoice = ['SELECT', 'RADIO', 'MULTISELECT', 'CHECKBOX'].includes(field.type);
-  const isNumeric = ['RATING', 'SCALE', 'NUMBER'].includes(field.type);
-  const isToggle = field.type === 'TOGGLE';
   const hasDistribution = field.distribution && field.distribution.length > 0;
   const hasText = field.textResponses && field.textResponses.length > 0;
+  const maxCount = hasDistribution ? Math.max(...field.distribution!.map(d => d.count)) : 0;
 
   return (
-    <div className="rounded-2xl bg-muted/30 p-5 sm:p-6">
-      {/* Field header */}
+    <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-5 sm:p-6">
       <div className="flex items-start gap-3 mb-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
           <Icon className="size-4 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-foreground leading-relaxed">{field.label}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{field.label}</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">{field.totalResponses} رد</p>
         </div>
       </div>
 
-      {/* Pie chart for choice fields */}
-      {isChoice && hasDistribution && (
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-full sm:w-1/2 h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={field.distribution}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  innerRadius={35}
-                  paddingAngle={2}
-                  strokeWidth={0}
-                >
-                  {field.distribution!.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid hsl(var(--border) / 0.3)',
-                    background: 'hsl(var(--popover))',
-                    color: 'hsl(var(--popover-foreground))',
-                    fontSize: '12px',
-                    direction: 'rtl',
-                  }}
-                  formatter={(value: any, name: any) => [`${value} رد`, name]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="w-full sm:w-1/2 space-y-2">
-            {field.distribution!.map((item, i) => (
-              <div key={item.name} className="flex items-center gap-2.5">
-                <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
-                />
-                <span className="text-[13px] text-foreground flex-1 truncate">{item.name}</span>
-                <span className="text-[12px] text-muted-foreground font-medium">{item.percentage}%</span>
-                <span className="text-[11px] text-muted-foreground">({item.count})</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bar chart for numeric/rating fields */}
-      {isNumeric && hasDistribution && (
-        <div>
-          {field.average !== undefined && (
-            <div className="flex items-center gap-4 mb-3 text-[13px]">
-              <span className="text-muted-foreground">المتوسط: <strong className="text-foreground">{field.average}</strong></span>
-              <span className="text-muted-foreground">الأدنى: <strong className="text-foreground">{field.min}</strong></span>
-              <span className="text-muted-foreground">الأعلى: <strong className="text-foreground">{field.max}</strong></span>
-            </div>
-          )}
-          <div className="h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={field.distribution} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid hsl(var(--border) / 0.3)',
-                    background: 'hsl(var(--popover))',
-                    color: 'hsl(var(--popover-foreground))',
-                    fontSize: '12px',
-                    direction: 'rtl',
-                  }}
-                  formatter={(value: any) => [`${value} رد`]}
-                />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Toggle: simple horizontal bar */}
-      {isToggle && hasDistribution && (
+      {/* Distribution bars */}
+      {hasDistribution && (
         <div className="space-y-2.5">
           {field.distribution!.map((item, i) => (
-            <div key={item.name} className="space-y-1">
-              <div className="flex items-center justify-between text-[13px]">
-                <span className="text-foreground font-medium">{item.name}</span>
-                <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
+            <div key={item.name}>
+              <div className="flex items-center justify-between text-[13px] mb-1">
+                <span className="text-foreground font-medium truncate flex-1 ml-3">{item.name}</span>
+                <span className="text-[12px] text-muted-foreground tabular-nums shrink-0">
+                  {item.count} ({item.percentage}%)
+                </span>
               </div>
               <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all"
+                  className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${item.percentage}%`,
-                    backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                    width: `${maxCount > 0 ? (item.count / maxCount) * 100 : 0}%`,
+                    backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
                   }}
                 />
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Numeric stats */}
+      {field.average !== undefined && (
+        <div className="flex items-center gap-4 text-[13px] text-muted-foreground mt-1">
+          <span>المتوسط: <strong className="text-foreground">{field.average}</strong></span>
+          <span>الأدنى: <strong className="text-foreground">{field.min}</strong></span>
+          <span>الأعلى: <strong className="text-foreground">{field.max}</strong></span>
         </div>
       )}
 
       {/* Text responses */}
       {hasText && (
-        <div className="space-y-2 max-h-[250px] overflow-y-auto">
-          {field.textResponses!.map((text, i) => (
-            <div key={i} className="rounded-xl bg-background/60 border border-border/20 px-3.5 py-2.5 text-[13px] text-foreground">
+        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+          {field.textResponses!.slice(0, 5).map((text, i) => (
+            <div key={i} className="rounded-xl bg-background/50 px-3.5 py-2.5 text-[13px] text-foreground">
               {text}
             </div>
           ))}
+          {field.textResponses!.length > 5 && (
+            <p className="text-[11px] text-muted-foreground text-center py-1">
+              +{field.textResponses!.length - 5} ردود أخرى
+            </p>
+          )}
         </div>
       )}
 
-      {/* No data */}
       {!hasDistribution && !hasText && (
-        <p className="text-sm text-muted-foreground/60 text-center py-4">لا توجد ردود بعد</p>
+        <p className="text-[12px] text-muted-foreground/50 text-center py-3">لم يجب أحد بعد</p>
       )}
     </div>
   );
 }
 
-export function ResponsesSummary({ summary, totalSubmissions }: ResponsesSummaryProps) {
+export function ResponsesSummary({ summary, totalSubmissions, submissions }: ResponsesSummaryProps) {
+  const stats = useMemo(() => {
+    if (!submissions || submissions.length === 0) return null;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayCount = submissions.filter(s => {
+      const d = new Date(s.completedAt || s.createdAt);
+      return d >= todayStart;
+    }).length;
+
+    const lastSubmission = submissions[0];
+    const lastDate = lastSubmission?.completedAt || lastSubmission?.createdAt;
+
+    const avgTime = submissions
+      .filter(s => s.timeToComplete > 0)
+      .reduce((acc, s, _, arr) => acc + s.timeToComplete / arr.length, 0);
+
+    return { todayCount, lastDate, avgTime: Math.round(avgTime / 60) };
+  }, [submissions]);
+
   if (!summary || totalSubmissions === 0) {
     return (
-      <div className="rounded-2xl bg-muted/30 p-10 text-center">
-        <MessageSquareText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-foreground mb-1">لا توجد ردود بعد</h3>
-        <p className="text-[13px] text-muted-foreground">سيظهر الملخص هنا عند استلام أول رد</p>
+      <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-10 text-center">
+        <div className="flex flex-col items-center">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/50 mb-4">
+            <Inbox className="size-8 text-muted-foreground/30" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground mb-1.5">لا توجد ردود بعد</h3>
+          <p className="text-[13px] text-muted-foreground max-w-xs">
+            شارك رابط النموذج مع جمهورك وسيظهر الملخص هنا عند استلام أول رد
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Quick Stats */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-4 flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#5a9a56]/10">
+              <TrendingUp className="size-4 text-[#5a9a56]" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">ردود اليوم</p>
+              <p className="text-lg font-bold text-foreground">{stats.todayCount}</p>
+            </div>
+          </div>
+          <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-4 flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
+              <Clock className="size-4 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">آخر رد</p>
+              <p className="text-[13px] font-medium text-foreground">
+                {stats.lastDate ? new Date(stats.lastDate).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+              </p>
+            </div>
+          </div>
+          <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-4 flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+              <BarChart3 className="size-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">متوسط الوقت</p>
+              <p className="text-lg font-bold text-foreground">{stats.avgTime > 0 ? `${stats.avgTime} د` : '—'}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {summary.fields.map((field, index) => (
-        <FieldSummaryCard key={field.fieldId} field={field} index={index} />
+        <FieldCard key={field.fieldId} field={field} index={index} />
       ))}
     </div>
   );

@@ -47,6 +47,9 @@ import { AccountUpgradeController } from './account-upgrade.controller';
 import { CheckoutAddressesController } from './checkout-addresses.controller';
 // 🛒 طلبات Checkout
 import { CheckoutOrdersController } from './checkout-orders.controller';
+// 📥 نظام المنتجات الرقمية
+import { DigitalAssetsService } from './digital-assets.service';
+import { DigitalAssetsController, DownloadsController } from './digital-assets.controller';
 import { PrismaModule } from '../../core/database/prisma/prisma.module';
 import { RedisModule } from '../../core/cache/redis.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -54,6 +57,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import S3Service from '../../services/s3.service';
 // Integrations
 import { WhatsappModule } from '../../integrations/whatsapp';
+import { WhatsAppBusinessModule } from '../../integrations/whatsapp-business/whatsapp-business.module';
 import { EmailModule } from '../../integrations/email/email.module';
 
 @Module({
@@ -61,6 +65,7 @@ import { EmailModule } from '../../integrations/email/email.module';
     PrismaModule,
     RedisModule,
     WhatsappModule,
+    WhatsAppBusinessModule,
     EmailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -71,6 +76,9 @@ import { EmailModule } from '../../integrations/email/email.module';
     }),
   ],
   controllers: [
+    // Controllers فئات المنتجات (must register before StoresController to avoid :username route conflict)
+    ProductCategoriesController,
+    PublicProductCategoriesController,
     StoresController,
     ProductsController,
     CartController,
@@ -85,9 +93,6 @@ import { EmailModule } from '../../integrations/email/email.module';
     ProductAttributesController,
     StoreCategoriesTemplateController,
     StoreTemplateController,
-    // Controllers فئات المنتجات
-    ProductCategoriesController,
-    PublicProductCategoriesController,
     // 📱 Controller التحقق عبر واتساب
     CheckoutAuthController,
     // 📦 Controller تتبع الطلبات
@@ -98,6 +103,9 @@ import { EmailModule } from '../../integrations/email/email.module';
     CheckoutAddressesController,
     // 🛒 Controller طلبات Checkout
     CheckoutOrdersController,
+    // 📥 Controller المنتجات الرقمية
+    DigitalAssetsController,
+    DownloadsController,
   ],
   providers: [
     StoresService,
@@ -117,7 +125,9 @@ import { EmailModule } from '../../integrations/email/email.module';
     ProductCategoriesService,
     // 📱 Service التحقق عبر واتساب
     CheckoutAuthService,
-    // 📦 Service تتبع الطلبات
+    // � Service المنتجات الرقمية
+    DigitalAssetsService,
+    // �📦 Service تتبع الطلبات
     OrderTrackingService,
     // 🚀 Service ترقية الحساب
     AccountUpgradeService,

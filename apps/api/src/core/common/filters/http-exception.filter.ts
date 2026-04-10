@@ -35,12 +35,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse =
       exception instanceof HttpException
         ? exception.getResponse()
-        : { message: 'Internal server error' };
+        : { message: 'خطأ داخلي في الخادم' };
 
     const message =
       typeof exceptionResponse === 'string'
         ? exceptionResponse
-        : (exceptionResponse as any)?.message || 'An error occurred';
+        : (exceptionResponse as any)?.message || 'حدث خطأ';
 
     // 🔒 في Production، إرجاع رسائل عامة فقط
     const safeMessage = this.isProduction
@@ -67,15 +67,30 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // تسجيل الخطأ
     // 🔕 401/403 on auth routes are expected for unauthenticated users - skip logging entirely
+    const forwardedFor = request.headers['x-forwarded-for'];
+    const firstForwardedIp =
+      typeof forwardedFor === 'string'
+        ? forwardedFor.split(',')[0]?.trim()
+        : undefined;
+
     const logPayload = {
       statusCode: status,
       path: request.url,
       method: request.method,
       message: Array.isArray(message) ? message.join(', ') : message,
       error: exception instanceof Error ? exception.message : String(exception),
-      stack: exception instanceof Error ? exception.stack : undefined,
+      stack:
+        status === HttpStatus.TOO_MANY_REQUESTS
+          ? undefined
+          : exception instanceof Error
+            ? exception.stack
+            : undefined,
       user: (request as any).user?.id,
-      ip: request.ip || request.socket.remoteAddress,
+      ip:
+        firstForwardedIp ||
+        request.ip ||
+        request.headers['x-real-ip'] ||
+        request.socket.remoteAddress,
       userAgent: request.get('User-Agent'),
     };
 
@@ -84,9 +99,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const isExpectedAuthFailure =
       (status === HttpStatus.UNAUTHORIZED || status === HttpStatus.FORBIDDEN) &&
       isAuthEndpoint;
+    const isExpectedAuthRateLimit =
+      status === HttpStatus.TOO_MANY_REQUESTS && isAuthEndpoint;
 
     if (isExpectedAuthFailure) {
       // Silently skip - these are expected for unauthenticated users
+    } else if (isExpectedAuthRateLimit) {
+      // Auth throttling is expected under burst traffic; keep logs lightweight
+      this.logger.debug(logPayload);
     } else if (
       status === HttpStatus.UNAUTHORIZED ||
       status === HttpStatus.FORBIDDEN
@@ -117,18 +137,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // رسائل عامة للأنواع الأخرى من الأخطاء
     const safeMessages: Record<number, string> = {
-      [HttpStatus.UNAUTHORIZED]: 'Authentication required',
-      [HttpStatus.FORBIDDEN]: 'Access denied',
-      [HttpStatus.NOT_FOUND]: 'Resource not found',
-      [HttpStatus.METHOD_NOT_ALLOWED]: 'Method not allowed',
-      [HttpStatus.CONFLICT]: 'Conflict occurred',
+      [HttpStatus.UNAUTHORIZED]: 'مطلوب تسجيل الدخول',
+      [HttpStatus.FORBIDDEN]: 'تم رفض الوصول',
+      [HttpStatus.NOT_FOUND]: 'المورد غير موجود',
+      [HttpStatus.METHOD_NOT_ALLOWED]: 'الطريقة غير مسموح بها',
+      [HttpStatus.CONFLICT]: 'حدث تعارض',
       [HttpStatus.TOO_MANY_REQUESTS]:
-        'Too many requests, please try again later',
-      [HttpStatus.INTERNAL_SERVER_ERROR]: 'Internal server error',
-      [HttpStatus.BAD_GATEWAY]: 'Bad gateway',
-      [HttpStatus.SERVICE_UNAVAILABLE]: 'Service unavailable',
+        'عدد الطلبات كبير جدًا، يرجى المحاولة لاحقًا',
+      [HttpStatus.INTERNAL_SERVER_ERROR]: 'خطأ داخلي في الخادم',
+      [HttpStatus.BAD_GATEWAY]: 'بوابة غير صالحة',
+      [HttpStatus.SERVICE_UNAVAILABLE]: 'الخدمة غير متاحة',
     };
 
-    return safeMessages[status] || 'An error occurred';
+    return safeMessages[status] || 'حدث خطأ';
   }
 }

@@ -1,18 +1,21 @@
 'use client';
 
-import { useCallback, useState, memo } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   MoreHorizontal,
   Edit2,
   Trash2,
   Eye,
   EyeOff,
+  Image,
   Package,
   ShoppingCart,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatIQD } from '@/lib/currency';
 import { Product, PRODUCT_STATUS_LABELS, PRODUCT_STATUS_CONFIG } from '@/lib/hooks/useStore';
-import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,10 +42,6 @@ interface ProductCardProps {
   onToggleStatus?: (product: Product) => void;
 }
 
-const formatPrice = (price: number): string => {
-  return price.toLocaleString('en-US');
-};
-
 function ProductCardComponent({
   product,
   onEdit,
@@ -51,65 +50,140 @@ function ProductCardComponent({
   onToggleStatus,
 }: ProductCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const rotationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusKey = product.isActive ? 'active' : 'draft';
   const statusConfig = PRODUCT_STATUS_CONFIG[statusKey];
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
-  const mainImage = product.images?.[0];
+  const images = product.images ?? [];
+  const mainImage = images[currentImageIndex] ?? images[0];
+
+  const stopImageRotation = () => {
+    if (rotationIntervalRef.current) {
+      clearInterval(rotationIntervalRef.current);
+      rotationIntervalRef.current = null;
+    }
+  };
+
+  const handleImageHoverStart = () => {
+    if (images.length <= 1) return;
+
+    stopImageRotation();
+    rotationIntervalRef.current = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 1800);
+  };
+
+  const handleImageHoverEnd = () => {
+    stopImageRotation();
+    setCurrentImageIndex(0);
+  };
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [product.id]);
+
+  useEffect(() => {
+    return () => stopImageRotation();
+  }, []);
 
   return (
-    <div
-      className="bg-white rounded-4xl border border-gray-100 p-3 group cursor-pointer hover:shadow-xl hover:shadow-gray-200/60 hover:border-gray-200 transition-all duration-300"
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className="bg-card rounded-2xl border border-border/60 p-3 group cursor-pointer hover:shadow-lg hover:border-border transition-all duration-300 h-full flex flex-col"
       onClick={() => onView?.(product)}
+      onMouseEnter={handleImageHoverStart}
+      onMouseLeave={handleImageHoverEnd}
     >
-      {/* Image Section */}
-      <div className="relative aspect-[4/3] rounded-3xl overflow-hidden mb-3">
+      {/* Image/Icon Section */}
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden mb-3 shrink-0">
         {mainImage ? (
           <>
-            <img
-              src={mainImage}
-              alt={product.name}
-              loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-            />
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={`${product.id}-${currentImageIndex}`}
+                src={mainImage}
+                alt={product.name}
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover"
+                initial={{ opacity: 0, scale: 1.04 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.55, ease: 'easeOut' }}
+              />
+            </AnimatePresence>
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10" />
+
+            {images.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm z-20">
+                {images.map((_, index) => (
+                  <span
+                    key={index}
+                    className={cn(
+                      'block rounded-full transition-all duration-300',
+                      index === currentImageIndex ? 'h-1.5 w-4 bg-white' : 'h-1.5 w-1.5 bg-white/60'
+                    )}
+                  />
+                ))}
+              </div>
+            )}
           </>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white shadow-md shadow-gray-200/50 group-hover:scale-110 transition-transform duration-300">
-              <Package className="w-8 h-8 text-gray-400" />
+          <div className={cn(
+            "absolute inset-0 flex items-center justify-center",
+            "bg-gradient-to-br from-muted/50 via-card to-muted"
+          )}>
+            <div className={cn(
+              "w-16 h-16 rounded-2xl flex items-center justify-center",
+              "bg-card shadow-md",
+              "group-hover:scale-110 transition-transform duration-300"
+            )}>
+              <Package className="w-8 h-8 text-muted-foreground" />
             </div>
           </div>
         )}
 
-        {/* Status Badge */}
+        {/* Status Badge - Top Right */}
         <span className={cn(
-          "absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold backdrop-blur-md shadow-sm",
+          "absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold",
+          "backdrop-blur-md shadow-sm",
           statusConfig.bg,
           statusConfig.color,
         )}>
           {PRODUCT_STATUS_LABELS[statusKey]}
         </span>
 
-        {/* Discount Badge */}
+        {/* Discount Badge - Top Left */}
         {hasDiscount && (
           <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-rose-500/90 backdrop-blur-md text-white shadow-sm">
             خصم
           </span>
         )}
 
-        {/* Stock Badge */}
+        {/* Stock Warning Badge - Bottom Left */}
         {product.stock <= 5 && product.stock > 0 && (
-          <span className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-400/90 backdrop-blur-md text-white shadow-sm">
-            متبقي {product.stock}
+          <span className={cn(
+            "absolute bottom-2.5 left-2.5 w-7 h-7 rounded-lg flex items-center justify-center shadow-sm",
+            "bg-amber-400/90 backdrop-blur-md"
+          )}>
+            <span className="text-[9px] font-bold text-white">{product.stock}</span>
           </span>
         )}
         {product.stock === 0 && (
-          <span className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded-lg text-[10px] font-bold bg-red-500/90 backdrop-blur-md text-white shadow-sm">
-            نفذ المخزون
+          <span className={cn(
+            "absolute bottom-2.5 left-2.5 px-2 py-1 rounded-lg text-[10px] font-bold shadow-sm",
+            "bg-red-500/90 backdrop-blur-md text-white"
+          )}>
+            نفذ
           </span>
         )}
 
-        {/* Actions Menu */}
+        {/* Actions Menu - Bottom Right */}
         <div className="absolute bottom-2.5 right-2.5 z-30">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -117,8 +191,8 @@ function ProductCardComponent({
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
                   "w-7 h-7 rounded-lg flex items-center justify-center",
-                  "bg-white/90 backdrop-blur-sm shadow-sm",
-                  "text-gray-500 hover:text-gray-900 hover:bg-white",
+                  "bg-background/90 backdrop-blur-sm shadow-sm",
+                  "text-muted-foreground hover:text-foreground hover:bg-background",
                   "opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100",
                   "transition-all duration-200"
                 )}
@@ -163,34 +237,60 @@ function ProductCardComponent({
       </div>
 
       {/* Content Section */}
-      <div className="text-right px-1">
-        {/* Name */}
-        <h3 className="font-bold text-gray-900 text-[14px] leading-tight line-clamp-1 mb-1">
-          {product.name}
-        </h3>
+      <div className="text-right px-1 flex flex-col">
+        {/* Name & Price Badge Row */}
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <h3 className="font-bold text-foreground text-[14px] leading-tight line-clamp-1 flex-1 min-w-0">
+            {product.name}
+          </h3>
+          <span className={cn(
+            "px-2 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap border shrink-0",
+            hasDiscount
+              ? "text-rose-500 bg-rose-500/10 border-rose-500/15"
+              : "text-emerald-500 bg-emerald-500/10 border-emerald-500/15"
+          )}>
+            {formatIQD(product.price)}
+          </span>
+        </div>
 
         {/* Description */}
-        <p className="text-[12px] text-gray-400 line-clamp-2 mb-3 leading-relaxed">
+        <p className="text-[12px] text-muted-foreground line-clamp-2 mb-3 leading-relaxed min-h-[2.5rem]">
           {product.description || 'بدون وصف'}
         </p>
 
-        {/* Price Row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-foreground">
-              {formatPrice(product.price)} د.ع
+        {/* Stats Row */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto">
+          {/* Price with discount */}
+          {hasDiscount ? (
+            <span className="flex items-center gap-1 text-rose-500 font-medium">
+              <Tag className="w-3 h-3" />
+              <span className="line-through text-muted-foreground/60">{formatIQD(product.compareAtPrice!)}</span>
             </span>
-            {hasDiscount && (
-              <span className="text-[11px] text-muted-foreground line-through">
-                {formatPrice(product.compareAtPrice!)} د.ع
-              </span>
-            )}
-          </div>
+          ) : (
+            <span className="flex items-center gap-1">
+              <Tag className="w-3 h-3" />
+              {product.category?.name || 'بدون تصنيف'}
+            </span>
+          )}
+
+          <span className="w-px h-3 bg-border" />
 
           {/* Stock */}
-          <span className="flex items-center gap-1 text-[11px] text-gray-400">
+          <span className={cn(
+            "flex items-center gap-1",
+            product.stock <= 5 && product.stock > 0 && "text-amber-500 font-medium",
+            product.stock === 0 && "text-red-500 font-medium"
+          )}>
             <ShoppingCart className="w-3 h-3" />
             {product.stock}
+          </span>
+
+          <span className="w-px h-3 bg-border" />
+
+          {/* Images count */}
+          <span className="flex items-center gap-1">
+            <Image className="w-3 h-3" />
+            {product.images?.length || 0}
           </span>
         </div>
       </div>
@@ -233,23 +333,23 @@ function ProductCardComponent({
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </motion.div>
   );
 }
 
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-4xl border border-gray-100 p-3 animate-pulse">
-      <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl mb-3" />
+    <div className="bg-card rounded-2xl border border-border/60 p-3 animate-pulse">
+      <div className="relative aspect-[4/3] bg-gradient-to-br from-muted/60 to-muted rounded-xl mb-3" />
       <div className="text-right px-1">
-        <div className="h-4 bg-gray-200 rounded-md w-3/4 mb-1.5" />
+        <div className="h-4 bg-muted rounded-md w-3/4 mb-1.5" />
         <div className="space-y-1.5 mb-3">
-          <div className="h-3 bg-gray-100 rounded-md w-full" />
-          <div className="h-3 bg-gray-100 rounded-md w-2/3" />
+          <div className="h-3 bg-muted/60 rounded-md w-full" />
+          <div className="h-3 bg-muted/60 rounded-md w-2/3" />
         </div>
         <div className="flex items-center justify-between">
-          <div className="h-4 w-20 bg-gray-200 rounded-md" />
-          <div className="h-3 w-8 bg-gray-100 rounded-md" />
+          <div className="h-4 w-20 bg-muted rounded-md" />
+          <div className="h-3 w-8 bg-muted/60 rounded-md" />
         </div>
       </div>
     </div>

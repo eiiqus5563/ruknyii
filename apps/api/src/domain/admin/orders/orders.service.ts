@@ -106,6 +106,7 @@ export class OrdersService {
               profile: { select: { name: true, avatar: true } },
             },
           },
+          addresses: { select: { fullName: true } },
           stores: { select: { id: true, name: true, slug: true, logo: true } },
           _count: { select: { order_items: true } },
         },
@@ -130,10 +131,12 @@ export class OrdersService {
           ? {
               id: o.users.id,
               email: o.users.email,
-              name: o.users.profile?.name,
+              name: o.users.profile?.name || (o as any).addresses?.fullName,
               avatar: o.users.profile?.avatar,
             }
-          : null,
+          : (o as any).addresses?.fullName
+            ? { name: (o as any).addresses.fullName }
+            : null,
         store: o.stores
           ? { id: o.stores.id, name: o.stores.name, slug: o.stores.slug, logo: o.stores.logo }
           : null,

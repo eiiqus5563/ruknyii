@@ -28,7 +28,7 @@ export function ResponsesIndividual({ fields, submissions, onDelete }: Responses
 
   if (!submissions.length) {
     return (
-      <div className="rounded-2xl bg-muted/30 p-10 text-center">
+      <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-10 text-center">
         <MessageSquareText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
         <h3 className="text-sm font-medium text-foreground mb-1">لا توجد ردود بعد</h3>
         <p className="text-[13px] text-muted-foreground">ستظهر الردود الفردية هنا عند استلامها</p>
@@ -67,7 +67,7 @@ export function ResponsesIndividual({ fields, submissions, onDelete }: Responses
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString('ar-IQ', {
+      return d.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -82,7 +82,7 @@ export function ResponsesIndividual({ fields, submissions, onDelete }: Responses
   return (
     <div className="space-y-4">
       {/* Navigation bar */}
-      <div className="rounded-2xl bg-muted/30 p-5 sm:p-6">
+      <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-5 sm:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Response selector dropdown */}
@@ -164,7 +164,7 @@ export function ResponsesIndividual({ fields, submissions, onDelete }: Responses
 
       {/* Response content */}
       {currentSubmission && (
-        <div className="rounded-2xl bg-muted/30 p-5 sm:p-6 space-y-0.5 print:shadow-none">
+        <div className="rounded-3xl bg-muted/30 dark:bg-muted/20 p-5 sm:p-6 space-y-0.5 print:shadow-none">
           {/* Response metadata */}
           <div className="flex items-center gap-3 text-[12px] text-muted-foreground mb-5 pb-4 border-b border-border/30">
             {currentSubmission.user && (

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../core/database/prisma/prisma.service';
 import { RedisService } from '../../core/cache/redis.service';
 import { CartService } from './cart.service';
+import S3Service from '../../services/s3.service';
 import {
   CreateOrderFromCartDto,
   CreateDirectOrderDto,
@@ -19,10 +20,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class OrdersService {
+  private readonly bucket = process.env.S3_BUCKET || 'rukny-storage';
+
   constructor(
     private prisma: PrismaService,
     private cartService: CartService,
     private readonly redisService: RedisService,
+    private readonly s3Service: S3Service,
   ) {}
 
   /**
@@ -185,6 +189,18 @@ export class OrdersService {
 
       // Create order items
       for (const item of storeData.items) {
+        // Check if product has variants and try to find the matching one
+        let matchedVariant: any = null;
+        if (item.product.hasVariants) {
+          const activeVariants = await this.prisma.product_variants.findMany({
+            where: { productId: item.productId, isActive: true },
+          });
+          // If only one variant, use it; otherwise we can't determine which was ordered
+          if (activeVariants.length === 1) {
+            matchedVariant = activeVariants[0];
+          }
+        }
+
         await this.prisma.order_items.create({
           data: {
             id: uuidv4(),
@@ -195,16 +211,41 @@ export class OrdersService {
             price: item.product.salePrice || item.product.price,
             quantity: item.quantity,
             subtotal: item.subtotal,
+            ...(matchedVariant
+              ? {
+                  variantId: matchedVariant.id,
+                  variantAttributes: matchedVariant.attributes,
+                }
+              : {}),
           },
         });
 
-        // Update product stock
-        await this.prisma.products.update({
-          where: { id: item.productId },
-          data: {
-            quantity: { decrement: item.quantity },
-          },
-        });
+        // Update stock
+        if (matchedVariant) {
+          // Decrement variant stock
+          await this.prisma.product_variants.update({
+            where: { id: matchedVariant.id },
+            data: { stock: { decrement: item.quantity } },
+          });
+          // Recalculate product quantity as sum of all variant stocks
+          const allVariants = await this.prisma.product_variants.findMany({
+            where: { productId: item.productId, isActive: true },
+            select: { stock: true },
+          });
+          const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
+          await this.prisma.products.update({
+            where: { id: item.productId },
+            data: { quantity: totalStock },
+          });
+        } else {
+          // No variants or can't determine variant - directly decrement product stock
+          await this.prisma.products.update({
+            where: { id: item.productId },
+            data: {
+              quantity: { decrement: item.quantity },
+            },
+          });
+        }
       }
 
       // Record coupon usage
@@ -247,25 +288,17 @@ export class OrdersService {
    * Create direct order (buy now)
    */
   async createDirect(userId: string, createOrderDto: CreateDirectOrderDto) {
-    const { addressId, productId, quantity, couponCode, customerNote } =
+    const { addressId, productId, quantity, couponCode, customerNote, variantId } =
       createOrderDto;
 
-    // Validate address
-    const address = await this.prisma.addresses.findFirst({
-      where: { id: addressId, userId },
-    });
-
-    if (!address) {
-      throw new NotFoundException('العنوان غير موجود');
-    }
-
-    // Get product
+    // Get product first to check if digital
     const product = await this.prisma.products.findUnique({
       where: { id: productId },
       include: {
         stores: {
           select: { id: true, name: true, slug: true },
         },
+        digitalAssets: true,
       },
     });
 
@@ -273,17 +306,51 @@ export class OrdersService {
       throw new NotFoundException('المنتج غير موجود');
     }
 
-    if (product.status !== 'ACTIVE') {
-      throw new BadRequestException('المنتج غير متاح حالياً');
+    const isDigital = product.isDigital;
+
+    // Validate address (only for physical products)
+    let address: any = null;
+    if (!isDigital) {
+      if (!addressId) {
+        throw new BadRequestException('العنوان مطلوب للمنتجات المادية');
+      }
+      address = await this.prisma.addresses.findFirst({
+        where: { id: addressId, userId },
+      });
+      if (!address) {
+        throw new NotFoundException('العنوان غير موجود');
+      }
     }
 
-    if (product.quantity < quantity) {
-      throw new BadRequestException(
-        `الكمية المتاحة هي ${product.quantity} فقط`,
-      );
+    const hasDigitalFile = isDigital && product.digitalAssets && product.digitalAssets.length > 0;
+
+    // Handle variant if provided
+    let variant: any = null;
+    if (variantId) {
+      variant = await this.prisma.product_variants.findFirst({
+        where: { id: variantId, productId, isActive: true },
+      });
+
+      if (!variant) {
+        throw new NotFoundException('خيار المنتج غير موجود أو غير متاح');
+      }
+
+      if (variant.stock < quantity) {
+        throw new BadRequestException(
+          `الكمية المتاحة لهذا الخيار هي ${variant.stock} فقط`,
+        );
+      }
+    } else {
+      if (product.quantity < quantity) {
+        throw new BadRequestException(
+          `الكمية المتاحة هي ${product.quantity} فقط`,
+        );
+      }
     }
 
-    const price = Number(product.salePrice || product.price);
+    const price = variant
+      ? Number(variant.price)
+      : Number(product.salePrice || product.price);
     const subtotal = price * quantity;
     let discount = 0;
     let coupon = null;
@@ -323,13 +390,15 @@ export class OrdersService {
         orderNumber: this.generateOrderNumber(),
         userId,
         storeId: product.storeId,
-        addressId,
-        phoneNumber: address.phoneNumber, // 🆕 ربط برقم الهاتف
+        ...(address ? { addressId: address.id } : {}),
+        phoneNumber: address?.phoneNumber || '', // فارغ للمنتجات الرقمية
         subtotal,
         discount,
         total,
         customerNote,
         couponId: coupon?.id,
+        // المنتجات الرقمية تُسلَّم فوراً
+        ...(isDigital ? { status: 'DELIVERED' as any, deliveredAt: new Date() } : {}),
       },
     });
 
@@ -350,9 +419,10 @@ export class OrdersService {
     }
 
     // Create order item
+    const orderItemId = uuidv4();
     await this.prisma.order_items.create({
       data: {
-        id: uuidv4(),
+        id: orderItemId,
         orderId: order.id,
         productId,
         productName: product.name,
@@ -360,16 +430,56 @@ export class OrdersService {
         price,
         quantity,
         subtotal,
+        isDigital,
+        ...(variant ? {
+          variantId: variant.id,
+          variantAttributes: variant.attributes,
+        } : {}),
       },
     });
 
-    // Update product stock
-    await this.prisma.products.update({
-      where: { id: productId },
-      data: {
-        quantity: { decrement: quantity },
-      },
-    });
+    // إنشاء رمز تحميل للمنتجات الرقمية (فقط إذا يوجد ملف)
+    if (hasDigitalFile) {
+      const downloadToken = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      await this.prisma.download_tokens.create({
+        data: {
+          orderItemId,
+          token: downloadToken,
+          maxDownloads: 5,
+          expiresAt,
+        },
+      });
+    }
+
+    // Update stock (skip for digital products)
+    if (!isDigital) {
+      if (variant) {
+        await this.prisma.product_variants.update({
+          where: { id: variant.id },
+          data: { stock: { decrement: quantity } },
+        });
+
+        // Recalculate product quantity as sum of all variant stocks
+        const allVariants = await this.prisma.product_variants.findMany({
+          where: { productId, isActive: true },
+          select: { stock: true },
+        });
+        const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
+        await this.prisma.products.update({
+          where: { id: productId },
+          data: { quantity: totalStock },
+        });
+      } else {
+        await this.prisma.products.update({
+          where: { id: productId },
+          data: {
+            quantity: { decrement: quantity },
+          },
+        });
+      }
+    }
 
     // Record coupon usage
     if (coupon && discount > 0) {
@@ -392,10 +502,252 @@ export class OrdersService {
   }
 
   /**
+   * Create direct order with multiple items (checkout flow)
+   */
+  async createDirectMultiItem(
+    userId: string,
+    dto: {
+      addressId?: string;
+      customerNote?: string;
+      phoneNumber?: string;
+      items: Array<{ productId: string; quantity: number; variantId?: string }>;
+    },
+  ) {
+    const { addressId, customerNote, phoneNumber: dtoPhone, items } = dto;
+
+    if (!items || items.length === 0) {
+      throw new BadRequestException('يجب إضافة منتج واحد على الأقل');
+    }
+
+    // Validate all products and variants upfront
+    const resolvedItems: Array<{
+      product: any;
+      variant: any;
+      quantity: number;
+      price: number;
+      subtotal: number;
+    }> = [];
+
+    let storeId: string | null = null;
+    let hasDigitalItems = false;
+    let allDigital = true;
+
+    for (const item of items) {
+      const product = await this.prisma.products.findUnique({
+        where: { id: item.productId },
+        include: {
+          stores: { select: { id: true, name: true, slug: true } },
+          digitalAssets: true,
+        },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`المنتج غير موجود: ${item.productId}`);
+      }
+
+      if (product.status !== 'ACTIVE') {
+        throw new BadRequestException(`المنتج غير متاح حالياً: ${product.name}`);
+      }
+
+      if (product.isDigital) {
+        hasDigitalItems = true;
+      } else {
+        allDigital = false;
+      }
+
+      // All items must belong to the same store
+      if (!storeId) {
+        storeId = product.storeId;
+      } else if (product.storeId !== storeId) {
+        throw new BadRequestException('جميع المنتجات يجب أن تكون من نفس المتجر');
+      }
+
+      let variant: any = null;
+      if (item.variantId) {
+        variant = await this.prisma.product_variants.findFirst({
+          where: { id: item.variantId, productId: item.productId, isActive: true },
+        });
+
+        if (!variant) {
+          throw new NotFoundException('خيار المنتج غير موجود أو غير متاح');
+        }
+
+        if (variant.stock < item.quantity) {
+          throw new BadRequestException(
+            `الكمية المتاحة لهذا الخيار هي ${variant.stock} فقط`,
+          );
+        }
+      } else if (!product.isDigital) {
+        // Only check stock for physical products
+        if (product.quantity < item.quantity) {
+          throw new BadRequestException(
+            `الكمية المتاحة لـ ${product.name} هي ${product.quantity} فقط`,
+          );
+        }
+      }
+
+      const price = variant
+        ? Number(variant.price)
+        : Number(product.salePrice || product.price);
+      const subtotal = price * item.quantity;
+
+      resolvedItems.push({
+        product,
+        variant,
+        quantity: item.quantity,
+        price,
+        subtotal,
+      });
+    }
+
+    // Validate address (required for physical products)
+    let address: any = null;
+    if (!allDigital) {
+      if (!addressId) {
+        throw new BadRequestException('العنوان مطلوب للمنتجات المادية');
+      }
+      address = await this.prisma.addresses.findFirst({
+        where: { id: addressId, userId },
+      });
+      if (!address) {
+        throw new NotFoundException('العنوان غير موجود');
+      }
+    }
+
+    const orderSubtotal = resolvedItems.reduce((sum, i) => sum + i.subtotal, 0);
+    const total = Math.max(0, orderSubtotal);
+
+    // Create single order
+    const order = await this.prisma.orders.create({
+      data: {
+        id: uuidv4(),
+        orderNumber: this.generateOrderNumber(),
+        userId,
+        storeId: storeId!,
+        ...(address ? { addressId: address.id } : {}),
+        phoneNumber: address?.phoneNumber || '',
+        subtotal: orderSubtotal,
+        discount: 0,
+        total,
+        customerNote,
+        // Digital-only orders are delivered immediately
+        ...(allDigital ? { status: 'DELIVERED' as any, deliveredAt: new Date() } : {}),
+      },
+    });
+
+    // Invalidate dashboard cache for store owner
+    try {
+      const storeRec = await this.prisma.store.findUnique({
+        where: { id: storeId! },
+        select: { userId: true },
+      });
+      if (storeRec?.userId) {
+        await this.redisService.del(`dashboard:stats:${storeRec.userId}`);
+      }
+    } catch (err) {
+      console.warn('Redis del error (order createDirectMultiItem):', err?.message || err);
+    }
+
+    // Create order items, download tokens for digital, and update stock
+    for (const item of resolvedItems) {
+      const isDigital = !!item.product.isDigital;
+      const orderItemId = uuidv4();
+
+      await this.prisma.order_items.create({
+        data: {
+          id: orderItemId,
+          orderId: order.id,
+          productId: item.product.id,
+          productName: item.product.name,
+          productNameAr: item.product.nameAr,
+          price: item.price,
+          quantity: item.quantity,
+          subtotal: item.subtotal,
+          isDigital,
+          ...(item.variant
+            ? {
+                variantId: item.variant.id,
+                variantAttributes: item.variant.attributes,
+              }
+            : {}),
+        },
+      });
+
+      // Create download token for digital products (only if file exists)
+      if (isDigital && item.product.digitalAssets?.length > 0) {
+        const downloadToken = uuidv4();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await this.prisma.download_tokens.create({
+          data: {
+            orderItemId,
+            token: downloadToken,
+            maxDownloads: 5,
+            expiresAt,
+          },
+        });
+      }
+
+      // Update stock (skip for digital products)
+      if (!isDigital) {
+        if (item.variant) {
+          await this.prisma.product_variants.update({
+            where: { id: item.variant.id },
+            data: { stock: { decrement: item.quantity } },
+          });
+
+          // Recalculate product quantity as sum of all variant stocks
+          const allVariants = await this.prisma.product_variants.findMany({
+            where: { productId: item.product.id, isActive: true },
+            select: { stock: true },
+          });
+          const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
+          await this.prisma.products.update({
+            where: { id: item.product.id },
+            data: { quantity: totalStock },
+          });
+        } else {
+          await this.prisma.products.update({
+            where: { id: item.product.id },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        }
+      }
+    }
+
+    const orderData = await this.getOrder(order.id, userId);
+
+    // Include download tokens for digital items
+    if (hasDigitalItems) {
+      const tokens = await this.prisma.download_tokens.findMany({
+        where: {
+          orderItem: { orderId: order.id },
+        },
+        include: {
+          orderItem: {
+            select: { productName: true, productNameAr: true },
+          },
+        },
+      });
+      (orderData as any).downloadTokens = tokens.map(t => ({
+        token: t.token,
+        productName: t.orderItem.productNameAr || t.orderItem.productName,
+        maxDownloads: t.maxDownloads,
+        expiresAt: t.expiresAt,
+      }));
+    }
+
+    return orderData;
+  }
+
+  /**
    * Get user's orders (as customer)
    */
   async getMyOrders(userId: string, filters?: OrderFiltersDto) {
     const where: any = { userId };
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
 
     if (filters?.status) {
       where.status = filters.status;
@@ -435,14 +787,17 @@ export class OrdersService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
 
-    return orders.map((order) => this.formatOrder(order));
+    return Promise.all(orders.map((order) => this.formatOrder(order)));
   }
 
   /**
    * Get store's orders (as seller)
    */
+
   async getStoreOrders(userId: string, filters?: OrderFiltersDto) {
     // Get user's store
     const store = await this.prisma.store.findFirst({
@@ -454,6 +809,9 @@ export class OrdersService {
     }
 
     const where: any = { storeId: store.id };
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
 
     if (filters?.status) {
       where.status = filters.status;
@@ -495,14 +853,17 @@ export class OrdersService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
 
-    return orders.map((order) => this.formatOrder(order, true));
+    return Promise.all(orders.map((order) => this.formatOrder(order, true)));
   }
 
   /**
    * Get single order
    */
+
   async getOrder(orderId: string, userId: string) {
     const order = await this.prisma.orders.findUnique({
       where: { id: orderId },
@@ -556,12 +917,13 @@ export class OrdersService {
       throw new ForbiddenException('غير مصرح لك بعرض هذا الطلب');
     }
 
-    return this.formatOrder(order, isStoreOwner);
+    return await this.formatOrder(order, isStoreOwner);
   }
 
   /**
    * Update order status (store owner only)
    */
+
   async updateOrderStatus(
     orderId: string,
     userId: string,
@@ -652,14 +1014,32 @@ export class OrdersService {
       throw new BadRequestException('لا يمكن إلغاء الطلب في هذه المرحلة');
     }
 
-    // Restore product stock
+    // Restore product stock (including variant stock)
     for (const item of order.order_items) {
-      await this.prisma.products.update({
-        where: { id: item.productId },
-        data: {
-          quantity: { increment: item.quantity },
-        },
-      });
+      if (item.variantId) {
+        // Restore variant stock
+        await this.prisma.product_variants.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+        // Recalculate product quantity as sum of all variant stocks
+        const allVariants = await this.prisma.product_variants.findMany({
+          where: { productId: item.productId, isActive: true },
+          select: { stock: true },
+        });
+        const totalStock = allVariants.reduce((sum, v) => sum + v.stock, 0);
+        await this.prisma.products.update({
+          where: { id: item.productId },
+          data: { quantity: totalStock },
+        });
+      } else {
+        await this.prisma.products.update({
+          where: { id: item.productId },
+          data: {
+            quantity: { increment: item.quantity },
+          },
+        });
+      }
     }
 
     // Update order
@@ -759,7 +1139,7 @@ export class OrdersService {
     }
 
     // 3. 🔒 التحقق من آخر 4 أرقام من رقم الهاتف
-    const orderPhone = order.addresses?.phoneNumber || '';
+    const orderPhone = order.phoneNumber || order.addresses?.phoneNumber || '';
     const actualLast4 = orderPhone.slice(-4);
 
     if (actualLast4 !== phoneLast4) {
@@ -809,7 +1189,39 @@ export class OrdersService {
   /**
    * Format order for response
    */
-  private formatOrder(order: any, includeCustomer = false) {
+  private async formatOrder(order: any, includeCustomer = false) {
+    const items = order.order_items
+      ? await Promise.all(
+          order.order_items.map(async (item: any) => {
+            let image: string | null =
+              item.products?.product_images?.[0]?.imagePath || null;
+            if (image && !image.startsWith('http')) {
+              try {
+                image = await this.s3Service.getPresignedGetUrl(
+                  this.bucket,
+                  image,
+                  3600,
+                );
+              } catch {
+                image = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${image}`;
+              }
+            }
+            return {
+              id: item.id,
+              productId: item.productId,
+              productName: item.productName,
+              productNameAr: item.productNameAr,
+              price: Number(item.price),
+              quantity: item.quantity,
+              subtotal: Number(item.subtotal),
+              image,
+              variantId: item.variantId || null,
+              variantAttributes: item.variantAttributes || null,
+            };
+          }),
+        )
+      : undefined;
+
     const formatted: any = {
       id: order.id,
       orderNumber: order.orderNumber,
@@ -829,25 +1241,31 @@ export class OrdersService {
       itemsCount: order._count?.order_items || order.order_items?.length || 0,
       store: order.stores,
       address: order.addresses,
-      items: order.order_items?.map((item: any) => ({
-        id: item.id,
-        productId: item.productId,
-        productName: item.productName,
-        productNameAr: item.productNameAr,
-        price: Number(item.price),
-        quantity: item.quantity,
-        subtotal: Number(item.subtotal),
-        image: item.products?.product_images?.[0]?.imagePath || null,
-      })),
+      items,
     };
 
-    if (includeCustomer && order.users) {
-      formatted.customer = {
-        id: order.users.id,
-        email: order.users.email,
-        name: order.users.profile?.name,
-        avatar: order.users.profile?.avatar,
-      };
+    if (includeCustomer) {
+      const customerName =
+        order.users?.profile?.name ||
+        order.addresses?.fullName ||
+        null;
+
+      if (order.users) {
+        formatted.customer = {
+          id: order.users.id,
+          email: order.users.email,
+          name: customerName,
+          avatar: order.users.profile?.avatar,
+        };
+        // Keep users in original structure for backward compatibility
+        formatted.users = order.users;
+      } else if (customerName) {
+        // Guest order without linked user — use address name
+        formatted.customer = {
+          name: customerName,
+        };
+      }
+      formatted.phoneNumber = order.phoneNumber;
     }
 
     if (order.coupons) {

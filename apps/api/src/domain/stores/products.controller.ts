@@ -32,6 +32,8 @@ import { ProductsUploadService } from './products-upload.service';
 import { CreateProductDto, ProductStatus } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
+import { PlanGuard } from '../../core/common/guards/plan.guard';
+import { CheckLimit } from '../../core/common/decorators/auth/plan.decorator';
 
 @ApiTags('Products')
 @Controller('products')
@@ -60,7 +62,8 @@ export class ProductsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlanGuard)
+  @CheckLimit('products')
   @ApiBearerAuth()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Create a new product' })
@@ -136,6 +139,23 @@ export class ProductsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 404, description: 'Product not found' })
   update(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsService.update(id, req.user.id, updateProductDto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Partially update a product' })
+  @ApiResponse({ status: 200, description: 'Product updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  patchUpdate(
     @Param('id') id: string,
     @Request() req,
     @Body() updateProductDto: UpdateProductDto,

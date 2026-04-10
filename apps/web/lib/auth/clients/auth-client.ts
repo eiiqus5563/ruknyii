@@ -12,7 +12,7 @@ export class AuthClient {
     if (typeof window === 'undefined') return null;
     
     // Try to get CSRF token from cookie
-    const match = document.cookie.match(/csrf_token=([^;]+)/);
+    const match = document.cookie.match(/_xid=([^;]+)/);
     return match ? match[1] : null;
   }
 

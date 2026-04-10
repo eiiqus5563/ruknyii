@@ -31,16 +31,16 @@ import {
 } from '@/lib/hooks/use-notifications';
 
 const typeIcons = {
-  order: { icon: ShoppingBag, color: 'text-blue-500' },
-  product: { icon: Package, color: 'text-violet-500' },
-  form: { icon: FileText, color: 'text-cyan-500' },
-  event: { icon: Calendar, color: 'text-rose-500' },
-  user: { icon: User, color: 'text-emerald-500' },
-  store: { icon: Store, color: 'text-amber-500' },
-  message: { icon: MessageSquare, color: 'text-indigo-500' },
-  review: { icon: Star, color: 'text-yellow-500' },
-  alert: { icon: AlertCircle, color: 'text-rose-500' },
-  success: { icon: CheckCircle2, color: 'text-emerald-500' },
+  order: { icon: ShoppingBag, color: 'text-zinc-600 dark:text-zinc-300' },
+  product: { icon: Package, color: 'text-zinc-600 dark:text-zinc-300' },
+  form: { icon: FileText, color: 'text-zinc-600 dark:text-zinc-300' },
+  event: { icon: Calendar, color: 'text-zinc-600 dark:text-zinc-300' },
+  user: { icon: User, color: 'text-zinc-600 dark:text-zinc-300' },
+  store: { icon: Store, color: 'text-zinc-600 dark:text-zinc-300' },
+  message: { icon: MessageSquare, color: 'text-zinc-600 dark:text-zinc-300' },
+  review: { icon: Star, color: 'text-zinc-600 dark:text-zinc-300' },
+  alert: { icon: AlertCircle, color: 'text-zinc-600 dark:text-zinc-300' },
+  success: { icon: CheckCircle2, color: 'text-zinc-600 dark:text-zinc-300' },
 };
 
 function getIconConfig(type: string) {
@@ -67,7 +67,7 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `منذ ${hours} س`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `منذ ${days} ي`;
-  return new Date(dateStr).toLocaleDateString('ar');
+  return new Date(dateStr).toLocaleDateString('en-US');
 }
 
 const CATEGORIES: NotificationCategory[] = ['all', 'orders', 'events', 'forms', 'system'];
@@ -100,7 +100,7 @@ export function NotificationDialogPanel({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="relative flex size-9 items-center justify-center rounded-2xl text-muted-foreground/70 transition-colors hover:bg-muted/60 hover:text-foreground cursor-pointer"
+          className="relative flex size-9 items-center justify-center rounded-4xl text-muted-foreground/70 transition-colors hover:bg-muted/60 hover:text-foreground cursor-pointer"
           aria-label="الإشعارات"
         >
           <Bell className="size-4" />
@@ -176,17 +176,17 @@ export function NotificationDialogPanel({
                   key={notification.id}
                   className={cn(
                     'group flex items-center gap-4 px-4 py-4 rounded-2xl transition-colors cursor-pointer mb-2 min-h-[68px]',
-                    !notification.isRead ? 'bg-primary/10 dark:bg-primary/5' : 'bg-card hover:bg-muted/40',
+                    !notification.isRead ? 'bg-zinc-950/[0.03] dark:bg-zinc-50/[0.04]' : 'bg-card hover:bg-muted/40',
                   )}
                 >
                   {/* Icon */}
                   <div className={cn(
                     'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                    !notification.isRead ? 'bg-gradient-to-br from-primary/30 to-primary/10' : 'bg-muted/60',
+                    !notification.isRead ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-muted/60',
                   )}>
                     <IconComponent className={cn(
                       'w-5 h-5',
-                      !notification.isRead ? 'text-primary' : iconConfig.color,
+                      !notification.isRead ? 'text-zinc-900 dark:text-zinc-100' : iconConfig.color,
                     )} />
                   </div>
                   {/* Content */}
@@ -196,7 +196,7 @@ export function NotificationDialogPanel({
                         {notification.title}
                       </p>
                       {!notification.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-gradient-to-br from-primary to-primary/60 shadow-sm" />
+                        <span className="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 shadow-sm" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">

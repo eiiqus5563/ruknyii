@@ -91,18 +91,16 @@ function LoginContent() {
   const displayError = sessionMessage || error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-900 px-4">
-      <AuthForm
-        type="login"
-        email={email}
-        onEmailChange={setEmail}
-        onSubmit={handleSubmit}
-        isLoading={isLoading}
-        error={displayError}
-        onGoogleLogin={handleGoogleLogin}
-        onLinkedInLogin={handleLinkedInLogin}
-      />
-    </div>
+    <AuthForm
+      type="login"
+      email={email}
+      onEmailChange={setEmail}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      error={displayError}
+      onGoogleLogin={handleGoogleLogin}
+      onLinkedInLogin={handleLinkedInLogin}
+    />
   );
 }
 

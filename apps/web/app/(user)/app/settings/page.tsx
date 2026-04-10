@@ -35,7 +35,6 @@ import {
   ToggleSwitch,
 } from '@/components/(app)/settings';
 import {
-  getMyProfile,
   updateProfile,
   uploadAvatar,
   uploadCover,
@@ -44,6 +43,7 @@ import {
   deleteAccountPermanently,
   type ProfileData,
 } from '@/actions/settings';
+import { fetchMyProfile } from '@/lib/api/settings-client';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -77,11 +77,11 @@ export default function ProfileSettingsPage() {
     location: '',
   });
 
-  // Fetch profile data on mount
+  // Fetch profile data on mount (client-side GET, not server action POST)
   useEffect(() => {
-    async function fetchProfile() {
+    async function loadProfile() {
       setIsLoading(true);
-      const { data, error } = await getMyProfile();
+      const { data } = await fetchMyProfile();
       if (data) {
         setProfile(data);
         setForm({
@@ -98,7 +98,7 @@ export default function ProfileSettingsPage() {
       }
       setIsLoading(false);
     }
-    fetchProfile();
+    loadProfile();
   }, []);
 
   const updateField = (field: string, value: string) => {

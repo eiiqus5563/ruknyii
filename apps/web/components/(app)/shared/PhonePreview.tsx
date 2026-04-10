@@ -34,7 +34,7 @@ interface SocialLink {
   url: string;
   title?: string;
   status?: 'active' | 'hidden';
-  isFeatured?: boolean;
+  isPinned?: boolean;
   displayOrder: number;
 }
 
@@ -276,6 +276,24 @@ export function PhonePreview({ className }: PhonePreviewProps) {
     return () => controller.abort();
   }, [profile?.username, user?.username]);
 
+  // Auto-select first available tab
+  useEffect(() => {
+    const linksExist = (profile?.socialLinks?.filter(l => l.status !== 'hidden')?.length ?? 0) > 0 || igBlocks.length > 0;
+    const eventsExist = events.length > 0;
+    const formsExist = forms.length > 0;
+
+    if (activeTab === 'links' && !linksExist) {
+      if (eventsExist) setActiveTab('events');
+      else if (formsExist) setActiveTab('forms');
+    } else if (activeTab === 'events' && !eventsExist) {
+      if (linksExist) setActiveTab('links');
+      else if (formsExist) setActiveTab('forms');
+    } else if (activeTab === 'forms' && !formsExist) {
+      if (linksExist) setActiveTab('links');
+      else if (eventsExist) setActiveTab('events');
+    }
+  }, [profile?.socialLinks, igBlocks, events, forms, activeTab]);
+
   // اسم وعرض من Profile أو من بيانات الحساب (auth) كاحتياطي
   const displayName = profile?.name || profile?.user?.name || user?.name || profile?.username || user?.username || (user?.email ? user.email.split('@')[0] : null) || 'المستخدم';
   const displayUsername = profile?.username || user?.username || '';
@@ -359,7 +377,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                     )}
                     <span className="flex items-center gap-0.5">
                       <Calendar className="w-2.5 h-2.5" />
-                      {new Date(profile.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short' })}
+                      {new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                     </span>
                   </div>
                   )}
@@ -428,7 +446,14 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                 {/* Tabs و الروابط */}
                 {(profile || user?.id) && (
                 <>
+                {(() => {
+                  const previewHasLinks = (profile?.socialLinks?.filter(l => l.status !== 'hidden')?.length ?? 0) > 0 || igBlocks.length > 0;
+                  const previewHasEvents = events.length > 0;
+                  const previewHasForms = forms.length > 0;
+                  const previewVisibleTabs = [previewHasLinks, previewHasEvents, previewHasForms].filter(Boolean).length;
+                  return previewVisibleTabs > 1 ? (
                 <div className="flex items-center justify-center gap-1.5 mt-3">
+                  {previewHasLinks && (
                   <button
                     onClick={() => setActiveTab('links')}
                     className={cn(
@@ -440,6 +465,8 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                   >
                     الروابط
                   </button>
+                  )}
+                  {previewHasEvents && (
                   <button
                     onClick={() => setActiveTab('events')}
                     className={cn(
@@ -451,6 +478,8 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                   >
                     الأحداث
                   </button>
+                  )}
+                  {previewHasForms && (
                   <button
                     onClick={() => setActiveTab('forms')}
                     className={cn(
@@ -462,29 +491,62 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                   >
                     النماذج
                   </button>
+                  )}
                 </div>
+                  ) : null;
+                })()}
 
                 {/* Links */}
                 <div className="mt-3 space-y-2">
-                  {activeTab === 'links' && profile?.socialLinks?.filter(link => link.status !== 'hidden')?.map((link) => {
+                  {activeTab === 'links' && (() => {
+                    const visibleLinks = profile?.socialLinks
+                      ?.filter(link => link.status !== 'hidden')
+                      ?.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)) ?? [];
+                    const pinnedLinks = visibleLinks.filter(l => l.isPinned);
+                    const otherLinks = visibleLinks.filter(l => !l.isPinned);
                     return (
-                      <div
-                        key={link.id}
-                        className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-6 h-6 rounded-md flex items-center justify-center"
-                            style={{ backgroundColor: `${themeColor}15` }}
+                      <>
+                        {/* Pinned section */}
+                        {pinnedLinks.map((link) => (
+                          <div
+                            key={link.id}
+                            className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100 border-s-2"
+                            style={{ borderInlineStartColor: themeColor }}
                           >
-                            <PreviewLinkIcon platform={link.platform?.toLowerCase() ?? ''} themeColor={themeColor} />
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-6 h-6 rounded-md flex items-center justify-center"
+                                style={{ backgroundColor: `${themeColor}15` }}
+                              >
+                                <PreviewLinkIcon platform={link.platform?.toLowerCase() ?? ''} themeColor={themeColor} />
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-900">{link.title || link.platform}</span>
+                            </div>
+                            <ExternalLink className="w-2.5 h-2.5 text-gray-400" />
                           </div>
-                          <span className="text-[10px] font-medium text-gray-900">{link.title || link.platform}</span>
-                        </div>
-                        <ExternalLink className="w-2.5 h-2.5 text-gray-400" />
-                      </div>
+                        ))}
+
+                        {/* Regular links */}
+                        {otherLinks.map((link) => (
+                          <div
+                            key={link.id}
+                            className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-6 h-6 rounded-md flex items-center justify-center"
+                                style={{ backgroundColor: `${themeColor}15` }}
+                              >
+                                <PreviewLinkIcon platform={link.platform?.toLowerCase() ?? ''} themeColor={themeColor} />
+                              </div>
+                              <span className="text-[10px] font-medium text-gray-900">{link.title || link.platform}</span>
+                            </div>
+                            <ExternalLink className="w-2.5 h-2.5 text-gray-400" />
+                          </div>
+                        ))}
+                      </>
                     );
-                  })}
+                  })()}
                   
                   {activeTab === 'links' && (!profile?.socialLinks || profile.socialLinks.length === 0) && igBlocks.length === 0 && (
                     <div className="text-center py-6 text-gray-400">
@@ -566,7 +628,7 @@ export function PhonePreview({ className }: PhonePreviewProps) {
                                   {event.title}
                                 </p>
                                 <p className="text-[9px] text-gray-400">
-                                  {new Date(event.startDate).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
+                                  {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </p>
                               </div>
                             </div>

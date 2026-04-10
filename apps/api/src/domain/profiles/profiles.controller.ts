@@ -23,6 +23,7 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
 import { ProfilesService } from './profiles.service';
 import { CreateProfileDto, UpdateProfileDto } from './dto';
@@ -92,7 +93,8 @@ export class ProfilesController {
   @Post('avatar')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('file'))
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload profile avatar to S3' })
   @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
@@ -117,7 +119,8 @@ export class ProfilesController {
   @Post('cover')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('file'))
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload cover image to S3' })
   @ApiResponse({
@@ -148,5 +151,36 @@ export class ProfilesController {
   @ApiResponse({ status: 404, description: 'Profile not found' })
   remove(@Request() req) {
     return this.profilesService.remove(req.user.id);
+  }
+
+  @Post('logos/upload')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload logo for logo cloud slider' })
+  @ApiResponse({ status: 201, description: 'Logo uploaded successfully' })
+  async uploadLogo(
+    @Request() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.storageService.uploadLogo(req.user.id, file);
+  }
+
+  @Delete('logos')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a logo from logo cloud' })
+  async deleteLogo(@Request() req, @Body() body: { key: string }) {
+    if (!body.key) {
+      throw new BadRequestException('Logo key is required');
+    }
+    await this.storageService.deleteLogo(req.user.id, body.key);
+    return { success: true };
   }
 }

@@ -678,10 +678,9 @@ export function useForms() {
       }
 
       const data = await response.json();
-      return {
-        submissions: data.data || data.submissions || [],
-        total: data.total || data.meta?.total || 0,
-      };
+      const submissions = data.data || data.submissions || [];
+      const total = data.total ?? data.pagination?.total ?? data.meta?.total ?? submissions.length;
+      return { submissions, total };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'حدث خطأ أثناء جلب الإجابات';
       setError(message);

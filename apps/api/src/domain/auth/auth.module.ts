@@ -20,7 +20,6 @@ import { LinkedInStrategy } from './strategies/linkedin.strategy';
 import { PrismaModule } from '../../core/database/prisma/prisma.module';
 import { SecurityModule } from '../../infrastructure/security/security.module';
 import { EmailModule } from '../../integrations/email/email.module';
-import { OAuthCodeService } from './oauth-code.service';
 import { RedisOAuthCodeService } from './redis-oauth-code.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StorageModule } from '../storage/storage.module';
@@ -63,8 +62,7 @@ import { StorageModule } from '../storage/storage.module';
     JwtStrategy,
     GoogleStrategy,
     LinkedInStrategy,
-    OAuthCodeService, // Keep for backward compatibility
-    RedisOAuthCodeService, // Production-ready Redis implementation
+    RedisOAuthCodeService,
   ],
   exports: [
     AuthService,

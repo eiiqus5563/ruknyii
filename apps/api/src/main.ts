@@ -15,6 +15,11 @@ import { randomUUID } from 'crypto';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Trust reverse proxy headers (X-Forwarded-For) in production to keep rate limits per real client IP
+  if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   // 🔒 Request ID Middleware - Adds unique ID to each request for tracing
   app.use((req, res, next) => {
     req['requestId'] = req.headers['x-request-id'] || randomUUID();
@@ -143,11 +148,17 @@ async function bootstrap() {
     // Development
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3003',
+    'http://127.0.0.1:3003',
+    'http://localhost:3004',
+    'http://127.0.0.1:3004',
     // Production domains
     'https://rukny.io',
     'https://www.rukny.io',
     'https://app.rukny.io',
     'https://accounts.rukny.io',
+    'https://business.rukny.io',
+    'https://developers.rukny.io',
     'https://rukny.store',
     'https://www.rukny.store',
     // Environment variable override
@@ -155,6 +166,8 @@ async function bootstrap() {
     process.env.FRONTEND_URL_ALT,
     process.env.APP_FRONTEND_URL,
     process.env.AUTH_FRONTEND_URL,
+    process.env.BUSINESS_FRONTEND_URL,
+    process.env.DEVELOPERS_FRONTEND_URL,
   ].filter(Boolean); // Remove undefined values
 
   // In development, allow all local network IPs
@@ -190,6 +203,7 @@ async function bootstrap() {
       'Origin',
       'X-Requested-With',
       'Cache-Control',
+      'X-CSRF-Token',
     ],
   });
 

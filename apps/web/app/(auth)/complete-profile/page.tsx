@@ -9,7 +9,7 @@ import { updateOAuthProfile, setup2FA, enable2FA } from '@/lib/api/auth';
 import type { Setup2FAResponse } from '@/lib/api/auth';
 import { setCsrfToken } from '@/lib/api/client';
 import { sanitizeToken, handleError, logError, formLimiter } from '@/lib/security';
-import { Loader2, CheckCircle2, XCircle, User, AlertTriangle, Store, Sparkles, FileText, MapPin, Phone, ShoppingBag, Utensils, Laptop, Palette, Home, Dumbbell, BookOpen, MoreHorizontal, Briefcase, Heart, Camera, Music, Car, Plane, Shirt, Gift, Gem, PawPrint, Baby, Hammer, Leaf, Coffee, Wrench, Smartphone, UtensilsCrossed, LucideIcon, Shield, Copy, Eye, EyeOff, KeyRound, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, User, AlertTriangle, Store, Sparkles, FileText, MapPin, Phone, ShoppingBag, Utensils, Laptop, Palette, Home, Dumbbell, BookOpen, MoreHorizontal, Briefcase, Heart, Camera, Music, Car, Plane, Shirt, Gift, Gem, PawPrint, Baby, Hammer, Leaf, Coffee, Wrench, Smartphone, UtensilsCrossed, LucideIcon, Shield, Copy, Eye, EyeOff, KeyRound, RefreshCw, Sofa } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProgressIndicator from '@/components/ui/progress-indicator';
 import { triggerCelebration } from '@/components/ui/confetti';
@@ -102,6 +102,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Store,
   ShoppingBag,
   Music,
+  Sofa,
 };
 
 const getIconComponent = (iconName?: string): LucideIcon => {
@@ -121,17 +122,16 @@ interface StoreCategory {
 
 // Fallback categories (used if API fails)
 const FALLBACK_CATEGORIES: StoreCategory[] = [
-  { id: 'cat_fashion', name: 'Fashion', nameAr: 'الأزياء والموضة', slug: 'fashion', icon: 'Shirt', color: '#EC4899' },
   { id: 'cat_electronics', name: 'Electronics', nameAr: 'الإلكترونيات', slug: 'electronics', icon: 'Smartphone', color: '#3B82F6' },
+  { id: 'cat_fashion', name: 'Fashion & Clothing', nameAr: 'الأزياء والموضة', slug: 'fashion', icon: 'Shirt', color: '#EC4899' },
   { id: 'cat_food', name: 'Food & Beverages', nameAr: 'الطعام والمشروبات', slug: 'food-beverages', icon: 'UtensilsCrossed', color: '#F59E0B' },
-  { id: 'cat_beauty', name: 'Beauty & Health', nameAr: 'الجمال والصحة', slug: 'beauty-health', icon: 'Sparkles', color: '#8B5CF6' },
-  { id: 'cat_home', name: 'Home & Garden', nameAr: 'المنزل والحديقة', slug: 'home-garden', icon: 'Home', color: '#10B981' },
-  { id: 'cat_sports', name: 'Sports & Fitness', nameAr: 'الرياضة واللياقة', slug: 'sports-fitness', icon: 'Dumbbell', color: '#EF4444' },
-  { id: 'cat_books', name: 'Books & Education', nameAr: 'الكتب والتعليم', slug: 'books-education', icon: 'BookOpen', color: '#6366F1' },
-  { id: 'cat_automotive', name: 'Automotive', nameAr: 'السيارات', slug: 'automotive', icon: 'Car', color: '#64748B' },
+  { id: 'cat_beauty', name: 'Beauty & Care', nameAr: 'الجمال والعناية', slug: 'beauty-care', icon: 'Sparkles', color: '#8B5CF6' },
+  { id: 'cat_home', name: 'Home & Furniture', nameAr: 'المنزل والأثاث', slug: 'home-furniture', icon: 'Sofa', color: '#10B981' },
+  { id: 'cat_books', name: 'Books & Digital Products', nameAr: 'الكتب والمنتجات الرقمية', slug: 'books-digital', icon: 'BookOpen', color: '#6366F1' },
+  { id: 'cat_handmade', name: 'Handmade & Crafts', nameAr: 'الحرف والمنتجات اليدوية', slug: 'handmade', icon: 'Palette', color: '#D97706' },
   { id: 'cat_kids', name: 'Kids & Baby', nameAr: 'الأطفال والرضع', slug: 'kids-baby', icon: 'Baby', color: '#F472B6' },
-  { id: 'cat_services', name: 'Services', nameAr: 'الخدمات', slug: 'services', icon: 'Wrench', color: '#0EA5E9' },
-  { id: 'cat_other', name: 'Other', nameAr: 'أخرى', slug: 'other', icon: 'MoreHorizontal', color: '#94A3B8' },
+  { id: 'cat_jewelry', name: 'Jewelry & Watches', nameAr: 'المجوهرات والساعات', slug: 'jewelry-watches', icon: 'Gem', color: '#EAB308' },
+  { id: 'cat_services', name: 'Services', nameAr: 'الخدمات', slug: 'services', icon: 'Briefcase', color: '#0EA5E9' },
 ];
 
 // Employee count options

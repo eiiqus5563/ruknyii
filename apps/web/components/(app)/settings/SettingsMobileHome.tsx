@@ -24,6 +24,7 @@ import {
   Sparkles,
   MonitorSmartphone,
   MessageSquare,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers';
@@ -96,6 +97,15 @@ const settingsItems: SettingsItem[] = [
     icon: GitMerge,
     iconBg: 'bg-purple-500/10',
     iconColor: 'text-purple-500',
+  },
+  {
+    type: 'direct',
+    href: '/app/settings/billing',
+    label: 'الاشتراك والباقة',
+    description: 'إدارة الباقة، الترقية، الاستخدام',
+    icon: CreditCard,
+    iconBg: 'bg-indigo-500/10',
+    iconColor: 'text-indigo-500',
   },
   {
     type: 'expandable',

@@ -545,6 +545,19 @@ export class StoresService {
           product_categories: {
             select: { id: true, name: true },
           },
+          variants: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              sku: true,
+              price: true,
+              compareAtPrice: true,
+              stock: true,
+              attributes: true,
+              imageUrl: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
         },
       }),
       this.prisma.products.count({ where }),
@@ -586,8 +599,19 @@ export class StoresService {
           quantity: product.quantity,
           stock: product.quantity,
           sku: product.sku,
+          isDigital: product.isDigital,
           images,
           category: product.product_categories,
+          hasVariants: product.variants.length > 0,
+          variants: product.variants.map((v) => ({
+            id: v.id,
+            sku: v.sku,
+            price: Number(v.price),
+            compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
+            stock: v.stock,
+            attributes: v.attributes,
+            imageUrl: v.imageUrl,
+          })),
         };
       }),
     );

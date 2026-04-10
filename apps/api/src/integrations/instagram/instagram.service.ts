@@ -130,6 +130,7 @@ export class InstagramService {
       `${IG_GRAPH_BASE}/${igUserId}?${profileParams.toString()}`,
     );
 
+
     const profile = profileRes.ok
       ? ((await profileRes.json()) as {
           username?: string;
@@ -138,6 +139,11 @@ export class InstagramService {
           followers_count?: number;
         })
       : {};
+
+    // إذا لم يتم جلب اسم المستخدم أو كان فارغًا، أرجع خطأ ولا تحفظ الاتصال
+    if (!profile.username || typeof profile.username !== 'string' || !profile.username.trim()) {
+      throw new BadRequestException('فشل جلب بيانات حساب إنستغرام. يرجى التأكد من صلاحية الحساب والمحاولة مرة أخرى.');
+    }
 
     const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
 

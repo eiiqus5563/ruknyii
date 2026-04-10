@@ -17,7 +17,9 @@ import { JwtAuthGuard } from '../../../core/common/guards/auth/jwt-auth.guard';
 import { RolesGuard } from '../../../core/common/guards/roles.guard';
 import { Roles } from '../../../core/common/decorators/auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
 import { WallpapersService } from './wallpapers.service';
+import { FileValidationPipe } from '../../../core/common/pipes/file-validation.pipe';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -34,6 +36,7 @@ export class WallpapersController {
 
   /** Upload wallpaper file through server → S3, then create DB record */
   @Post('upload')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -48,7 +51,13 @@ export class WallpapersController {
     }),
   )
   async upload(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(new FileValidationPipe({
+      allowedTypes: [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+        'video/mp4', 'video/webm',
+      ],
+      maxSize: MAX_FILE_SIZE,
+    })) file: Express.Multer.File,
     @Body('nameAr') nameAr?: string,
   ) {
     if (!file) throw new BadRequestException('File is required');

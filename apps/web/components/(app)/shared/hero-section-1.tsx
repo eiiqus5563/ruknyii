@@ -7,7 +7,7 @@ import { ArrowRight, ChevronDown, Menu, X, Store, Calendar, Users, Sparkles, Lay
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
-import { InfiniteSlider } from '@/components/ui/infinite-slider';
+import { LogoCloud } from '@/components/ui/logo-cloud';
 import { ContainerScroll } from '@/components/ui/container-scroll-animation';
 import Footer from '@/components/layout/footer';
 import { cn } from '@/lib/utils';
@@ -35,20 +35,20 @@ const transitionVariants = {
 } satisfies { item: Variants };
 
 const trustedLogos = [
-    { src: "/logos/aws.svg", alt: "AWS" },
-    { src: "/logos/google-cloud.svg", alt: "Google Cloud" },
-    { src: "/logos/tiktok.svg", alt: "TikTok" },
-    { src: "/logos/soundcloud-wordmark.svg", alt: "SoundCloud" },
-    { src: "/logos/tL_v571NdZ0.svg", alt: "Meta" },
-    { src: "/logos/facebook-wordmark.svg", alt: "Facebook" },
-    { src: "/logos/whatsapp-wordmark.svg", alt: "WhatsApp" },
-    { src: "/logos/instagram-wordmark.svg", alt: "Instagram" },
-    { src: "/logos/udemy.svg", alt: "Udemy" },
-    { src: "/logos/google-wordmark.svg", alt: "Google" },
-    { src: "/logos/gemini_wordmark.svg", alt: "Gemini" },
-    { src: "/logos/LI-Logo.png", alt: "linkedin" },
-    { src: "/logos/notion-full.svg", alt: "Notion" },
-    { src: "/logos/microsoft.svg", alt: "Microsoft" },
+    { src: "/logos/aws.svg", alt: "AWS", color: "#FF9900" },
+    { src: "/logos/google-cloud.svg", alt: "Google Cloud", color: "#4285F4" },
+    { src: "/logos/tiktok.svg", alt: "TikTok", color: "#111111" },
+    { src: "/logos/soundcloud-wordmark.svg", alt: "SoundCloud", color: "#FF5500" },
+    { src: "/logos/tL_v571NdZ0.svg", alt: "Meta", color: "#0866FF" },
+    { src: "/logos/facebook-wordmark.svg", alt: "Facebook", color: "#1877F2" },
+    { src: "/logos/whatsapp-wordmark.svg", alt: "WhatsApp", color: "#25D366" },
+    { src: "/logos/instagram-wordmark.svg", alt: "Instagram", color: "#E4405F" },
+    { src: "/logos/udemy.svg", alt: "Udemy", color: "#A435F0" },
+    { src: "/logos/google-wordmark.svg", alt: "Google", color: "#4285F4" },
+    { src: "/logos/gemini_wordmark.svg", alt: "Gemini", color: "#5F7CFF" },
+    { src: "/logos/LI-Logo.png", alt: "linkedin", color: "#0A66C2" },
+    { src: "/logos/notion-full.svg", alt: "Notion", color: "#111111" },
+    { src: "/logos/microsoft.svg", alt: "Microsoft", color: "#5E5E5E" },
     
 ];
 
@@ -141,19 +141,7 @@ export function HeroSection() {
                             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-white to-transparent sm:w-24" />
                             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent sm:w-24" />
 
-                            <InfiniteSlider gap={40} duration={28} className="py-1">
-                                {trustedLogos.map((logo) => (
-                                    <div key={logo.alt} className="flex h-12 min-w-[110px] items-center justify-center px-4 sm:h-14 sm:min-w-[130px] md:min-w-[150px]">
-                                       <img
-                                         alt={logo.alt}
-                                         className="pointer-events-none h-5 select-none opacity-60 transition-all duration-300 sm:h-6 md:h-7"
-                                         key={`logo-${logo.alt}`}
-                                         loading="lazy"
-                                         src={logo.src}
-                                        />
-                                    </div>
-                                ))}
-                            </InfiniteSlider>
+                            <LogoCloud className="py-1" logos={trustedLogos} />
                         </div>
                     </div>
                 </section>

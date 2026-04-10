@@ -12,11 +12,16 @@ import * as crypto from 'crypto';
 @Injectable()
 export class WebSocketTokenService {
   private readonly WS_TOKEN_EXPIRY = '5m'; // 5 دقائق - قصير المدة للأمان
+  private readonly wsSecret: string;
 
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    // 🔒 Use dedicated WS secret if available, fall back to JWT_SECRET
+    this.wsSecret = this.configService.get<string>('WS_JWT_SECRET')
+      || this.configService.get<string>('JWT_SECRET')!;
+  }
 
   /**
    * 🔒 إنشاء توكن WebSocket
@@ -32,6 +37,7 @@ export class WebSocketTokenService {
 
     return this.jwtService.sign(payload, {
       expiresIn: this.WS_TOKEN_EXPIRY,
+      secret: this.wsSecret,
     });
   }
 
@@ -51,7 +57,7 @@ export class WebSocketTokenService {
     error?: string;
   } {
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token, { secret: this.wsSecret });
 
       if (payload.type !== 'ws_token' || payload.purpose !== 'websocket') {
         return { valid: false, error: 'Invalid token type' };

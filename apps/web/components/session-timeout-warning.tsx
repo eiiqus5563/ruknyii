@@ -15,7 +15,7 @@ import { toast } from '@/components/toast-provider';
 interface SessionTimeoutWarningProps {
   /** Warning shown X seconds before expiry (default: 60) */
   warningTime?: number;
-  /** Check interval in seconds (default: 30) */
+  /** Check interval in seconds (default: 60) */
   checkInterval?: number;
   /** Enable the feature (default: true) */
   enabled?: boolean;
@@ -36,7 +36,7 @@ const AUTH_PAGES = [
 
 export function SessionTimeoutWarning({
   warningTime = 60,
-  checkInterval = 30,
+  checkInterval = 60,
   enabled = true,
 }: SessionTimeoutWarningProps) {
   const [showWarning, setShowWarning] = useState(false);

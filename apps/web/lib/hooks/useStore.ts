@@ -8,8 +8,9 @@ import { API_URL } from '@/lib/config';
 
 export enum ProductStatus {
   ACTIVE = 'ACTIVE',
-  DRAFT = 'DRAFT',
-  ARCHIVED = 'ARCHIVED',
+  INACTIVE = 'INACTIVE',
+  OUT_OF_STOCK = 'OUT_OF_STOCK',
+  DISCONTINUED = 'DISCONTINUED',
 }
 
 // ==================== INTERFACES ====================
@@ -30,6 +31,17 @@ export interface Product {
     id: string;
     name: string;
   };
+  hasVariants?: boolean;
+  variants?: {
+    id: string;
+    sku?: string;
+    price: number;
+    compareAtPrice?: number;
+    stock: number;
+    attributes: Record<string, string>;
+    imageUrl?: string;
+    isActive?: boolean;
+  }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -55,7 +67,7 @@ export type ProductsSortOption = 'newest' | 'oldest' | 'name' | 'price-high' | '
 
 export const PRODUCT_STATUS_LABELS: Record<string, string> = {
   active: 'نشط',
-  draft: 'مسودة',
+  draft: 'مخفي',
   archived: 'مؤرشف',
 };
 
@@ -133,6 +145,62 @@ export function useStore() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeProduct = useCallback((raw: any): Product => {
+    const rawImages = Array.isArray(raw?.images)
+      ? raw.images
+      : Array.isArray(raw?.product_images)
+        ? raw.product_images.map((img: any) => img?.imagePath).filter(Boolean)
+        : [];
+
+    return {
+      id: String(raw?.id ?? ''),
+      storeId: String(raw?.storeId ?? ''),
+      name: raw?.name ?? raw?.nameAr ?? '',
+      slug: raw?.slug ?? '',
+      description: raw?.description ?? raw?.descriptionAr ?? undefined,
+      price: Number(raw?.price ?? 0),
+      compareAtPrice:
+        raw?.compareAtPrice !== undefined
+          ? Number(raw.compareAtPrice)
+          : raw?.salePrice !== undefined
+            ? Number(raw.salePrice)
+            : undefined,
+      images: rawImages,
+      isActive:
+        typeof raw?.isActive === 'boolean'
+          ? raw.isActive
+          : String(raw?.status ?? '').toUpperCase() === 'ACTIVE',
+      stock: Number(raw?.stock ?? raw?.quantity ?? 0),
+      categoryId: raw?.categoryId ?? undefined,
+      category: raw?.product_categories
+        ? {
+            id: String(raw.product_categories.id),
+            name: raw.product_categories.nameAr || raw.product_categories.name,
+          }
+        : raw?.category
+          ? {
+              id: String(raw.category.id),
+              name: raw.category.name,
+            }
+          : undefined,
+      createdAt: raw?.createdAt ?? new Date().toISOString(),
+      updatedAt: raw?.updatedAt ?? new Date().toISOString(),
+      hasVariants: raw?.hasVariants ?? false,
+      variants: Array.isArray(raw?.variants)
+        ? raw.variants.map((v: any) => ({
+            id: String(v.id),
+            sku: v.sku || undefined,
+            price: Number(v.price ?? 0),
+            compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : undefined,
+            stock: Number(v.stock ?? 0),
+            attributes: v.attributes ?? {},
+            imageUrl: v.imageUrl || undefined,
+            isActive: v.isActive !== false,
+          }))
+        : undefined,
+    };
+  }, []);
+
   const ensureAuth = useCallback(async (): Promise<string | null> => {
     let token = AuthClient.getToken();
     if (!token) {
@@ -159,7 +227,7 @@ export function useStore() {
 
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/stores/my-store/products`, {
+      const response = await fetch(`${API_URL}/products/my-products`, {
         method: 'GET',
         headers,
       });
@@ -170,14 +238,15 @@ export function useStore() {
       }
 
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      if (!Array.isArray(data)) return [];
+      return data.map(normalizeProduct);
     } catch (err: any) {
       setError(err.message || 'فشل في تحميل المنتجات');
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, normalizeProduct]);
 
   // Delete product
   const deleteProduct = useCallback(async (productId: string): Promise<boolean> => {
@@ -198,9 +267,60 @@ export function useStore() {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/products/${productId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers,
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({ status: isActive ? 'ACTIVE' : 'INACTIVE' }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }, [getAuthHeaders]);
+
+  // Get single product by ID
+  const getProduct = useCallback(async (productId: string): Promise<Product | null> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/products/${productId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      return normalizeProduct(data);
+    } catch {
+      return null;
+    }
+  }, [getAuthHeaders, normalizeProduct]);
+
+  // Get single product by slug
+  const getProductBySlug = useCallback(async (slug: string): Promise<Product | null> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/products/slug/${slug}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      return normalizeProduct(data);
+    } catch {
+      return null;
+    }
+  }, [getAuthHeaders, normalizeProduct]);
+
+  // Update product
+  const updateProduct = useCallback(async (productId: string, payload: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/products/${productId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(payload),
       });
       return response.ok;
     } catch {
@@ -210,6 +330,9 @@ export function useStore() {
 
   return {
     getProducts,
+    getProduct,
+    getProductBySlug,
+    updateProduct,
     deleteProduct,
     toggleProductStatus,
     isLoading,

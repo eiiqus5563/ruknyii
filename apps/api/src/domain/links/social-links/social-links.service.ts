@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../core/database/prisma/prisma.service';
+import { CacheManager } from '../../../core/cache/cache.manager';
 import {
   CreateSocialLinkDto,
   UpdateSocialLinkDto,
@@ -21,7 +22,18 @@ export class SocialLinksService {
   constructor(
     private prisma: PrismaService,
     private urlShortener: UrlShortenerService,
+    private readonly cacheManager: CacheManager,
   ) {}
+
+  private async invalidateProfileCache(userId: string) {
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { username: true },
+    });
+    if (profile?.username) {
+      await this.cacheManager.invalidate(`profile:username:${profile.username}`);
+    }
+  }
 
   /**
    * Create a new social link
@@ -51,7 +63,7 @@ export class SocialLinksService {
     const displayOrder =
       createDto.displayOrder ?? (maxOrder?.displayOrder ?? -1) + 1;
 
-    return this.prisma.socialLink.create({
+    const link = await this.prisma.socialLink.create({
       data: {
         ...createDto,
         profileId: profile.id,
@@ -59,6 +71,9 @@ export class SocialLinksService {
         displayOrder,
       },
     });
+
+    await this.invalidateProfileCache(userId);
+    return link;
   }
 
   /**
@@ -140,13 +155,16 @@ export class SocialLinksService {
       shortUrl = await this.urlShortener.shorten(updateDto.url, userId);
     }
 
-    return this.prisma.socialLink.update({
+    const updated = await this.prisma.socialLink.update({
       where: { id: linkId },
       data: {
         ...updateDto,
         shortUrl,
       },
     });
+
+    await this.invalidateProfileCache(userId);
+    return updated;
   }
 
   /**
@@ -172,6 +190,7 @@ export class SocialLinksService {
       where: { id: linkId },
     });
 
+    await this.invalidateProfileCache(userId);
     return { message: 'Social link deleted successfully' };
   }
 
@@ -212,6 +231,7 @@ export class SocialLinksService {
 
     await this.prisma.$transaction(updates);
 
+    await this.invalidateProfileCache(userId);
     return {
       message: 'Links reordered successfully',
       order: reorderDto.linkIds,
@@ -294,6 +314,7 @@ export class SocialLinksService {
       },
     });
 
+    await this.invalidateProfileCache(userId);
     return {
       message: `Successfully updated ${dto.linkIds.length} links`,
       count: dto.linkIds.length,
@@ -353,6 +374,7 @@ export class SocialLinksService {
       },
     });
 
+    await this.invalidateProfileCache(userId);
     return {
       message: `Successfully moved ${dto.linkIds.length} links`,
       count: dto.linkIds.length,
@@ -394,6 +416,7 @@ export class SocialLinksService {
       },
     });
 
+    await this.invalidateProfileCache(userId);
     return {
       message: `Successfully deleted ${dto.linkIds.length} links`,
       count: dto.linkIds.length,

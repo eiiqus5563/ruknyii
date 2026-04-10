@@ -36,7 +36,7 @@ export class LinkedInStrategy extends PassportStrategy(
       clientSecret: configService.get<string>('LINKEDIN_CLIENT_SECRET'),
       callbackURL: configService.get<string>('LINKEDIN_CALLBACK_URL'),
       scope: scopeString,
-      state: false, // Session not used - CSRF protection handled by SameSite cookies + CORS
+      state: true, // 🔒 Enable OAuth state parameter to prevent login CSRF attacks
     });
   }
 

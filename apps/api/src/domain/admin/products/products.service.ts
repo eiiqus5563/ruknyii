@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../core/database/prisma/prisma.service';
 import { CacheManager } from '../../../core/cache/cache.manager';
+import { S3Service } from '../../../shared/services/s3.service';
 
 type ProductsQuery = {
   page: number;
@@ -15,10 +17,27 @@ type ProductsQuery = {
 
 @Injectable()
 export class ProductsService {
+  private readonly bucket: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheManager,
-  ) {}
+    private readonly s3: S3Service,
+    private readonly config: ConfigService,
+  ) {
+    this.bucket = this.config.get<string>('S3_BUCKET', 'rukny-storage');
+  }
+
+  private async resolveImageUrl(imagePath?: string | null): Promise<string | null> {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+
+    try {
+      return await this.s3.getPresignedGetUrl(this.bucket, imagePath, 3600);
+    } catch {
+      return `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${imagePath}`;
+    }
+  }
 
   private buildProductsWhereClause(query: ProductsQuery) {
     const conditions: Prisma.Sql[] = [];
@@ -186,32 +205,34 @@ export class ProductsService {
     const total = totalRows[0]?.total ?? 0;
 
     return {
-      data: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        nameAr: p.nameAr,
-        slug: p.slug,
-        price: Number(p.price),
-        salePrice: p.salePrice ? Number(p.salePrice) : null,
-        quantity: p.quantity,
-        status: p.status,
-        currency: p.currency,
-        sku: p.sku,
-        isFeatured: p.isFeatured,
-        hasVariants: p.hasVariants,
-        trackInventory: p.trackInventory,
-        createdAt: p.createdAt.toISOString(),
-        image: p.image ?? null,
-        store: p.storeId
-          ? { id: p.storeId, name: p.storeName, slug: p.storeSlug, logo: p.storeLogo }
-          : null,
-        category: p.categoryId
-          ? { id: p.categoryId, name: p.categoryName, nameAr: p.categoryNameAr }
-          : null,
-        ordersCount: p.ordersCount,
-        reviewsCount: p.reviewsCount,
-        variantsCount: p.variantsCount,
-      })),
+      data: await Promise.all(
+        products.map(async (p) => ({
+          id: p.id,
+          name: p.name,
+          nameAr: p.nameAr,
+          slug: p.slug,
+          price: Number(p.price),
+          salePrice: p.salePrice ? Number(p.salePrice) : null,
+          quantity: p.quantity,
+          status: p.status,
+          currency: p.currency,
+          sku: p.sku,
+          isFeatured: p.isFeatured,
+          hasVariants: p.hasVariants,
+          trackInventory: p.trackInventory,
+          createdAt: p.createdAt.toISOString(),
+          image: await this.resolveImageUrl(p.image),
+          store: p.storeId
+            ? { id: p.storeId, name: p.storeName, slug: p.storeSlug, logo: p.storeLogo }
+            : null,
+          category: p.categoryId
+            ? { id: p.categoryId, name: p.categoryName, nameAr: p.categoryNameAr }
+            : null,
+          ordersCount: p.ordersCount,
+          reviewsCount: p.reviewsCount,
+          variantsCount: p.variantsCount,
+        })),
+      ),
       total,
       page,
       limit,
@@ -220,7 +241,7 @@ export class ProductsService {
   }
 
   async getProductById(id: string) {
-    return this.prisma.products.findUniqueOrThrow({
+    const product = await this.prisma.products.findUniqueOrThrow({
       where: { id },
       include: {
         stores: { select: { id: true, name: true, slug: true, logo: true } },
@@ -231,6 +252,15 @@ export class ProductsService {
         _count: { select: { order_items: true, reviews: true, variants: true } },
       },
     });
+
+    const product_images = await Promise.all(
+      product.product_images.map(async (img) => ({
+        ...img,
+        imagePath: (await this.resolveImageUrl(img.imagePath)) || img.imagePath,
+      })),
+    );
+
+    return { ...product, product_images };
   }
 
   async updateProductStatus(id: string, status: string) {

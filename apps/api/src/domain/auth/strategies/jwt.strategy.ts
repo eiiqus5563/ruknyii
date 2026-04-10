@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../core/database/prisma/prisma.service';
+import { SessionFingerprintService } from '../../../infrastructure/security/session-fingerprint.service';
 import { extractAccessToken } from '../cookie.config';
 
 // ⚡ In-memory throttle map to prevent concurrent lastActivity updates
@@ -43,19 +44,24 @@ const bearerExtractor = (req: any): string | null => {
   return extractAccessToken(req);
 };
 
+function isLocalhostContext(value?: string | string[] | null): boolean {
+  if (!value) return false;
+  const normalized = Array.isArray(value) ? value.join(' ') : value;
+  return /localhost|127\.0\.0\.1|0\.0\.0\.0|::1/i.test(normalized);
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private sessionFingerprintService: SessionFingerprintService,
   ) {
     super({
       // 🔒 استخراج من Authorization header فقط
       jwtFromRequest: bearerExtractor,
-      // ✅ قبول JWT منتهي الصلاحية ثم التحقق من الجلسة في validate()
-      // عند انتهاء expiresAt (30 دقيقة) نمدد الجلسة إذا refreshExpiresAt ما زال صالحاً
-      // بدلاً من إرجاع 401 وتسجيل الخروج مباشرة
-      ignoreExpiration: true,
+      // 🔒 Reject expired JWTs — the client must use POST /auth/refresh to renew
+      ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET'),
       passReqToCallback: true, // Enable request in validate
     });
@@ -72,10 +78,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!sessionId) {
       throw new UnauthorizedException('Invalid token: missing session ID');
     }
-
-    // 🔒 التحقق من انتهاء صلاحية JWT (exp claim)
-    const now = Math.floor(Date.now() / 1000);
-    const jwtExpired = payload.exp && payload.exp < now;
 
     // 🔒 البحث عن الجلسة باستخدام sessionId من JWT
     const session = await this.prisma.session.findUnique({
@@ -95,6 +97,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 username: true,
                 avatar: true,
                 bio: true,
+              },
+            },
+            subscription: {
+              select: {
+                plan: true,
+                status: true,
+                currentPeriodEnd: true,
               },
             },
           },
@@ -121,33 +130,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const nowDate = new Date();
 
-    // 🔒 التحقق من انتهاء JWT و Session
-    // إذا انتهى JWT (exp) أو Session (expiresAt)، نتحقق من refresh token
+    // 🔒 التحقق من انتهاء صلاحية الجلسة (JWT expiry handled by Passport)
     const sessionExpired = session.expiresAt && session.expiresAt < nowDate;
-    
-    if (jwtExpired || sessionExpired) {
-      const refreshStillValid =
-        session.refreshExpiresAt && session.refreshExpiresAt > nowDate;
-      if (refreshStillValid) {
-        // تمديد الجلسة بدلاً من تسجيل الخروج (await لضمان حفظ التمديد قبل متابعة الطلب)
-        const newExpiresAt = new Date(nowDate.getTime() + 30 * 60 * 1000);
-        await this.prisma.session.update({
-          where: { id: session.id },
-          data: {
-            expiresAt: newExpiresAt,
-            lastActivity: nowDate,
-          },
-        });
-        // متابعة التحقق دون رمي 401
-      } else {
-        throw new UnauthorizedException(
-          'Session has expired. Please login again.',
-        );
-      }
+    if (sessionExpired) {
+      throw new UnauthorizedException(
+        'Session has expired. Please login again.',
+      );
     }
 
-    // 🔒 التحقق من Idle Timeout (24 ساعة من عدم النشاط)
-    const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 ساعة
+    // 🔒 التحقق من Idle Timeout (8 ساعات من عدم النشاط - تقليل من 24 ساعة لتقليل نافذة الهجوم)
+    const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 ساعات
     const lastActivity = session.lastActivity || session.createdAt;
     const timeSinceLastActivity = nowDate.getTime() - lastActivity.getTime();
 
@@ -155,6 +147,39 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException(
         'Session has been inactive for too long. Please login again.',
       );
+    }
+
+    // 🔒 Session fingerprint verification — detect stolen sessions
+    // Must match the headers used at login time (auth.service.ts) — only user-agent
+    const currentFingerprint = this.sessionFingerprintService.generateSimpleFingerprint({
+      'user-agent': req.headers?.['user-agent'],
+    });
+    const fpResult = await this.sessionFingerprintService.verifySessionFingerprint(
+      session.id,
+      currentFingerprint,
+    );
+    if (fpResult.mismatch && !fpResult.valid) {
+      const isLocalhostRequest = [
+        req.headers?.origin,
+        req.headers?.referer,
+        req.headers?.host,
+        req.headers?.['x-forwarded-host'],
+        process.env.FRONTEND_URL,
+        process.env.FRONTEND_URL_ALT,
+        process.env.AUTH_FRONTEND_URL,
+      ].some((value) => isLocalhostContext(value));
+
+      if (isLocalhostRequest) {
+        await this.sessionFingerprintService.bindFingerprintToSession(
+          session.id,
+          currentFingerprint,
+          session.userId,
+        );
+      } else {
+        throw new UnauthorizedException(
+          'Session fingerprint mismatch. Please login again.',
+        );
+      }
     }
 
     // ⚡ Performance: In-memory throttle to prevent concurrent DB updates
@@ -184,6 +209,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Return flattened user object
+    const sub = session.user.subscription;
+    const subscriptionPlan =
+      sub?.status === 'ACTIVE' &&
+      (!sub.currentPeriodEnd || sub.currentPeriodEnd > new Date())
+        ? sub.plan
+        : 'FREE';
+
     const result = {
       id: session.user.id,
       email: session.user.email,
@@ -196,6 +228,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       bannerUrls: session.user.bannerUrls || [],
       profileCompleted: session.user.profileCompleted ?? false,
       sessionId: session.id, // 🔒 Session ID للاستخدام لاحقاً
+      subscriptionPlan,
     };
     return result;
   }

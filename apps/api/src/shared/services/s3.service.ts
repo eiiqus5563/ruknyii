@@ -564,6 +564,14 @@ export class S3Service implements OnModuleInit {
   }
 
   /**
+   * Generate S3 key for logo cloud files
+   * Path: users/{userId}/logos/{filename}
+   */
+  getLogoKey(userId: string, filename: string): string {
+    return `users/${userId}/logos/${filename}`;
+  }
+
+  /**
    * Delete all files for a user (when deleting account)
    * Deletes all files under: users/{userId}/
    */

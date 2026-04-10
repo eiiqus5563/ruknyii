@@ -5,9 +5,11 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Request } from 'express';
 import { CheckoutAuthService } from './checkout-auth.service';
 import {
   RequestCheckoutOtpDto,
@@ -15,6 +17,7 @@ import {
   ResendCheckoutOtpDto,
   OtpRequestResponse,
   OtpVerifyResponse,
+  QuickLoginDto,
 } from './dto/checkout-otp.dto';
 
 /**
@@ -31,6 +34,16 @@ import {
 @Controller('auth/checkout')
 export class CheckoutAuthController {
   constructor(private readonly checkoutAuthService: CheckoutAuthService) {}
+
+  private getClientIp(req: Request): string {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.length > 0) {
+      return forwarded.split(',')[0]?.trim() || 'unknown';
+    }
+    const realIp = req.headers['x-real-ip'];
+    if (typeof realIp === 'string' && realIp.length > 0) return realIp;
+    return req.ip || req.socket?.remoteAddress || 'unknown';
+  }
 
   /**
    * 📲 طلب رمز OTP للشراء
@@ -58,8 +71,9 @@ export class CheckoutAuthController {
   })
   async requestOtp(
     @Body() dto: RequestCheckoutOtpDto,
+    @Req() req: Request,
   ): Promise<OtpRequestResponse> {
-    return this.checkoutAuthService.requestOtp(dto);
+    return this.checkoutAuthService.requestOtp(dto, this.getClientIp(req));
   }
 
   /**
@@ -84,8 +98,9 @@ export class CheckoutAuthController {
   })
   async verifyOtp(
     @Body() dto: VerifyCheckoutOtpDto,
+    @Req() req: Request,
   ): Promise<OtpVerifyResponse> {
-    return this.checkoutAuthService.verifyOtp(dto);
+    return this.checkoutAuthService.verifyOtp(dto, this.getClientIp(req));
   }
 
   /**
@@ -114,12 +129,32 @@ export class CheckoutAuthController {
   })
   async resendOtp(
     @Body() dto: ResendCheckoutOtpDto,
+    @Req() req: Request,
   ): Promise<OtpRequestResponse> {
-    return this.checkoutAuthService.resendOtp(dto);
+    return this.checkoutAuthService.resendOtp(dto, this.getClientIp(req));
   }
 
   /**
-   * 🔍 فحص حالة خدمات الإرسال (WhatsApp & Email)
+   * � تسجيل سريع بدون OTP
+   */
+  @Post('quick-login')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'تسجيل سريع بدون رمز تحقق',
+    description: 'إنشاء جلسة شراء مباشرة باستخدام رقم الهاتف والاسم بدون OTP',
+  })
+  @ApiBody({ type: QuickLoginDto })
+  @ApiResponse({ status: 200, description: 'تم إنشاء الجلسة بنجاح' })
+  async quickLogin(
+    @Body() dto: QuickLoginDto,
+    @Req() req: Request,
+  ): Promise<OtpVerifyResponse> {
+    return this.checkoutAuthService.quickLogin(dto, this.getClientIp(req));
+  }
+
+  /**
+   * �🔍 فحص حالة خدمات الإرسال (WhatsApp & Email)
    */
   @Get('check-services')
   @HttpCode(HttpStatus.OK)

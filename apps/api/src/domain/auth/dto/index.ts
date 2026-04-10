@@ -13,6 +13,8 @@ export {
 export {
   Verify2FADto,
   Verify2FALoginDto,
+  StartVerifyIdentityDto,
+  StartVerifyIdentityResponseDto,
   Disable2FADto,
   RegenerateBackupCodesDto,
   Setup2FAResponseDto,

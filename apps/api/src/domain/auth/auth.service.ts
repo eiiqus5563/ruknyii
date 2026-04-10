@@ -8,6 +8,8 @@ import { UAParser } from 'ua-parser-js';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { AccountLockoutService } from './account-lockout.service';
 import { IpVerificationService } from './ip-verification.service';
+import { SessionFingerprintService } from '../../infrastructure/security/session-fingerprint.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 /**
  * 🔒 Auth Service
@@ -40,6 +42,8 @@ export class AuthService {
     private notificationsGateway: NotificationsGateway,
     private accountLockoutService: AccountLockoutService,
     private ipVerificationService: IpVerificationService,
+    private sessionFingerprintService: SessionFingerprintService,
+    private subscriptionsService: SubscriptionsService,
   ) {}
 
   /**
@@ -81,7 +85,7 @@ export class AuthService {
       { expiresIn: '30m' },
     );
 
-    // 3. إنشاء Refresh Token (14 يوم)
+    // 3. إنشاء Refresh Token (7 أيام)
     const refreshToken = this.generateSecureRefreshToken();
 
     // 4. حساب أوقات الانتهاء
@@ -89,8 +93,8 @@ export class AuthService {
     sessionExpiresAt.setMinutes(sessionExpiresAt.getMinutes() + 30);
 
     const refreshExpiresAt = new Date();
-    // 🔒 تقليل مدة Refresh Token من 30 يوم إلى 14 يوم (أكثر أماناً)
-    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 14);
+    // 🔒 7 أيام - موحد مع token.service.ts و cookie.config.ts
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 7);
 
     // 5. حفظ الجلسة في قاعدة البيانات
     // ⚠️ لا نخزن Access Token - نستخدم sessionId في JWT
@@ -118,6 +122,22 @@ export class AuthService {
       throw new Error(
         `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+    }
+
+    // 🔒 Bind session fingerprint for theft detection
+    if (userAgent) {
+      try {
+        const fingerprint = this.sessionFingerprintService.generateSimpleFingerprint({
+          'user-agent': userAgent,
+        });
+        await this.sessionFingerprintService.bindFingerprintToSession(
+          sessionId,
+          fingerprint,
+          userId,
+        );
+      } catch {
+        // Non-critical — don't fail login for fingerprint storage
+      }
     }
 
     return { accessToken, refreshToken };
@@ -152,12 +172,21 @@ export class AuthService {
     };
   }
 
-  async googleLogin(googleUser: any, userAgent?: string, ipAddress?: string) {
-    const { googleId, email, name, avatar } = googleUser;
+  /**
+   * 🔒 Shared OAuth login logic for all providers
+   */
+  private async oauthLogin(
+    provider: 'google' | 'linkedin',
+    providerUser: { providerId: string; email: string; name: string; avatar: string | null },
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<AuthResult> {
+    const { providerId, email, name, avatar } = providerUser;
+    const providerIdField = provider === 'google' ? 'googleId' : 'linkedinId';
 
-    // Prioritize lookup by Google ID, then fall back to email
+    // Prioritize lookup by provider ID, then fall back to email
     let user = await this.prisma.user.findFirst({
-      where: { googleId },
+      where: { [providerIdField]: providerId },
       include: { profile: true },
     });
 
@@ -168,17 +197,14 @@ export class AuthService {
       });
     }
 
-    let isNewUser = false;
     if (!user) {
-      // Create new user with temporary profile
-      // profileCompleted = false → user must complete profile & store setup
       user = await this.prisma.user.create({
         data: {
           id: crypto.randomUUID(),
           email,
-          googleId,
-          emailVerified: true, // Google emails are considered verified
-          profileCompleted: false, // Must complete profile first
+          [providerIdField]: providerId,
+          emailVerified: true,
+          profileCompleted: false,
           profile: {
             create: {
               id: crypto.randomUUID(),
@@ -191,25 +217,20 @@ export class AuthService {
             },
           },
         },
-        include: {
-          profile: true,
-        },
+        include: { profile: true },
       });
-      isNewUser = true;
-      // 🏪 المتجر سيتم إنشاؤه عند إكمال الملف الشخصي
-    } else if (!user.googleId) {
-      // Link existing user account with Google
+
+      // إنشاء اشتراك مجاني للمستخدم الجديد
+      await this.subscriptionsService.createFreeSubscription(user.id);
+    } else if (!user[providerIdField]) {
+      // Link existing user account with this provider
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: {
-          googleId,
+          [providerIdField]: providerId,
           emailVerified: true,
           profile: user.profile
-            ? {
-                update: {
-                  avatar: avatar || user.profile.avatar,
-                },
-              }
+            ? { update: { avatar: avatar || user.profile.avatar } }
             : {
                 create: {
                   id: crypto.randomUUID(),
@@ -222,13 +243,10 @@ export class AuthService {
                 },
               },
         },
-        include: {
-          profile: true,
-        },
+        include: { profile: true },
       });
     }
 
-    // 🔒 إنشاء جلسة جديدة مع Access و Refresh tokens
     const { accessToken, refreshToken } = await this.createSession(
       user.id,
       user.email,
@@ -236,16 +254,16 @@ export class AuthService {
       ipAddress,
     );
 
-    // Parse device information for logging
     const parser = new UAParser(userAgent);
     const result = parser.getResult();
 
-    // Log successful login
+    const providerLabel = provider === 'google' ? 'Google' : 'LinkedIn';
+
     await this.securityLogService.createLog({
       userId: user.id,
       action: 'LOGIN_SUCCESS',
       status: 'SUCCESS',
-      description: `تسجيل دخول ناجح عبر Google`,
+      description: `تسجيل دخول ناجح عبر ${providerLabel}`,
       ipAddress,
       deviceType: result.device.type || 'desktop',
       browser: result.browser.name || 'Unknown',
@@ -253,7 +271,6 @@ export class AuthService {
       userAgent,
     });
 
-    // Check for new device
     await this.securityDetectorService.checkNewDevice(user.id, {
       browser: result.browser.name,
       os: result.os.name,
@@ -262,7 +279,6 @@ export class AuthService {
       userAgent,
     });
 
-    // 🔔 إرسال إشعار تسجيل دخول جديد (Security)
     try {
       await this.notificationsGateway.sendNotification({
         userId: user.id,
@@ -275,18 +291,11 @@ export class AuthService {
           deviceType: result.device.type || 'desktop',
         },
       });
-    } catch (err) {
-      // لا تُفشل عملية تسجيل الدخول بسبب فشل الإشعار
-      // يمكن مراقبة هذه الأخطاء لاحقاً
-      // Log error but don't fail the login process
-      // Logger is handled by global exception filter
+    } catch {
+      // Non-critical — don't fail login for a notification error
     }
 
-    // تسجيل المحاولة الناجحة وإعادة تعيين عداد الإغلاق
-    await this.accountLockoutService.recordSuccessfulAttempt(
-      user.email,
-      ipAddress,
-    );
+    await this.accountLockoutService.recordSuccessfulAttempt(user.email, ipAddress);
 
     return {
       user: {
@@ -303,157 +312,32 @@ export class AuthService {
     };
   }
 
-  async linkedinLogin(
-    linkedinUser: any,
-    userAgent?: string,
-    ipAddress?: string,
-  ) {
-    const { linkedinId, email, name, avatar } = linkedinUser;
-
-    // Prioritize lookup by LinkedIn ID, then fall back to email
-    let user = await this.prisma.user.findFirst({
-      where: { linkedinId },
-      include: { profile: true },
-    });
-
-    if (!user) {
-      user = await this.prisma.user.findFirst({
-        where: { email },
-        include: { profile: true },
-      });
-    }
-
-    let isNewUser = false;
-    if (!user) {
-      // Create new user with temporary profile
-      // profileCompleted = false → user must complete profile & store setup
-      user = await this.prisma.user.create({
-        data: {
-          id: crypto.randomUUID(),
-          email,
-          linkedinId,
-          emailVerified: true, // LinkedIn emails are considered verified
-          profileCompleted: false, // Must complete profile first
-          profile: {
-            create: {
-              id: crypto.randomUUID(),
-              username:
-                email.split('@')[0] +
-                '_' +
-                Math.random().toString(36).substring(2, 6),
-              name,
-              avatar,
-            },
-          },
-        },
-        include: {
-          profile: true,
-        },
-      });
-      isNewUser = true;
-      // 🏪 المتجر سيتم إنشاؤه عند إكمال الملف الشخصي
-    } else if (!user.linkedinId) {
-      // Link existing user account with LinkedIn
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          linkedinId,
-          emailVerified: true,
-          profile: user.profile
-            ? {
-                update: {
-                  avatar: avatar || user.profile.avatar,
-                },
-              }
-            : {
-                create: {
-                  id: crypto.randomUUID(),
-                  username:
-                    email.split('@')[0] +
-                    '_' +
-                    Math.random().toString(36).substring(2, 6),
-                  name,
-                  avatar,
-                },
-              },
-        },
-        include: {
-          profile: true,
-        },
-      });
-    }
-
-    // 🔒 إنشاء جلسة جديدة مع Access و Refresh tokens
-    const { accessToken, refreshToken } = await this.createSession(
-      user.id,
-      user.email,
-      userAgent,
-      ipAddress,
-    );
-
-    // Parse device information for logging
-    const parser = new UAParser(userAgent);
-    const result = parser.getResult();
-
-    // Log successful login
-    await this.securityLogService.createLog({
-      userId: user.id,
-      action: 'LOGIN_SUCCESS',
-      status: 'SUCCESS',
-      description: `تسجيل دخول ناجح عبر LinkedIn`,
-      ipAddress,
-      deviceType: result.device.type || 'desktop',
-      browser: result.browser.name || 'Unknown',
-      os: result.os.name || 'Unknown',
-      userAgent,
-    });
-
-    // 🔔 إرسال إشعار تسجيل دخول جديد (Security)
-    try {
-      await this.notificationsGateway.sendNotification({
-        userId: user.id,
-        type: 'NEW_LOGIN' as any,
-        title: 'تسجيل دخول جديد',
-        message: `تم تسجيل الدخول إلى حسابك من ${result.browser.name || 'متصفح غير معروف'} على ${result.os.name || 'جهاز غير معروف'}`,
-        data: {
-          browser: result.browser.name || 'Unknown',
-          os: result.os.name || 'Unknown',
-          deviceType: result.device.type || 'desktop',
-        },
-      });
-    } catch (err) {
-      // Log error but don't fail the login process
-      // Logger is handled by global exception filter
-    }
-
-    // Check for new device
-    await this.securityDetectorService.checkNewDevice(user.id, {
-      browser: result.browser.name,
-      os: result.os.name,
-      deviceType: result.device.type || 'desktop',
-      ipAddress,
-      userAgent,
-    });
-
-    // تسجيل المحاولة الناجحة وإعادة تعيين عداد الإغلاق
-    await this.accountLockoutService.recordSuccessfulAttempt(
-      user.email,
-      ipAddress,
-    );
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.profile?.name,
-        username: user.profile?.username,
-        avatar: user.profile?.avatar,
+  async googleLogin(googleUser: any, userAgent?: string, ipAddress?: string) {
+    return this.oauthLogin(
+      'google',
+      {
+        providerId: googleUser.googleId,
+        email: googleUser.email,
+        name: googleUser.name,
+        avatar: googleUser.avatar,
       },
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      needsProfileCompletion: !user.profileCompleted,
-    };
+      userAgent,
+      ipAddress,
+    );
+  }
+
+  async linkedinLogin(linkedinUser: any, userAgent?: string, ipAddress?: string) {
+    return this.oauthLogin(
+      'linkedin',
+      {
+        providerId: linkedinUser.linkedinId,
+        email: linkedinUser.email,
+        name: linkedinUser.name,
+        avatar: linkedinUser.avatar,
+      },
+      userAgent,
+      ipAddress,
+    );
   }
 
   /**

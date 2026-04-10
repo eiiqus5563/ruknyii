@@ -6,6 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
+import S3Service from '../../services/s3.service';
 import {
   CreateReviewDto,
   UpdateReviewDto,
@@ -16,7 +17,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly bucket = process.env.S3_BUCKET || 'rukny-storage';
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly s3Service: S3Service,
+  ) {}
 
   /**
    * Create a new review
@@ -97,7 +103,7 @@ export class ReviewsService {
 
     return {
       message: 'تم إضافة التقييم بنجاح',
-      review: this.formatReview(review),
+      review: await this.formatReview(review),
     };
   }
 
@@ -144,7 +150,7 @@ export class ReviewsService {
 
     return {
       message: 'تم تحديث التقييم بنجاح',
-      review: this.formatReview(updatedReview),
+      review: await this.formatReview(updatedReview),
     };
   }
 
@@ -233,7 +239,7 @@ export class ReviewsService {
     ]);
 
     return {
-      reviews: reviews.map((r) => this.formatReview(r)),
+      reviews: await Promise.all(reviews.map((r) => this.formatReview(r))),
       pagination: {
         page,
         limit,
@@ -359,7 +365,7 @@ export class ReviewsService {
     ]);
 
     return {
-      reviews: reviews.map((r) => this.formatReview(r, true)),
+      reviews: await Promise.all(reviews.map((r) => this.formatReview(r, true))),
       pagination: {
         page,
         limit,
@@ -468,7 +474,7 @@ export class ReviewsService {
     ]);
 
     return {
-      reviews: reviews.map((r) => this.formatReview(r, true)),
+      reviews: await Promise.all(reviews.map((r) => this.formatReview(r, true))),
       pagination: {
         page,
         limit,
@@ -536,7 +542,7 @@ export class ReviewsService {
   /**
    * Format review for response
    */
-  private formatReview(review: any, includeProduct = false) {
+  private async formatReview(review: any, includeProduct = false) {
     const formatted: any = {
       id: review.id,
       rating: review.rating,
@@ -554,11 +560,19 @@ export class ReviewsService {
     };
 
     if (includeProduct && review.products) {
+      let image: string | null = review.products.product_images?.[0]?.imagePath || null;
+      if (image && !image.startsWith('http')) {
+        try {
+          image = await this.s3Service.getPresignedGetUrl(this.bucket, image, 3600);
+        } catch {
+          image = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${image}`;
+        }
+      }
       formatted.product = {
         id: review.products.id,
         name: review.products.name,
         nameAr: review.products.nameAr,
-        image: review.products.product_images?.[0]?.imagePath || null,
+        image,
         store: review.products.stores || null,
       };
     }

@@ -13,6 +13,30 @@ import { NextRequest, NextResponse } from 'next/server';
 const API_BACKEND_URL =
   process.env.API_BACKEND_URL || process.env.API_URL || 'http://localhost:3001';
 
+/** 🔒 Simple sliding-window rate limiter per IP (in-memory, per-instance). */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 60; // 60 requests per minute per IP
+
+// Clean up stale entries every 5 minutes to prevent memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetAt) rateLimitMap.delete(key);
+  }
+}, 300_000);
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 const FORWARD_REQUEST_HEADERS = [
   'content-type',
   'accept',
@@ -24,10 +48,44 @@ const FORWARD_REQUEST_HEADERS = [
   'x-real-ip',
   'x-forwarded-proto',
   'x-request-id',
+  'x-csrf-token',
+];
+
+/** Only allow proxying to known auth sub-paths to prevent SSRF via path traversal. */
+const ALLOWED_AUTH_PREFIXES = [
+  'me', 'refresh', 'logout', 'logout-all',
+  'sessions', 'activity', 'ws-token',
+  'google', 'linkedin', 'oauth',
+  'quicksign', 'lockout', '2fa',
+  'update-profile',
 ];
 
 async function proxyToApi(request: NextRequest, pathSegments: string[]) {
+  // 🔒 Rate limit by client IP
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+  if (isRateLimited(clientIp)) {
+    return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: {
+        'content-type': 'application/json',
+        'retry-after': '60',
+      },
+    });
+  }
+
   const path = pathSegments.join('/');
+
+  // 🔒 Validate the path to prevent SSRF — only forward to known auth endpoints
+  const firstSegment = pathSegments[0]?.toLowerCase();
+  if (!firstSegment || !ALLOWED_AUTH_PREFIXES.includes(firstSegment)) {
+    return new NextResponse(JSON.stringify({ error: 'Invalid auth path' }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
   const url = new URL(`/api/v1/auth/${path}`, API_BACKEND_URL);
 
   // Forward query params

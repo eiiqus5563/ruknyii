@@ -13,6 +13,8 @@ import {
 import { Response } from 'express';
 import { GoogleSheetsService } from './google-sheets.service';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
+import { PlanGuard } from '../../core/common/guards/plan.guard';
+import { CheckFeature } from '../../core/common/decorators/auth/plan.decorator';
 import { CurrentUser } from '../../core/common/decorators/auth/current-user.decorator';
 import { ConfigService } from '@nestjs/config';
 
@@ -99,7 +101,8 @@ export class GoogleSheetsController {
    * Export all submissions to Google Sheets
    */
   @Post('export/:formId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PlanGuard)
+  @CheckFeature('googleSheets')
   exportSubmissions(
     @Param('formId') formId: string,
     @CurrentUser('id') userId: string,

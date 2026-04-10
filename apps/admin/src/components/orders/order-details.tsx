@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 import { OrderStatusBadge } from "./order-status-badge";
 
 interface OrderDetailData {
@@ -89,10 +90,6 @@ interface OrderDetailsProps {
   order: OrderDetailData;
   onStatusChange: (status: string) => void;
   onDelete: () => void;
-}
-
-function formatCurrency(amount: number, currency = "IQD"): string {
-  return `${amount.toLocaleString("en-US")} ${currency}`;
 }
 
 function formatDate(dateStr: string): string {

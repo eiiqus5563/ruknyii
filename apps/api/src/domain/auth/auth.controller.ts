@@ -6,9 +6,8 @@ import { ExchangeCodeDto, UpdateOAuthProfileDto } from './dto';
 import { JwtAuthGuard } from '../../core/common/guards/auth/jwt-auth.guard';
 import { GoogleAuthGuard } from '../../core/common/guards/auth/google-auth.guard';
 import { LinkedInAuthGuard } from '../../core/common/guards/auth/linkedin-auth.guard';
-import { CurrentUser } from '../../core/common/decorators/auth/current-user.decorator';
+import { CurrentUser, AuthenticatedUser } from '../../core/common/decorators/auth/current-user.decorator';
 import { Request, Response } from 'express';
-import { OAuthCodeService } from './oauth-code.service';
 import { RedisOAuthCodeService } from './redis-oauth-code.service';
 import { WebSocketTokenService } from './websocket-token.service';
 import { SecurityLogService } from '../../infrastructure/security/log.service';
@@ -33,7 +32,7 @@ import { StorageService } from '../storage/storage.service';
 // - Development: more lenient to avoid blocking mobile/local testing when the client retries
 const AUTH_REFRESH_THROTTLE =
   process.env.NODE_ENV === 'production'
-    ? { default: { limit: 30, ttl: 60000 } } // 30 requests per minute
+    ? { default: { limit: 10, ttl: 60000 } } // 10 requests per minute (reduced from 30 for security)
     : { default: { limit: 300, ttl: 60000 } }; // 300 requests per minute (dev only)
 
 @ApiTags('Auth')
@@ -102,7 +101,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateOAuthProfile(
     @Body() dto: UpdateOAuthProfileDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
   ) {
     // Check if username is available
@@ -156,6 +155,16 @@ export class AuthController {
           .slice(0, 40)
           || `store-${randomUUID().slice(0, 8)}`;
 
+        // 🔗 ربط التصنيف بالـ categoryId من جدول store_categories
+        let resolvedCategoryId: string | null = null;
+        if (dto.storeCategory) {
+          const storeCategory = await this.prisma.store_categories.findFirst({
+            where: { slug: dto.storeCategory, isActive: true },
+            select: { id: true },
+          });
+          resolvedCategoryId = storeCategory?.id || null;
+        }
+
         store = await this.prisma.store.create({
           data: {
             userId: user.id,
@@ -163,6 +172,7 @@ export class AuthController {
             slug: storeSlug,
             description: dto.storeDescription || null,
             category: dto.storeCategory || null,
+            categoryId: resolvedCategoryId,
             employeesCount: dto.employeesCount || null,
             contactEmail: updated.email,
             country: dto.storeCountry || 'Iraq',
@@ -217,7 +227,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Activity log retrieved' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async getActivity(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('action') action?: string,
@@ -237,7 +247,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get WebSocket authentication token' })
   @ApiResponse({ status: 200, description: 'WebSocket token generated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getWebSocketToken(@CurrentUser() user: any) {
+  async getWebSocketToken(@CurrentUser() user: AuthenticatedUser) {
     const token = this.webSocketTokenService.generateToken(user.id);
     return { token, expiresIn: 300 }; // 5 minutes
   }
@@ -339,7 +349,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get user active sessions' })
   @ApiResponse({ status: 200, description: 'Active sessions retrieved' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
-  async getActiveSessions(@CurrentUser() user: any) {
+  async getActiveSessions(@CurrentUser() user: AuthenticatedUser) {
     return this.tokenService.getUserActiveSessions(user.id);
   }
 
@@ -355,7 +365,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logged out from all devices' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async logoutAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {
@@ -398,9 +408,19 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Session revoked successfully' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   async revokeSession(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('sessionId') sessionId: string,
   ) {
+    // 🔒 Verify the session belongs to the authenticated user (prevent IDOR)
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userId: true },
+    });
+
+    if (!session || session.userId !== user.id) {
+      throw new ForbiddenException('لا يمكنك إنهاء هذه الجلسة');
+    }
+
     await this.tokenService.revokeSession(sessionId, 'User revoked session');
     return {
       success: true,
@@ -485,47 +505,24 @@ export class AuthController {
       throw new ForbiddenException(`CSRF validation failed: ${csrfCheck.reason}`);
     }
 
-    // 🔒 Debug: Log incoming code exchange request
-    console.log('[OAuth Exchange] Code exchange started:', {
-      codeLength: body.code?.length,
-      codePreview: body.code?.substring(0, 20) + '...',
-    });
-
     try {
       const exchanged = await this.oauthCodeService.exchange(body.code);
-      console.log('[OAuth Exchange] Code exchanged successfully:', {
-        hasAccessToken: !!exchanged.access_token,
-        hasRefreshToken: !!exchanged.refresh_token,
-        userId: exchanged.user?.id,
-        needsProfileCompletion: exchanged.needsProfileCompletion,
-      });
 
       const { access_token, refresh_token, user, needsProfileCompletion } = exchanged;
     
       // 🔒 Access Token في httpOnly Cookie
       if (access_token) {
-        console.log('[OAuth Exchange] Setting access_token cookie...');
         setAccessTokenCookie(res, access_token);
-        console.log('[OAuth Exchange] ✅ Access token cookie appended');
       }
       
       // 🔒 Refresh Token في httpOnly Cookie
       if (refresh_token) {
-        console.log('[OAuth Exchange] Setting refresh_token cookie...');
         setRefreshTokenCookie(res, refresh_token);
-        console.log('[OAuth Exchange] ✅ Refresh token cookie appended');
       }
 
       // 🔒 توليد CSRF Token
       const csrfToken = generateCsrfToken();
-      console.log('[OAuth Exchange] Generated CSRF token:', csrfToken.substring(0, 20) + '...');
-      console.log('[OAuth Exchange] Setting CSRF token cookie...');
       setCsrfTokenCookie(res, csrfToken);
-      console.log('[OAuth Exchange] ✅ CSRF token cookie appended');
-      
-      // Log all Set-Cookie headers in response
-      console.log('[OAuth Exchange] Response headers before return:');
-      res.getHeaders()['set-cookie'] && console.log('  Set-Cookie count:', (res.getHeaders()['set-cookie'] as string[]).length);
       
       // 🔒 Response - لا نُرسل التوكنات في الـ body
       const response = { 
@@ -537,16 +534,8 @@ export class AuthController {
         message: 'Tokens stored in httpOnly cookies',
       };
 
-      console.log('[OAuth Exchange] ✅ Response ready:', {
-        success: response.success,
-        hasCsrfToken: !!response.csrf_token,
-        userId: response.user?.id,
-        needsProfileCompletion: response.needsProfileCompletion,
-      });
-
       return response;
     } catch (error) {
-      console.error('[OAuth Exchange] ❌ Code exchange failed:', error instanceof Error ? error.message : error);
       throw error;
     }
   }

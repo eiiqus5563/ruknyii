@@ -66,6 +66,7 @@ export class ProductsService {
       productAttributes,
       hasVariants: hasVariantsInput,
       trackInventory: trackInventoryInput,
+      isDigital: isDigitalInput,
       ...productData
     } = createProductDto;
 
@@ -73,6 +74,7 @@ export class ProductsService {
     const hasVariantsValue =
       hasVariantsInput || (variants && variants.length > 0) || false;
     const trackInventoryValue = trackInventoryInput ?? true;
+    const isDigitalValue = isDigitalInput ?? false;
 
     // إنشاء المنتج مع المتغيرات والخصائص في transaction واحد
     const product = await this.prisma.$transaction(async (tx) => {
@@ -83,10 +85,9 @@ export class ProductsService {
           ...productData,
           slug,
           storeId: store.id,
-          // @ts-ignore - حقول جديدة قد لا يعرفها الـ Prisma Client حتى يتم إعادة التوليد
           hasVariants: hasVariantsValue,
-          // @ts-ignore
           trackInventory: trackInventoryValue,
+          isDigital: isDigitalValue,
           updatedAt: new Date(),
           ...(status && { status: status as any }),
           ...(categoryId && { categoryId }),
@@ -128,6 +129,13 @@ export class ProductsService {
         this.logger.log(
           `Created ${variants.length} variants for product ${newProduct.id}`,
         );
+
+        // Auto-set product quantity = sum of variant stocks
+        const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+        await tx.products.update({
+          where: { id: newProduct.id },
+          data: { quantity: totalVariantStock },
+        });
       }
 
       // إضافة الخصائص الديناميكية (المؤلف، الضمان، طريقة التوصيل، إلخ)
@@ -230,32 +238,37 @@ export class ProductsService {
 
     // تحويل imagePath إلى presigned URLs للصور
     const productsWithUrls = await Promise.all(
-      products.map(async (product) => {
-        const imagesWithUrls = await Promise.all(
-          product.product_images.map(async (img) => {
-            let url = img.imagePath;
-            if (!img.imagePath.startsWith('http')) {
-              try {
-                url = await this.s3Service.getPresignedGetUrl(
-                  this.bucket,
-                  img.imagePath,
-                  3600,
-                );
-              } catch (error) {
-                this.logger.warn(
-                  `Failed to generate presigned URL for ${img.imagePath}`,
-                );
-                url = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${img.imagePath}`;
-              }
-            }
-            return { ...img, imagePath: url };
-          }),
-        );
-        return { ...product, product_images: imagesWithUrls };
-      }),
+      products.map((product) => this.resolveProductImageUrls(product)),
     );
 
     return productsWithUrls;
+  }
+
+  /**
+   * Resolve product_images imagePath to presigned S3 URLs
+   */
+  private async resolveProductImageUrls<T extends { product_images: { imagePath: string }[] }>(product: T): Promise<T> {
+    const imagesWithUrls = await Promise.all(
+      product.product_images.map(async (img) => {
+        let url = img.imagePath;
+        if (!img.imagePath.startsWith('http')) {
+          try {
+            url = await this.s3Service.getPresignedGetUrl(
+              this.bucket,
+              img.imagePath,
+              3600,
+            );
+          } catch (error) {
+            this.logger.warn(
+              `Failed to generate presigned URL for ${img.imagePath}`,
+            );
+            url = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${img.imagePath}`;
+          }
+        }
+        return { ...img, imagePath: url };
+      }),
+    );
+    return { ...product, product_images: imagesWithUrls };
   }
 
   /**
@@ -269,15 +282,14 @@ export class ProductsService {
           orderBy: { displayOrder: 'asc' },
         },
         product_categories: true,
-        // @ts-ignore - تضمين المتغيرات والخصائص الديناميكية
         variants: {
           where: { isActive: true },
           orderBy: { createdAt: 'asc' },
         },
-        // @ts-ignore
         productAttributes: {
           orderBy: { key: 'asc' },
         },
+        digitalAssets: true,
         stores: {
           select: {
             id: true,
@@ -315,8 +327,8 @@ export class ProductsService {
           select: {
             order_items: true,
             reviews: true,
-            // @ts-ignore
             variants: true,
+            digitalAssets: true,
           },
         },
       },
@@ -326,7 +338,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    return product;
+    return this.resolveProductImageUrls(product);
   }
 
   /**
@@ -340,6 +352,9 @@ export class ProductsService {
           orderBy: { displayOrder: 'asc' },
         },
         product_categories: true,
+        variants: {
+          orderBy: { createdAt: 'asc' },
+        },
         stores: {
           select: {
             id: true,
@@ -363,7 +378,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    return product;
+    return this.resolveProductImageUrls(product);
   }
 
   /**
@@ -403,6 +418,7 @@ export class ProductsService {
       productAttributes,
       hasVariants,
       trackInventory,
+      isDigital,
       ...productData
     } = updateProductDto;
 
@@ -413,6 +429,7 @@ export class ProductsService {
         updatedAt: new Date(),
         ...(status && { status: status as any }),
         ...(categoryId !== undefined && { categoryId: categoryId || null }),
+        ...(isDigital !== undefined && { isDigital }),
       },
       include: {
         product_images: {
@@ -447,6 +464,43 @@ export class ProductsService {
             displayOrder: index,
             isPrimary: index === 0,
           })),
+        });
+      }
+    }
+
+    // Update variants if provided
+    if (variants !== undefined) {
+      // Delete existing variants
+      await this.prisma.product_variants.deleteMany({
+        where: { productId: id },
+      });
+
+      if (variants.length > 0) {
+        await this.prisma.product_variants.createMany({
+          data: variants.map((v) => ({
+            id: uuidv4(),
+            productId: id,
+            sku: v.sku || null,
+            price: v.price,
+            compareAtPrice: v.compareAtPrice || null,
+            stock: v.stock || 0,
+            attributes: v.attributes as any,
+            imageUrl: v.imageUrl || null,
+            isActive: v.isActive !== false,
+          })),
+        });
+
+        // Update hasVariants flag + auto-set quantity = sum of variant stocks
+        const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+        await this.prisma.products.update({
+          where: { id },
+          data: { hasVariants: true, quantity: totalVariantStock },
+        });
+      } else {
+        // No variants, clear the flag
+        await this.prisma.products.update({
+          where: { id },
+          data: { hasVariants: false },
         });
       }
     }
@@ -503,7 +557,25 @@ export class ProductsService {
       }
     }
 
-    await this.prisma.products.delete({ where: { id } });
+    // Check if product has order items - soft delete to preserve order history
+    const orderItemsCount = await this.prisma.order_items.count({
+      where: { productId: id },
+    });
+
+    if (orderItemsCount > 0) {
+      // Soft delete: archive the product and clean up non-critical relations
+      await this.prisma.$transaction([
+        this.prisma.cart_items.deleteMany({ where: { productId: id } }),
+        this.prisma.wishlists.deleteMany({ where: { productId: id } }),
+        this.prisma.products.update({
+          where: { id },
+          data: { status: 'INACTIVE', quantity: 0 },
+        }),
+      ]);
+    } else {
+      // Hard delete: no order references, safe to remove entirely
+      await this.prisma.products.delete({ where: { id } });
+    }
 
     // Invalidate dashboard cache for store owner
     try {
@@ -643,32 +715,25 @@ export class ProductsService {
   }
 
   /**
-   * Generate unique slug
+   * Generate unique short code (10-char alphanumeric)
    */
-  private async generateUniqueSlug(name: string): Promise<string> {
-    let baseSlug = name
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 80);
+  private async generateUniqueSlug(_name?: string): Promise<string> {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 10;
 
-    if (!baseSlug) {
-      baseSlug = `product-${uuidv4().slice(0, 8)}`;
-    }
+    for (let attempt = 0; attempt < 10; attempt++) {
+      let slug = '';
+      for (let i = 0; i < length; i++) {
+        slug += chars[Math.floor(Math.random() * chars.length)];
+      }
 
-    let slug = baseSlug;
-    let counter = 1;
-
-    while (true) {
       const existing = await this.prisma.products.findUnique({
         where: { slug },
       });
-      if (!existing) break;
-      slug = `${baseSlug}-${counter}`;
-      counter++;
+      if (!existing) return slug;
     }
 
-    return slug;
+    // Fallback: use nanoid
+    return nanoid(10).toLowerCase();
   }
 }

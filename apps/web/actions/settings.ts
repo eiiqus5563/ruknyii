@@ -20,6 +20,16 @@ export interface ProfileData {
   location: string | null;
   storageUsed: number;
   storageLimit: number;
+  themeKey?: string;
+  heroSettings?: {
+    headline?: string;
+    description?: string;
+    buttons?: Array<{ label: string; url: string; variant: 'dark' | 'outline' }>;
+    logoCloud?: {
+      enabled: boolean;
+      logos: Array<{ id: string; src: string; alt: string; displayOrder: number }>;
+    };
+  };
   user: {
     id: string;
     email: string;
@@ -105,6 +115,16 @@ export async function updateProfile(profileData: {
   hidePhone?: boolean;
   hideLocation?: boolean;
   location?: string;
+  themeKey?: string;
+  heroSettings?: {
+    headline?: string;
+    description?: string;
+    buttons?: Array<{ label: string; url: string; variant: 'dark' | 'outline' }>;
+    logoCloud?: {
+      enabled: boolean;
+      logos: Array<{ id: string; src: string; alt: string; displayOrder: number }>;
+    };
+  };
 }): Promise<{ data: ProfileData | null; error: string | null }> {
   const { data, error } = await apiClient<ProfileData>('/profiles', {
     method: 'PUT',
@@ -114,6 +134,8 @@ export async function updateProfile(profileData: {
   if (!error) {
     revalidatePath('/app/settings');
     revalidatePath('/app');
+    revalidatePath('/app/links');
+    revalidatePath('/app/links/customize');
   }
 
   return { data, error };
@@ -156,6 +178,42 @@ export async function uploadCover(
   }
 
   return { data, error };
+}
+
+/**
+ * Upload logo for logo cloud slider
+ */
+export async function uploadLogo(
+  formData: FormData,
+): Promise<{ data: { key: string; url: string } | null; error: string | null }> {
+  const { data, error } = await apiClient<{ key: string; url: string }>('/profiles/logos/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!error) {
+    revalidatePath('/app/links/customize');
+  }
+
+  return { data, error };
+}
+
+/**
+ * Delete a logo from logo cloud
+ */
+export async function deleteLogo(
+  key: string,
+): Promise<{ error: string | null }> {
+  const { error } = await apiClient<any>('/profiles/logos', {
+    method: 'DELETE',
+    body: JSON.stringify({ key }),
+  });
+
+  if (!error) {
+    revalidatePath('/app/links/customize');
+  }
+
+  return { error };
 }
 
 /**

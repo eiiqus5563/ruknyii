@@ -12,7 +12,7 @@ type CodePayload = {
   refresh_token: string;
   user: {
     id: string;
-    name: string;
+    name?: string;
     email: string;
     role?: any;
     avatar?: string | null;

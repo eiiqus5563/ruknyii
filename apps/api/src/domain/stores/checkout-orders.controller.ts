@@ -34,6 +34,11 @@ class OrderItemDto {
   @ApiProperty()
   @IsNumber()
   price: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  variantId?: string;
 }
 
 /**
@@ -53,7 +58,8 @@ class CreateCheckoutOrderDto {
   @ApiProperty()
   @IsString()
   @Transform(({ value }) => String(value))
-  shippingAddressId: string;
+  @IsOptional()
+  shippingAddressId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -157,36 +163,40 @@ export class CheckoutOrdersController {
 
     console.log('👤 Final userId:', userId);
 
-    // إنشاء طلب لكل منتج في السلة
-    const orders = [];
-
     try {
-      for (const item of createOrderDto.items) {
-        console.log(`📦 Creating order for product: ${item.productId}`);
+      // Link the shipping address to the user before creating orders
+      if (createOrderDto.shippingAddressId) {
+        await this.prisma.addresses.updateMany({
+          where: { id: createOrderDto.shippingAddressId, userId: null },
+          data: { userId },
+        });
+      }
 
-        const orderData = {
-          productId: item.productId,
-          quantity: item.quantity,
+      // Create a single order with all items
+      const order = await this.ordersService.createDirectMultiItem(
+        userId,
+        {
           addressId: createOrderDto.shippingAddressId,
           customerNote: createOrderDto.notes,
-        };
+          phoneNumber: sessionPhone || createOrderDto.phoneNumber,
+          items: createOrderDto.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            ...(item.variantId ? { variantId: item.variantId } : {}),
+          })),
+        },
+      );
 
-        const order = await this.ordersService.createDirect(userId, orderData);
-        orders.push(order);
+      console.log(`✅ Order created: ${order.id}`);
 
-        console.log(`✅ Order created: ${order.id}`);
-      }
+      return {
+        success: true,
+        message: 'تم إنشاء الطلب بنجاح',
+        orders: [order],
+      };
     } catch (error) {
-      console.error('❌ Error creating orders:', error);
+      console.error('❌ Error creating order:', error);
       throw error;
     }
-
-    console.log(`🎉 All orders created successfully: ${orders.length} orders`);
-
-    return {
-      success: true,
-      message: 'تم إنشاء الطلب بنجاح',
-      orders,
-    };
   }
 }

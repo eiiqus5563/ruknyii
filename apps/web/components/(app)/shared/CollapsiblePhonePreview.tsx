@@ -111,7 +111,7 @@ export function CollapsiblePhonePreview({ children }: { children?: React.ReactNo
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, delay: 0.1 }}
-                className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2"
+                className="h-full mt-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2"
               >
                 <PhonePreview />
               </motion.div>

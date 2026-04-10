@@ -174,7 +174,7 @@ export function BannerSliderSettings() {
           onDrop={handleDrop}
           onClick={() => !isUploading && fileInputRef.current?.click()}
           className={cn(
-            'relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-all cursor-pointer',
+            'relative flex flex-col items-center justify-center gap-2 rounded-4xl border-2 border-dashed p-6 transition-all cursor-pointer',
             isDragOver
               ? 'border-primary bg-primary/5 scale-[1.01]'
               : 'border-border/50 bg-muted/20 hover:border-border hover:bg-muted/40',
@@ -197,7 +197,7 @@ export function BannerSliderSettings() {
             </>
           ) : (
             <>
-              <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+              <div className="flex size-12 items-center justify-center rounded-3xl bg-primary/10">
                 <Upload className="size-5 text-primary" />
               </div>
               <div className="text-center">

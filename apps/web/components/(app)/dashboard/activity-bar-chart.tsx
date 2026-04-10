@@ -60,7 +60,7 @@ export function ActivityBarChart({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-3xl bg-muted/30 p-5 sm:p-6"
+      className="rounded-2xl bg-card border border-border/60 p-4 sm:p-5"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
@@ -81,8 +81,8 @@ export function ActivityBarChart({
       </div>
 
       {/* Total Value */}
-      <div className="mb-6">
-        <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+      <div className="mb-4">
+        <h2 className="text-2xl font-bold text-foreground">
           {totalValue}
         </h2>
         {totalLabel && (
@@ -93,7 +93,7 @@ export function ActivityBarChart({
       {/* Y-Axis Labels & Chart */}
       <div className="flex gap-3">
         {/* Y-Axis Labels */}
-        <div className="flex flex-col justify-between h-[140px] text-left">
+        <div className="hidden sm:flex flex-col justify-between h-[140px] text-left">
           <span className="text-[10px] text-muted-foreground">6h</span>
           <span className="text-[10px] text-muted-foreground">4h</span>
           <span className="text-[10px] text-muted-foreground">2h</span>
@@ -123,8 +123,8 @@ export function ActivityBarChart({
                     className={cn(
                       "w-full rounded-full relative overflow-hidden",
                       item.isHighlighted 
-                        ? "bg-primary/60 dark:bg-primary/50" 
-                        : "bg-muted/80 dark:bg-muted/60"
+                        ? "bg-primary/50 dark:bg-primary/40" 
+                        : "bg-muted/70 dark:bg-muted/50"
                     )}
                   >
                     {/* Diagonal stripes for highlighted bar */}
@@ -160,7 +160,7 @@ export function ActivityBarChart({
 
 export function ActivityBarChartSkeleton() {
   return (
-    <div className="rounded-3xl bg-muted/30 p-5 sm:p-6">
+    <div className="rounded-2xl bg-card border border-border/40 p-4 sm:p-5">
       <div className="flex items-start justify-between mb-2">
         <div className="h-4 w-16 bg-muted rounded animate-pulse" />
         <div className="h-8 w-20 bg-muted rounded-full animate-pulse" />

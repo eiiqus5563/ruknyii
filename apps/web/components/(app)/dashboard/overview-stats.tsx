@@ -37,26 +37,18 @@ export function OverviewStats({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-3xl bg-muted/30 p-5 sm:p-6"
+      className="rounded-2xl bg-card border border-border/60 p-4 sm:p-5"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-lg font-bold text-foreground">{title}</h3>
-          <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <Plus className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button className="p-2 rounded-xl hover:bg-muted/50 transition-colors">
-            <BarChart3 className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
       </div>
 
       {/* Stats Bars */}
-      <div className="flex items-end justify-between gap-3 h-[180px]">
+      <div className="flex items-end justify-between gap-2 h-[160px]">
         {stats.map((stat, index) => {
           const numValue = typeof stat.value === 'number' 
             ? stat.value 
@@ -70,12 +62,11 @@ export function OverviewStats({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex-1 flex flex-col items-center"
+              className="flex-1 flex flex-col items-center mt-6"
             >
               {/* Bar Container */}
               <div 
-                className="relative w-full flex flex-col items-center justify-end"
-                style={{ height: '140px' }}
+                className="relative w-full flex flex-col items-center justify-end h-[120px]"
               >
                 {/* Value inside bar */}
                 <motion.div
@@ -83,22 +74,22 @@ export function OverviewStats({
                   animate={{ height: `${Math.max(heightPercent, 30)}%` }}
                   transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
                   className={cn(
-                    "w-full rounded-2xl flex flex-col items-center justify-start pt-2 px-1 min-h-[50px]",
+                    "w-full rounded-xl flex flex-col items-center justify-start pt-2 px-1 min-h-[40px]",
                     stat.highlight 
-                      ? "bg-primary/20 dark:bg-primary/15" 
-                      : "bg-muted/50 dark:bg-muted/30"
+                      ? "bg-primary/15 dark:bg-primary/10" 
+                      : "bg-muted/60 dark:bg-muted/40"
                   )}
                 >
                   {/* Label at top of bar */}
                   <span className={cn(
-                    "text-[9px] sm:text-[10px] whitespace-nowrap mb-0.5",
+                    "text-[10px] whitespace-nowrap mb-0.5",
                     stat.highlight ? "text-foreground/70" : "text-muted-foreground"
                   )}>
                     {stat.label}
                   </span>
                   {/* Value */}
                   <span className={cn(
-                    "text-sm sm:text-base font-bold",
+                    "text-sm font-bold",
                     stat.highlight ? "text-foreground" : "text-foreground"
                   )}>
                     {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
@@ -109,13 +100,13 @@ export function OverviewStats({
               {/* Change Indicator */}
               <div className="flex items-center gap-1 mt-2">
                 {stat.change >= 0 ? (
-                  <TrendingUp className="w-3 h-3 text-emerald-500" />
+                  <TrendingUp className="w-3 h-3 text-success" />
                 ) : (
-                  <TrendingDown className="w-3 h-3 text-rose-500" />
+                  <TrendingDown className="w-3 h-3 text-destructive" />
                 )}
                 <span className={cn(
                   "text-xs font-medium",
-                  stat.change >= 0 ? "text-emerald-500" : "text-rose-500"
+                  stat.change >= 0 ? "text-success" : "text-destructive"
                 )}>
                   {stat.change >= 0 ? "+" : ""}{stat.change}%
                 </span>
@@ -130,7 +121,7 @@ export function OverviewStats({
 
 export function OverviewStatsSkeleton() {
   return (
-    <div className="rounded-3xl bg-muted/30 p-5 sm:p-6">
+    <div className="rounded-2xl bg-card border border-border/40 p-4 sm:p-5">
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="h-5 w-24 bg-muted rounded animate-pulse" />
@@ -141,7 +132,7 @@ export function OverviewStatsSkeleton() {
           <div className="w-8 h-8 bg-muted rounded-xl animate-pulse" />
         </div>
       </div>
-      <div className="flex items-end justify-between gap-3 h-[180px]">
+      <div className="flex items-end justify-between gap-2 h-[160px]">
         {[65, 45, 100, 55].map((height, i) => (
           <div key={i} className="flex-1 flex flex-col items-center">
             <div 

@@ -7,7 +7,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
-import { WhatsappService } from '../../integrations/whatsapp/whatsapp.service';
+import { WhatsAppBusinessService } from '../../integrations/whatsapp-business/whatsapp-business.service';
+import S3Service from '../../services/s3.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -110,6 +111,7 @@ interface OrderItemDetail {
 @Injectable()
 export class OrderTrackingService {
   private readonly logger = new Logger(OrderTrackingService.name);
+  private readonly bucket = process.env.S3_BUCKET || 'rukny-storage';
 
   // Prisma helper for new models
   private get prismaAny() {
@@ -120,7 +122,8 @@ export class OrderTrackingService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly whatsappService: WhatsappService,
+    private readonly whatsappBusiness: WhatsAppBusinessService,
+    private readonly s3Service: S3Service,
   ) {}
 
   /**
@@ -192,15 +195,12 @@ export class OrderTrackingService {
       },
     });
 
-    // 6. إرسال OTP عبر واتساب
-    const message = this.formatTrackingOtpMessage(otpCode, ordersCount);
-    const sendResult = await this.whatsappService.sendTextMessage(
-      phoneNumber,
-      message,
-    );
-
-    if (!sendResult.success) {
-      this.logger.error(`Failed to send tracking OTP to ${phoneNumber}`);
+    // 6. إرسال OTP عبر واتساب Business API
+    try {
+      await this.whatsappBusiness.sendOtp(phoneNumber, otpCode);
+      this.logger.log(`✅ Tracking OTP sent to ${phoneNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to send tracking OTP to ${phoneNumber}: ${(error as Error).message}`);
       throw new BadRequestException({
         message: 'فشل في إرسال رمز التحقق. يرجى المحاولة لاحقاً.',
         code: 'OTP_SEND_FAILED',
@@ -355,7 +355,7 @@ export class OrderTrackingService {
         stores: {
           select: {
             name: true,
-            phone: true,
+            contactPhone: true,
             logo: true,
           },
         },
@@ -391,16 +391,26 @@ export class OrderTrackingService {
       statusHistory: this.buildStatusHistory(order.status, order.createdAt),
       store: {
         name: order.stores?.name || 'متجر',
-        phone: order.stores?.phone,
+        phone: order.stores?.contactPhone,
         logo: order.stores?.logo,
       },
-      items: order.order_items.map((item: any) => ({
-        name: item.productName,
-        nameAr: item.productNameAr || item.products?.nameAr,
-        price: Number(item.price),
-        quantity: item.quantity,
-        subtotal: Number(item.subtotal),
-        image: item.products?.product_images?.[0]?.imagePath,
+      items: await Promise.all(order.order_items.map(async (item: any) => {
+        let image: string | undefined = item.products?.product_images?.[0]?.imagePath;
+        if (image && !image.startsWith('http')) {
+          try {
+            image = await this.s3Service.getPresignedGetUrl(this.bucket, image, 3600);
+          } catch {
+            image = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${image}`;
+          }
+        }
+        return {
+          name: item.productName,
+          nameAr: item.productNameAr || item.products?.nameAr,
+          price: Number(item.price),
+          quantity: item.quantity,
+          subtotal: Number(item.subtotal),
+          image,
+        };
       })),
       address: {
         fullName: order.addresses?.fullName || '',

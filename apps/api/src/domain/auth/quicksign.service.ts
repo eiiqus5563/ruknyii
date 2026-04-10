@@ -197,9 +197,17 @@ export class QuickSignService {
         });
       }
 
+      // 🔒 Acquire distributed lock to prevent race condition (concurrent verify requests)
+      const lockAcquired = await this.acquireTokenLock(tokenHash);
+      if (!lockAcquired) {
+        // Another request is already verifying this token
+        return { valid: false, used: true };
+      }
+
+      try {
       // 🔒 فك تشفير JWT أولاً للتحقق من الصلاحية
       const payload = this.jwtService.verify(token);
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('[QuickSign.verifyQuickSign] JWT verification successful:', {
           email: payload.email,
@@ -379,6 +387,11 @@ export class QuickSignService {
       // Other errors (database, network, etc.)
       console.error(`[QuickSign.verifyQuickSign] Unexpected error:`, error);
       return { valid: false };
+    }
+    } finally {
+      // 🔒 Release the distributed lock
+      const tokenHash = this.hashToken(token);
+      await this.releaseTokenLock(tokenHash).catch(() => {});
     }
   }
 

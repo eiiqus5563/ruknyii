@@ -7,106 +7,18 @@
  * يتطلب pendingSessionId من الـ URL parameters
  */
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  Shield, 
   Loader2, 
   ArrowRight,
-  Key,
-  Smartphone
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
+import { InputOTP, REGEXP_ONLY_DIGITS } from '@heroui/react';
 import { setCsrfToken, resetRefreshState, scheduleSilentRefresh } from '@/lib/api/client';
-import { Checkbox } from '@/components/ui/checkbox';
-
-// OTP Input Component
-function OTPInput({ 
-  value, 
-  onChange, 
-  disabled,
-  autoFocus = true
-}: { 
-  value: string; 
-  onChange: (val: string) => void;
-  disabled?: boolean;
-  autoFocus?: boolean;
-}) {
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [focused, setFocused] = useState(0);
-
-  useEffect(() => {
-    if (autoFocus && inputRefs.current[0]) {
-      inputRefs.current[0]?.focus();
-    }
-  }, [autoFocus]);
-
-  const handleChange = (index: number, digit: string) => {
-    if (!/^\d*$/.test(digit)) return;
-    
-    const newValue = value.split('');
-    newValue[index] = digit.slice(-1);
-    const result = newValue.join('').slice(0, 6);
-    onChange(result);
-    
-    if (digit && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-      setFocused(index + 1);
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !value[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-      setFocused(index - 1);
-    }
-    if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-      setFocused(index - 1);
-    }
-    if (e.key === 'ArrowRight' && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-      setFocused(index + 1);
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    onChange(pastedData);
-    const lastIndex = Math.min(pastedData.length, 5);
-    inputRefs.current[lastIndex]?.focus();
-    setFocused(lastIndex);
-  };
-
-  return (
-    <div className="flex gap-2.5 justify-center" dir="ltr">
-      {[0, 1, 2, 3, 4, 5].map((index) => (
-        <input
-          key={index}
-          ref={(el) => { inputRefs.current[index] = el; }}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={value[index] || ''}
-          onChange={(e) => handleChange(index, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(index, e)}
-          onPaste={handlePaste}
-          onFocus={() => setFocused(index)}
-          disabled={disabled}
-          className={`w-12 h-14 text-center text-xl font-bold rounded-4xl border transition-all duration-200 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white outline-none
-            ${focused === index 
-              ? "border-blue-500 ring-2 ring-blue-500/20" 
-              : value[index] 
-                ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                : "border-zinc-300 dark:border-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-500"
-            }
-            ${disabled ? "opacity-50 cursor-not-allowed" : ""}
-          `}
-        />
-      ))}
-    </div>
-  );
-}
+import { InlineErrorNotice } from '@/components/ui/inline-notice';
+import { useToast } from '@/components/ui/toast';
 
 // UUID v4 format validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -114,24 +26,32 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 function Verify2FAContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const rawSessionId = searchParams.get('sessionId');
+  const selectedMethod = searchParams.get('method');
   // 🔒 Validate sessionId format to prevent path traversal/injection
   const sessionId = rawSessionId && UUID_REGEX.test(rawSessionId) ? rawSessionId : null;
   
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useBackupCode, setUseBackupCode] = useState(false);
-  const [rememberDevice, setRememberDevice] = useState(true);
+  const [useBackupCode, setUseBackupCode] = useState(selectedMethod === 'recovery');
+  const [rememberDevice] = useState(true);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [sessionValid, setSessionValid] = useState(false);
+
+  useEffect(() => {
+    if (selectedMethod === 'recovery') setUseBackupCode(true);
+    if (selectedMethod === 'authenticator') setUseBackupCode(false);
+  }, [selectedMethod]);
 
   // Redirect if no session ID
   useEffect(() => {
     if (!sessionId) {
+      toast.warning('انتهت الجلسة الحالية. سجّل الدخول مرة أخرى.');
       router.push('/login?session=expired');
     }
-  }, [sessionId, router]);
+  }, [sessionId, router, toast]);
 
   // 🔒 التحقق من صلاحية الجلسة عند تحميل الصفحة (مع retry)
   useEffect(() => {
@@ -156,6 +76,7 @@ function Verify2FAContent() {
           
           // الجلسة منتهية - إعادة التوجيه إلى تسجيل الدخول
           console.error('[2FA] Session invalid or expired:', data.error);
+          toast.warning('انتهت صلاحية جلسة التحقق. ابدأ تسجيل الدخول من جديد.');
           router.push('/login?session=expired');
           return;
         }
@@ -171,21 +92,26 @@ function Verify2FAContent() {
           return;
         }
         setIsCheckingSession(false);
+        toast.error('تعذر التحقق من الجلسة حاليًا. حاول مرة أخرى.');
         router.push('/login?session=expired');
       }
     };
 
     checkSession();
-  }, [sessionId, router]);
+  }, [sessionId, router, toast]);
 
   const handleSubmit = async () => {
     if (code.length !== 6 && !useBackupCode) {
-      setError('يرجى إدخال رمز مكون من 6 أرقام');
+      const message = 'يرجى إدخال رمز مكوّن من 6 أرقام.';
+      setError(message);
+      toast.error(message);
       return;
     }
 
     if (useBackupCode && code.length < 8) {
-      setError('يرجى إدخال الرمز الاحتياطي بالكامل');
+      const message = 'يرجى إدخال رمز الاسترداد كاملًا.';
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -212,6 +138,7 @@ function Verify2FAContent() {
       if (!response.ok || !data.success) {
         // إذا انتهت الجلسة، إعادة التوجيه إلى تسجيل الدخول
         if (data.expired) {
+          toast.warning('انتهت الجلسة الحالية. سجّل الدخول مرة أخرى.');
           router.push('/login?session=expired');
           return;
         }
@@ -229,175 +156,158 @@ function Verify2FAContent() {
 
       // Show message if backup code was used
       if (data.usedBackupCode) {
-        // You might want to show a toast here
-        console.log('تم استخدام رمز احتياطي');
+        toast.info('تم تسجيل الدخول باستخدام رمز استرداد.');
       }
 
       // Redirect to dashboard
+      toast.success('تم التحقق من هويتك بنجاح.');
       router.push('/app');
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء التحقق');
+      const message = err.message || 'حدث خطأ أثناء التحقق';
+      setError(message);
+      toast.error(message);
       setCode(''); // Clear code on error to prevent infinite loop
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Auto submit when code is complete
-  useEffect(() => {
-    if (code.length === 6 && !isLoading && !useBackupCode && !error && sessionValid) {
-      handleSubmit();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, isLoading, useBackupCode, error, sessionValid]);
-
   if (!sessionId || isCheckingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">جارٍ التحقق من الجلسة...</p>
+          <Loader2 className="w-7 h-7 animate-spin text-zinc-400 mx-auto mb-3" />
+          <p className="text-[15px] text-zinc-500 dark:text-zinc-400">جارٍ التحقق من الجلسة...</p>
         </div>
       </div>
     );
   }
 
   if (!sessionValid) {
-    return null; // سيتم إعادة التوجيه
+    return null;
   }
 
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
       dir="rtl"
-      className="w-full max-w-sm mx-auto px-6 py-8"
+      className="w-full py-4"
       style={{ fontFamily: '"IBM Plex Sans Arabic", sans-serif' }}
     >
+      {/* Icon */}
+      <div className="flex justify-center mb-5">
+        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800">
+          {useBackupCode ? (
+            <KeyRound className="w-7 h-7 text-zinc-600 dark:text-zinc-300" />
+          ) : (
+            <ShieldCheck className="w-7 h-7 text-zinc-600 dark:text-zinc-300" />
+          )}
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="text-center my-22 mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          المصادقة الثنائية
+      <div className="text-center mb-6">
+        <h1 className="text-[28px] sm:text-[32px] font-semibold tracking-tight text-zinc-900 dark:text-white leading-[1.2]">
+          تحقّق من هويتك
         </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="mt-2 text-[15px] leading-7 text-zinc-500 dark:text-zinc-400">
           {useBackupCode 
-            ? 'أدخل أحد الرموز الاحتياطية'
-            : 'أدخل الرمز من تطبيق المصادقة'
+            ? 'أدخل أحد رموز الاسترداد التي احتفظت بها مسبقًا.'
+            : 'افتح تطبيق المصادقة وأدخل الرمز المؤقت.'
           }
         </p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="mb-6 rounded-4xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-red-600 dark:text-red-400 text-sm text-center">
-          {error}
-        </div>
+        <InlineErrorNotice message={error} className="mb-5" />
       )}
 
-      {/* OTP Input or Backup Code Input */}
+      {/* OTP Input */}
       {useBackupCode ? (
-        <div className="mb-5">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            الرمز الاحتياطي
+        <div className="mb-6">
+          <label className="block text-[14px] font-medium text-zinc-700 dark:text-zinc-300 mb-2 text-right">
+            رمز الاسترداد
           </label>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="XXXX-XXXX"
+            placeholder="XXXX-XXXX-XXXX"
             disabled={isLoading}
-            className="w-full h-14 px-4 text-center text-lg font-mono border border-zinc-300 dark:border-zinc-600 rounded-4xl bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
+            className="w-full h-[52px] px-4 text-[18px] font-mono border border-zinc-200 dark:border-zinc-700 rounded-2xl bg-white dark:bg-zinc-800/50 text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-400 dark:focus:border-zinc-500 transition-all disabled:opacity-60 tracking-wider text-center"
             dir="ltr"
+            inputMode="text"
+            maxLength={20}
+            autoFocus
           />
         </div>
       ) : (
-        <div className="mb-5">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            رمز التحقق
-          </label>
-          <OTPInput
+        <div className="flex flex-col items-center gap-2 mb-6" dir="ltr">
+          <InputOTP
+            maxLength={6}
             value={code}
-            onChange={setCode}
-            disabled={isLoading}
-          />
+            onChange={(val) => setCode(val)}
+            onComplete={() => handleSubmit()}
+            pattern={REGEXP_ONLY_DIGITS}
+            isDisabled={isLoading}
+            isInvalid={!!error}
+            autoFocus
+          >
+            <InputOTP.Group className="gap-2">
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={0} />
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={1} />
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={2} />
+            </InputOTP.Group>
+            <InputOTP.Separator className="mx-1" />
+            <InputOTP.Group className="gap-2">
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={3} />
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={4} />
+              <InputOTP.Slot className="size-[52px] rounded-xl text-lg font-semibold" index={5} />
+            </InputOTP.Group>
+          </InputOTP>
         </div>
-      )}
-
-      {/* تذكر هذا الجهاز */}
-      {!useBackupCode && (
-        <label className="flex items-center gap-3 mb-5 cursor-pointer text-sm text-zinc-600 dark:text-zinc-400">
-          <Checkbox
-            checked={rememberDevice}
-            onCheckedChange={(checked) => setRememberDevice(checked === true)}
-          />
-          <span>تذكر هذا الجهاز (تخطي 2FA في المرات القادمة)</span>
-        </label>
       )}
 
       {/* Submit Button */}
       <button
         type="submit"
         disabled={isLoading || (useBackupCode ? code.length < 8 : code.length !== 6)}
-        className="flex items-center justify-center gap-2 h-14 w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white text-base rounded-4xl font-medium transition-all"
+        className="flex items-center justify-center gap-2 h-[52px] w-full bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[16px] rounded-2xl font-medium transition-all dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>جاري التحقق...</span>
+            <Loader2 className="w-[18px] h-[18px] animate-spin" />
+            <span>جارٍ التحقق...</span>
           </>
         ) : (
-          <>
-            <Shield className="w-5 h-5" />
-            <span>تحقق</span>
-          </>
+          <span>تأكيد</span>
         )}
       </button>
 
-      {/* Back Link */}
-      <div className="mt-6 text-center">
+      {/* Alternative method */}
+      <div className="mt-5 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const q = new URLSearchParams();
+            if (sessionId) q.set('sessionId', sessionId);
+            router.push(`/verify-identity?${q.toString()}`);
+          }}
+          className="text-[15px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium transition-colors"
+        >
+          جرّب طريقة أخرى
+        </button>
+
         <button
           type="button"
           onClick={() => router.push('/login')}
-          className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors inline-flex items-center gap-1"
+          className="flex items-center justify-center gap-1 text-[13px] text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
         >
-          <ArrowRight className="w-4 h-4" />
-          العودة لتسجيل الدخول
+          <ArrowRight className="w-3.5 h-3.5" />
+          العودة إلى تسجيل الدخول
         </button>
       </div>
-
-      {/* Toggle to Backup Code */}
-      <div className="flex items-center gap-4 my-8">
-        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
-        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium whitespace-nowrap">
-          أو
-        </span>
-        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => { setUseBackupCode(!useBackupCode); setCode(''); setError(null); }}
-        className="flex items-center justify-center gap-2 h-12 w-full rounded-4xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-sm font-medium transition-all"
-      >
-        {useBackupCode ? (
-          <>
-            <Smartphone className="w-4 h-4" />
-            استخدام رمز التطبيق
-          </>
-        ) : (
-          <>
-            <Key className="w-4 h-4" />
-            استخدام رمز احتياطي
-          </>
-        )}
-      </button>
-
-      {/* Help Text */}
-      <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 mt-8 leading-relaxed">
-        فقدت الوصول للتطبيق؟{' '}
-        <a href="/support" className="text-blue-600 dark:text-blue-400 hover:underline">
-          تواصل مع الدعم
-        </a>
-      </p>
     </form>
   );
 }
@@ -405,8 +315,8 @@ function Verify2FAContent() {
 export default function Verify2FAPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="w-7 h-7 animate-spin text-zinc-400" />
       </div>
     }>
       <Verify2FAContent />

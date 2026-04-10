@@ -12,9 +12,12 @@ export const CreateSocialLinkSchema = z.object({
   username: z.string().optional(),
   url: z.string().url('Invalid URL'),
   title: z.string().optional(),
+  thumbnail: z.string().optional(),
+  layout: z.enum(['classic', 'featured']).optional(),
   displayOrder: z.number().optional(),
   groupId: z.string().optional(),
   status: z.enum(['active', 'hidden']).optional().default('active'),
+  isPinned: z.boolean().optional(),
 });
 
 export type CreateSocialLinkInput = z.input<typeof CreateSocialLinkSchema>;
@@ -25,9 +28,12 @@ export const SocialLinkSchema = z.object({
   username: z.string().nullable(),
   url: z.string(),
   title: z.string().nullable(),
+  thumbnail: z.string().nullable().optional(),
+  layout: z.enum(['classic', 'featured']).optional().default('classic'),
   displayOrder: z.number(),
   status: z.string(),
   totalClicks: z.number(),
+  isPinned: z.boolean().optional().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -125,4 +131,30 @@ export async function trackLinkClick(id: string): Promise<void> {
   } catch {
     // Silently fail - tracking shouldn't break the user experience
   }
+}
+
+// ============ URL Metadata ============
+
+export interface UrlMetadata {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+  type: string | null;
+  favicon: string | null;
+  domain: string;
+}
+
+/**
+ * Fetch metadata (title, description, image) for a given URL
+ */
+export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
+  const response = await api.get<UrlMetadata>('/utils/url-metadata', { url });
+
+  if (!response.data) {
+    throw new Error('Failed to fetch URL metadata');
+  }
+
+  return response.data;
 }

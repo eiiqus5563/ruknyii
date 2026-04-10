@@ -104,41 +104,22 @@ export function ProfileHeader() {
     fetchProfile();
   }, [user?.id]);
 
-  // Load links when dialog opens  
+  // Reload links from API and sync with phone preview
   const loadLinks = useCallback(async () => {
     if (!user?.id) return;
     try {
       const data = await getMyLinks();
       setLinks(data);
-      // Update profile with new links for PhonePreview
-      if (profile) {
-        setProfile({ ...profile, socialLinks: data });
-      }
+      setProfile((prev) => prev ? { ...prev, socialLinks: data } : prev);
     } catch (error) {
       console.error('Failed to load links:', error);
     }
-  }, [user?.id, profile, setProfile]);
+  }, [user?.id, setProfile]);
 
+  // Load links once on mount
   useEffect(() => {
-    if (showAddDialog) {
-      loadLinks();
-    }
-  }, [showAddDialog, loadLinks]);
-
-  // Load links on component mount
-  useEffect(() => {
-    const loadInitialLinks = async () => {
-      if (!user?.id) return;
-      try {
-        const data = await getMyLinks();
-        setLinks(data);
-      } catch (error) {
-        console.error('Failed to load links:', error);
-      }
-    };
-
-    loadInitialLinks();
-  }, [user?.id]);
+    loadLinks();
+  }, [loadLinks]);
 
   const handleAddSuccess = useCallback(async () => {
     await loadLinks();

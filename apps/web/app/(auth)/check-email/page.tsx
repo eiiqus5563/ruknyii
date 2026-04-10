@@ -9,10 +9,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Mail, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
 import { buildApiPath } from '@/lib/config';
 import { motion } from 'framer-motion';
+import { InlineErrorNotice, InlineNotice } from '@/components/ui/inline-notice';
+import { useToast } from '@/components/ui/toast';
 
 function CheckEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const toast = useToast();
   const email = searchParams.get('email') || '';
   const type = searchParams.get('type') as 'LOGIN' | 'SIGNUP' || 'LOGIN';
 
@@ -59,11 +62,16 @@ function CheckEmailContent() {
         setResendSuccess(true);
         setCanResend(false);
         setCountdown(60);
+        toast.success('تمت إعادة إرسال الرابط إلى بريدك الإلكتروني.');
       } else {
-        setResendError(data.message || 'فشل إعادة الإرسال. يرجى المحاولة لاحقاً');
+        const message = data.message || 'فشل إعادة الإرسال. يرجى المحاولة لاحقًا';
+        setResendError(message);
+        toast.error(message);
       }
     } catch (error) {
-      setResendError('فشل إعادة الإرسال. يرجى المحاولة لاحقاً');
+      const message = 'فشل إعادة الإرسال. يرجى المحاولة لاحقًا';
+      setResendError(message);
+      toast.error(message);
     } finally {
       setResending(false);
     }
@@ -76,30 +84,40 @@ function CheckEmailContent() {
     router.replace('/login');
   };
 
+  const handleTryAnotherMethod = () => {
+    const q = new URLSearchParams();
+    if (email) q.set('email', email);
+    if (type) q.set('type', type);
+    router.push(`/verify-identity?${q.toString()}`);
+  };
+
   // Loading state
   if (!email) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-6" dir="rtl">
+      <div className="w-full py-16 flex flex-col items-center justify-center" dir="rtl">
         <Loader2 className="animate-spin h-8 w-8 text-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#ffffff] p-6" dir="rtl">
+    <div className="w-full py-10" dir="rtl">
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col items-center w-full max-w-sm"
+        className="flex flex-col items-center w-full"
       >
+        <div className="mb-4 inline-flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 size-11">
+          <Mail className="size-5 text-zinc-500 dark:text-zinc-300" />
+        </div>
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-light tracking-tight text-foreground mb-3">
+        <div className="text-center mb-7">
+          <h1 className="text-4xl font-light tracking-tight text-foreground mb-2">
             تحقق من بريدك
           </h1>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-muted-foreground mb-3">
             أرسلنا رابطاً تسجيل الدخول إلى
           </p>
           <p className="text-base font-medium text-foreground" dir="ltr">
@@ -108,8 +126,8 @@ function CheckEmailContent() {
         </div>
 
         {/* Info */}
-        <div className="w-full space-y-4 mb-6">
-          <div className="text-center p-4 bg-muted/30 rounded-2xl">
+        <div className="w-full space-y-4 mb-5">
+          <div className="text-center p-4 bg-zinc-100/70 dark:bg-zinc-800/60 rounded-3xl">
             <p className="text-sm text-muted-foreground">
               {type === 'LOGIN'
                 ? 'اضغط على الرابط في بريدك لتسجيل الدخول'
@@ -122,20 +140,16 @@ function CheckEmailContent() {
 
           {/* Success Message */}
           {resendSuccess && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl animate-in fade-in-0 duration-300">
-              <p className="text-sm text-emerald-600 dark:text-emerald-400 text-center">
-                ✓ تم إعادة إرسال الرابط بنجاح
-              </p>
-            </div>
+            <InlineNotice
+              title="تم الإرسال"
+              message="أعدنا إرسال رابط الدخول إلى بريدك الإلكتروني بنجاح."
+              className="animate-in fade-in-0 duration-300"
+            />
           )}
 
           {/* Error Message */}
           {resendError && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl animate-in fade-in-0 duration-300">
-              <p className="text-sm text-red-500 text-center">
-                {resendError}
-              </p>
-            </div>
+            <InlineErrorNotice message={resendError} className="animate-in fade-in-0 duration-300" />
           )}
         </div>
 
@@ -145,7 +159,7 @@ function CheckEmailContent() {
           <button
             onClick={handleResend}
             disabled={!canResend || resending}
-            className="flex items-center justify-center gap-2 w-full h-12 border border-border/80 bg-background hover:bg-muted/50 hover:border-foreground/20 text-foreground font-medium rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 w-full h-[48px] border border-zinc-200 dark:border-zinc-700 bg-background hover:bg-muted/50 text-foreground font-medium rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {resending ? (
               <>
@@ -165,10 +179,17 @@ function CheckEmailContent() {
           {/* Change Email Button */}
           <button
             onClick={handleChangeEmail}
-            className="flex items-center justify-center gap-2 w-full h-12 text-muted-foreground hover:text-foreground font-medium rounded-full transition-all duration-300"
+            className="flex items-center justify-center gap-2 w-full h-[48px] text-muted-foreground hover:text-foreground font-medium rounded-full transition-all duration-300"
           >
             <ArrowRight className="h-4 w-4" />
             <span>تغيير البريد الإلكتروني</span>
+          </button>
+
+          <button
+            onClick={handleTryAnotherMethod}
+            className="flex items-center justify-center gap-2 w-full h-[40px] text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 text-[15px] font-medium rounded-full transition-all duration-300"
+          >
+            <span>جرّب طريقة أخرى</span>
           </button>
         </div>
       </motion.div>
@@ -180,7 +201,7 @@ export default function CheckEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-6" dir="rtl">
+        <div className="w-full py-16 flex flex-col items-center justify-center" dir="rtl">
           <Loader2 className="animate-spin h-8 w-8 text-foreground" />
         </div>
       }

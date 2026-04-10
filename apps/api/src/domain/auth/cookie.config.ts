@@ -16,7 +16,8 @@ import { Response, Request } from 'express';
 // تحديد بيئة العمل
 const isProduction = process.env.NODE_ENV === 'production';
 // Allow override to force non-secure cookies in local dev if NODE_ENV is mis-set
-const cookieSecure = (process.env.COOKIE_SECURE === 'true') || isProduction;
+// COOKIE_SECURE explicitly set to 'false' takes priority over NODE_ENV
+const cookieSecure = process.env.COOKIE_SECURE === 'false' ? false : (process.env.COOKIE_SECURE === 'true') || isProduction;
 
 // 🔒 Domain للكوكيز (مهم للـ cross-origin)
 // ⚠️ في بيئة التطوير، نستخدم undefined (لا domain) للسماح بمشاركة الكوكيز بين ports مختلفة
@@ -45,8 +46,13 @@ const ALLOWED_ORIGINS: string[] = [
   process.env.FRONTEND_URL_ALT, // e.g. https://www.rukny.io if FRONTEND_URL is https://rukny.io
   process.env.APP_FRONTEND_URL,
   process.env.AUTH_FRONTEND_URL,
+  process.env.BUSINESS_FRONTEND_URL, // Business app (e.g. https://business.rukny.io)
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:3003',
+  'http://127.0.0.1:3003',
+  'http://localhost:3004',
+  'http://127.0.0.1:3004',
   // Local network IPs are handled dynamically in validateCsrfOrigin()
 ].filter(Boolean) as string[];
 
@@ -123,7 +129,7 @@ export const ACCESS_TOKEN_OPTIONS: CookieOptions = {
  * - sameSite: lax → حماية CSRF مع دعم OAuth redirects
  * - path: '/' دائماً → المتصفح يرسل الكوكي حسب مسار الطلب. الواجهة تستدعي /api/auth/*
  *   (proxy لـ Next.js) وليس /api/v1/auth/*، لذا path=/api/v1/auth يمنع إرسال الكوكي في الإنتاج.
- * - صلاحية: 14 يوم ✅ موحد مع token.service.ts و auth.service.ts (refreshExpiresAt)
+ * - صلاحية: 7 أيام - موحد مع token.service.ts
  *   ⚠️ يجب أن تتطابق المدة مع DB session expiresAt وإلا ستحصل على 401 رغم وجود الـ cookie
  */
 export const REFRESH_TOKEN_OPTIONS: CookieOptions = {
@@ -131,7 +137,7 @@ export const REFRESH_TOKEN_OPTIONS: CookieOptions = {
   secure: cookieSecure,
   sameSite: getSameSite(), // Lax للسماح بـ OAuth
   path: '/',  // 🔒 يجب '/' حتى يُرسل مع /api/auth/refresh (proxy) وليس فقط /api/v1/auth
-  maxAge: 14 * 24 * 60 * 60 * 1000, // 14 يوم - ✅ موحد مع DB refreshExpiresAt
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام - موحد مع DB refreshExpiresAt
   ...(cookieDomain && { domain: cookieDomain }),
 };
 
@@ -420,21 +426,10 @@ export function hasAuthTokens(req: Request): {
  * يربط الـ CSRF token بـ sessionId للحماية الإضافية
  * @param sessionId - معرف الجلسة (اختياري - إذا لم يُمرر يُولد token عشوائي)
  */
-export function generateCsrfToken(sessionId?: string): string {
-  const crypto = require('crypto');
-  const randomPart = crypto.randomBytes(16).toString('hex');
-  
-  if (sessionId) {
-    // 🔒 ربط CSRF بـ sessionId باستخدام HMAC
-    const secret = process.env.JWT_SECRET || 'csrf-secret-key';
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(`${sessionId}:${randomPart}`);
-    const signature = hmac.digest('hex').substring(0, 16);
-    return `${randomPart}.${signature}`;
-  }
-  
-  // Fallback: token عشوائي بدون ربط
-  return crypto.randomBytes(32).toString('hex');
+export function generateCsrfToken(): string {
+  // 🔒 Random token for Double Submit Cookie pattern (SameSite=Lax prevents cross-origin cookie setting)
+  const { randomBytes } = require('crypto') as typeof import('crypto');
+  return randomBytes(32).toString('hex');
 }
 
 /**

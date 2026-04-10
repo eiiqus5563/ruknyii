@@ -98,10 +98,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state on mount
   useEffect(() => {
     const initAuth = async () => {
-      // 🔒 Skip init if we're on OAuth callback page (will be handled by callback component)
       if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname;
         const url = new URL(window.location.href);
-        if (url.pathname.includes('/auth/callback') && url.searchParams.has('code')) {
+
+        // 🔒 Skip init if we're on OAuth callback page (will be handled by callback component)
+        if (pathname.includes('/auth/callback') && url.searchParams.has('code')) {
+          setState(prev => ({ ...prev, isLoading: false }));
+          return;
+        }
+
+        // 🔒 Skip refresh attempt on auth pages — prevents infinite loop:
+        // /login → refresh succeeds → authenticated → redirect /app → fails → /login → ...
+        const AUTH_SKIP_PATHS = ['/login', '/check-email', '/quicksign', '/verify-identity', '/welcome'];
+        const isOnAuthPage = AUTH_SKIP_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+        if (isOnAuthPage) {
           setState(prev => ({ ...prev, isLoading: false }));
           return;
         }
@@ -265,6 +276,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      // 🔒 Clear any stale refresh failure state from previous sessions
+      // Without this, initAuth on the target page could be blocked by old sessionStorage marks
+      resetRefreshState();
+
       const response = await exchangeOAuthCode(code);
       
       // 🔒 Store CSRF token and update refresh time

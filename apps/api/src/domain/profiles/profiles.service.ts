@@ -34,6 +34,70 @@ export class ProfilesService {
   }
 
   /**
+   * Convert heroSettings logoCloud S3 keys to presigned URLs
+   */
+  private extractS3KeyFromUrl(url: string): string | null {
+    try {
+      const parsed = new URL(url);
+      let key = decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
+
+      // Handle path-style URLs: /bucket/key
+      if (key.startsWith(`${this.bucket}/`)) {
+        key = key.slice(this.bucket.length + 1);
+      }
+
+      return key || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveLogoUrls(heroSettings: any): Promise<any> {
+    if (!heroSettings?.logoCloud?.logos?.length) return heroSettings;
+    try {
+      const logos = heroSettings.logoCloud.logos;
+      const resolvedLogos = await Promise.all(
+        logos.map(async (logo: any) => {
+          const keyFromLogoKey =
+            typeof logo?.key === 'string' && logo.key && !logo.key.startsWith('http')
+              ? logo.key
+              : null;
+          const keyFromSrc =
+            typeof logo?.src === 'string' && logo.src && !logo.src.startsWith('http')
+              ? logo.src
+              : null;
+          const keyFromS3Url =
+            typeof logo?.src === 'string' && logo.src.startsWith('http')
+              ? this.extractS3KeyFromUrl(logo.src)
+              : null;
+
+          const sourceKey = keyFromLogoKey || keyFromSrc || keyFromS3Url;
+
+          if (sourceKey) {
+            try {
+              const url = await this.s3Service.getPresignedGetUrl(
+                this.bucket,
+                sourceKey,
+                3600,
+              );
+              return { ...logo, key: sourceKey, src: url };
+            } catch {
+              return logo;
+            }
+          }
+          return logo;
+        }),
+      );
+      return {
+        ...heroSettings,
+        logoCloud: { ...heroSettings.logoCloud, logos: resolvedLogos },
+      };
+    } catch {
+      return heroSettings;
+    }
+  }
+
+  /**
    * Create a new user profile
    */
   async create(userId: string, createProfileDto: CreateProfileDto) {
@@ -103,6 +167,7 @@ export class ProfilesService {
             },
           },
           socialLinks: {
+            where: { status: 'active' },
             orderBy: { displayOrder: 'asc' },
           },
         },
@@ -197,12 +262,18 @@ export class ProfilesService {
         }
       }
 
+      // Resolve logo cloud URLs in heroSettings
+      const resolvedHeroSettings = await this.resolveLogoUrls(
+        (profile as any).heroSettings,
+      );
+
       // Transform response to include _count and banners at profile level
       return this.serializeProfile({
         ...profile,
         avatar: avatarUrl,
         coverImage: coverUrl,
         banners: bannerUrls,
+        heroSettings: resolvedHeroSettings,
         _count: {
           followers: followersCount,
           following: followingCount,
@@ -270,10 +341,14 @@ export class ProfilesService {
           );
         }
       }
+      const resolvedHeroSettings = await this.resolveLogoUrls(
+        (profile as any).heroSettings,
+      );
       return this.serializeProfile({
         ...profile,
         avatar: avatarUrl,
         coverImage: coverUrl,
+        heroSettings: resolvedHeroSettings,
       });
     } catch (e) {
       return this.serializeProfile(profile);
@@ -327,6 +402,10 @@ export class ProfilesService {
       },
     });
 
+    // Invalidate cached public profile
+    const cacheKey = `profile:username:${updatedProfile.username}`;
+    await this.cacheManager.invalidate(cacheKey);
+
     return this.serializeProfile(updatedProfile);
   }
 
@@ -357,6 +436,7 @@ export class ProfilesService {
       },
     });
 
+    await this.cacheManager.invalidate(`profile:username:${profile.username}`);
     return this.serializeProfile(updatedProfile);
   }
 
@@ -387,6 +467,7 @@ export class ProfilesService {
       },
     });
 
+    await this.cacheManager.invalidate(`profile:username:${profile.username}`);
     return this.serializeProfile(updatedProfile);
   }
 

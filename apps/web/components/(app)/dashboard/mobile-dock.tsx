@@ -18,6 +18,7 @@ import {
   LinkIcon,
   Settings,
   ChevronLeft,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Dock, DockIcon } from '@/components/ui/dock';
@@ -167,7 +168,7 @@ export function MobileDock() {
       {/* Dock */}
       <div
         className="fixed left-0 right-0 z-50 flex justify-center lg:hidden"
-        style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        style={{ bottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       >
         <Dock
           direction="middle"

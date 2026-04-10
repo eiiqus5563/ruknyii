@@ -26,12 +26,12 @@ import {
 
 function getNotificationIcon(type: Notification['type']) {
   if (type.startsWith('ORDER_') || type === 'NEW_ORDER' || type.startsWith('PAYMENT') || type.startsWith('REFUND') || type.startsWith('PRODUCT_') || type === 'PRICE_DROP' || type === 'LOW_STOCK' || type.startsWith('NEW_PRODUCT') || type.startsWith('NEW_REVIEW'))
-    return <Package className="size-4 text-blue-500 shrink-0" />;
+    return <Package className="size-4 text-zinc-600 dark:text-zinc-300 shrink-0" />;
   if (type.startsWith('EVENT_') || type.startsWith('ORGANIZER_') || type.startsWith('NEW_REGISTRATION') || type === 'REGISTRATION_CANCELLED' || type.startsWith('WAITLIST_'))
-    return <Calendar className="size-4 text-violet-500 shrink-0" />;
+    return <Calendar className="size-4 text-zinc-600 dark:text-zinc-300 shrink-0" />;
   if (type.startsWith('FORM_') || type.startsWith('TODO_'))
-    return <FileText className="size-4 text-emerald-500 shrink-0" />;
-  return <Shield className="size-4 text-orange-500 shrink-0" />;
+    return <FileText className="size-4 text-zinc-600 dark:text-zinc-300 shrink-0" />;
+  return <Shield className="size-4 text-zinc-600 dark:text-zinc-300 shrink-0" />;
 }
 
 // ─── Time ago ────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `منذ ${hours} س`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `منذ ${days} ي`;
-  return new Date(dateStr).toLocaleDateString('ar');
+  return new Date(dateStr).toLocaleDateString('en-US');
 }
 
 // ─── Category tabs ───────────────────────────────────────────────────
@@ -184,8 +184,8 @@ export function NotificationPanel({
                 <div
                   key={notification.id}
                   className={cn(
-                    'group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40 border-b border-border/20 last:border-b-0',
-                    !notification.isRead && 'bg-primary/[0.03]',
+                    'group flex items-start gap-3 m-2 rounded-2xl px-4 py-3 transition-colors hover:bg-muted/40 border-b border-border/20 last:border-b-0',
+                    !notification.isRead && 'bg-zinc-950/[0.03] dark:bg-zinc-50/[0.04]',
                   )}
                 >
                   {/* Icon */}
@@ -203,7 +203,7 @@ export function NotificationPanel({
                         {notification.title}
                       </p>
                       {!notification.isRead && (
-                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-zinc-900 dark:bg-zinc-100" />
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">

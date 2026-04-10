@@ -13,7 +13,7 @@ const sections = [
     title: 'المقدمة',
     icon: Shield,
     content: `مرحباً بك في منصة ركني (Rukny.io). نحن نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية.
-توضح هذه السياسة كيف نجمع واستخدام ونحمي معلوماتك عند استخدام خدماتنا.`,
+توضح هذه السياسة كيف نجمع بياناتك ونستخدمها ونحميها عند استخدام خدماتنا.`,
   },
   {
     id: 'data-collection',
@@ -69,10 +69,10 @@ const sections = [
     title: 'أمان البيانات',
     icon: Lock,
     content: `**نحمي بياناتك باستخدام:**
-• التشفير المتقدم أثناء النقل والتخزين
-• بروتوكولات HTTPS لجميع الاتصالات
-• نسخ احتياطية مشفرة يومياً
-• مراقبة أمنية على مدار الساعة`,
+• التشفير أثناء النقل والتخزين (TLS/HTTPS)
+• آليات دخول أكثر أماناً (مثل الرابط السحري عند توفره)
+• إدارة جلسات المستخدم وإمكانية إنهاء الجلسات النشطة
+• نسخ احتياطية مشفرة ومراقبة أمنية مستمرة`,
   },
   {
     id: 'contact',
@@ -192,6 +192,7 @@ export default function PrivacyPage() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} ركني. جميع الحقوق محفوظة.</p>
             <div className="flex gap-6">
+              <Link href="/" className="hover:text-primary transition-colors">الرئيسية</Link>
               <Link href="/terms" className="hover:text-primary transition-colors">شروط الاستخدام</Link>
               <Link href="/security" className="hover:text-primary transition-colors">الأمان</Link>
             </div>

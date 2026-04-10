@@ -107,7 +107,7 @@ export function getCsrfToken(): string | null {
   
   // Then try to read from cookie (persisted)
   // CSRF cookie is not httpOnly, so we can read it
-  const match = document.cookie.match(/(?:^|; )(?:__Secure-)?csrf_token=([^;]*)/);
+  const match = document.cookie.match(/(?:^|; )(?:__Secure-)?_xid=([^;]*)/);
   if (match) {
     csrfToken = match[1];
     // CSRF token found in cookie
@@ -141,7 +141,7 @@ export function setCsrfToken(token: string): void {
   
   const isSecure = window.location.protocol === 'https:';
   const cookieParts = [
-    `csrf_token=${encodeURIComponent(token)}`,
+    `_xid=${encodeURIComponent(token)}`,
     'Path=/',
     'Max-Age=' + (24 * 60 * 60), // 24 hours
     'SameSite=Lax', // Lax for OAuth flow
@@ -156,7 +156,7 @@ export function setCsrfToken(token: string): void {
   document.cookie = cookieString;
   
   // Verify it was set
-  const verify = document.cookie.includes('csrf_token');
+  const verify = document.cookie.includes('_xid');
   // CSRF cookie verification
 }
 
@@ -168,7 +168,7 @@ export function clearCsrfToken(): void {
   
   // Clear from cookie as well
   if (typeof window === 'undefined') return;
-  document.cookie = 'csrf_token=; Path=/; Max-Age=0; SameSite=Lax';
+  document.cookie = '_xid=; Path=/; Max-Age=0; SameSite=Lax';
 }
 
 /**
@@ -593,19 +593,9 @@ async function apiClient<T>(
       }
     }
 
-    // Handle 429 - Rate limited: retry once after delay
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After');
-      const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 10_000) : 3_000;
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      response = await fetch(url, {
-        ...restConfig,
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        credentials: 'include',
-      });
-    }
+    // Handle 429 - Rate limited: do NOT retry automatically.
+    // Let the caller handle it (auth-provider has its own backoff logic).
+    // Retrying here doubles the request load when the server is already overloaded.
 
     // Parse response
     const responseData = await response.json().catch(() => ({}));
@@ -688,13 +678,14 @@ export function getApiClient() {
     },
 
     async upload<T>(endpoint: string, formData: FormData): Promise<T> {
-      const path = buildApiPath(strip(endpoint));
-      const token = getAccessToken();
+      // Route through /api/upload/* Route Handler which reads the full body
+      // as arrayBuffer and forwards it to the backend, preserving binary data.
+      // This avoids Next.js rewrites dropping multipart body streams.
+      const path = `/api/upload/${strip(endpoint)}`;
       const res = await fetch(path, {
         method: 'POST',
         body: formData,
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
