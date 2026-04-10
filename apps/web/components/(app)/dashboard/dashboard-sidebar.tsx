@@ -364,7 +364,7 @@ export function Sidebar({ className }: SidebarProps) {
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="left" align="start" sideOffset={8} dir="rtl" className="min-w-[180px] text-right">
+          <DropdownMenuContent side="left" align="start" sideOffset={8} className="min-w-[180px] text-right [direction:rtl]">
             <DropdownMenuLabel className="text-xs text-muted-foreground">{user?.name || "المستخدم"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -623,7 +623,7 @@ export function Sidebar({ className }: SidebarProps) {
               </div>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="left" align="start" sideOffset={8} dir="rtl" className="min-w-[180px] text-right">
+          <DropdownMenuContent side="left" align="start" sideOffset={8} className="min-w-[180px] text-right [direction:rtl]">
             <DropdownMenuLabel className="text-xs text-muted-foreground">{user?.name || "المستخدم"}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

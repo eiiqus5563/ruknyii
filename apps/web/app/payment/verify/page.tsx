@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
@@ -31,7 +31,7 @@ import {
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
 
-export default function PaymentVerifyPage() {
+function PaymentVerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get('id');
@@ -478,5 +478,19 @@ export default function PaymentVerifyPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function PaymentVerifyPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="min-h-screen w-full bg-white dark:bg-zinc-900 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" />
+        </div>
+      )}
+    >
+      <PaymentVerifyContent />
+    </Suspense>
   );
 }

@@ -53,6 +53,13 @@ interface ImageItem {
   isPrimary: boolean;
 }
 
+interface DigitalAssetInfo {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  hasPreview: boolean;
+}
+
 type ProductStatus = 'ACTIVE' | 'INACTIVE';
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -89,12 +96,7 @@ export default function EditProductPage() {
   // ─── Digital File ───────────────────────────────────────────
   const [digitalFile, setDigitalFile] = useState<File | null>(null);
   const [digitalPreviewFile, setDigitalPreviewFile] = useState<File | null>(null);
-  const [existingDigitalAsset, setExistingDigitalAsset] = useState<{
-    fileName: string;
-    fileSize: number;
-    mimeType: string;
-    hasPreview: boolean;
-  } | null>(null);
+  const [existingDigitalAsset, setExistingDigitalAsset] = useState<DigitalAssetInfo | null>(null);
   const digitalFileInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Categories ─────────────────────────────────────────────
@@ -150,7 +152,7 @@ export default function EditProductPage() {
         // Load existing digital asset info
         if (product.isDigital) {
           try {
-            const assetRes = await api.get(`/products/${product.id}/digital-file`);
+            const assetRes = await api.get<DigitalAssetInfo>(`/products/${product.id}/digital-file`);
             if (assetRes.data) setExistingDigitalAsset(assetRes.data);
           } catch { /* no digital file yet */ }
         }

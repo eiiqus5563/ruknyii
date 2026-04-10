@@ -25,6 +25,5 @@ export {
   OrdersStatusChartSkeleton,
   LatestProducts,
   LatestProductsSkeleton,
-  QuickActions,
   DashboardSection,
 } from './StoreDashboard';

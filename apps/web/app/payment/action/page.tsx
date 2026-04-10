@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -50,7 +50,7 @@ const STEPS_DIGITAL: { key: Step; label: string; icon: React.ReactNode }[] = [
 
 interface AddressInfo { city: string; district: string; street: string; buildingNo: string; landmark: string; note: string }
 
-export default function PaymentActionPage() {
+function PaymentActionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get('id');
@@ -489,6 +489,20 @@ export default function PaymentActionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentActionPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="min-h-screen flex items-center justify-center bg-[#fafaf9] dark:bg-zinc-950">
+          <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+        </div>
+      )}
+    >
+      <PaymentActionContent />
+    </Suspense>
   );
 }
 

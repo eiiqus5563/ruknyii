@@ -23,6 +23,7 @@ export interface Product {
   description?: string;
   price: number;
   compareAtPrice?: number;
+  isDigital?: boolean;
   images: string[];
   isActive: boolean;
   stock: number;
@@ -165,6 +166,7 @@ export function useStore() {
           : raw?.salePrice !== undefined
             ? Number(raw.salePrice)
             : undefined,
+      isDigital: Boolean(raw?.isDigital),
       images: rawImages,
       isActive:
         typeof raw?.isActive === 'boolean'

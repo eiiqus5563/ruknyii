@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -20,7 +20,7 @@ import { formatCurrency } from '@/lib/currency';
 import { trackOrder, type TrackOrderResponse } from '@/lib/api/checkout';
 import { ORDER_STATUS_CONFIG } from '@/components/(app)/store/OrderCard';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -360,5 +360,19 @@ export default function PaymentSuccessPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="min-h-screen flex items-center justify-center bg-[#faf9f7]">
+          <Loader2 className="w-6 h-6 animate-spin text-[#999]" />
+        </div>
+      )}
+    >
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

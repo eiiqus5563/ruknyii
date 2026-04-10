@@ -162,7 +162,7 @@ export default function AccountSecurityPage() {
       setEmailSuccess(true);
       setNewEmail('');
       // Refresh email change request status
-      const { data: reqData } = await getEmailChangeRequest();
+      const { data: reqData } = await fetchEmailChangeRequest();
       if (reqData) setEmailChangeRequest(reqData);
       setTimeout(() => setEmailSuccess(false), 5000);
     }
@@ -203,7 +203,7 @@ export default function AccountSecurityPage() {
       setVerifyError(error);
     } else {
       // Refresh profile to get updated emailVerified
-      const { data } = await getUserProfile();
+      const { data } = await fetchUserProfile();
       if (data) {
         setUserProfile(data);
       }
