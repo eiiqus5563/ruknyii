@@ -562,11 +562,7 @@ export class ReviewsService {
     if (includeProduct && review.products) {
       let image: string | null = review.products.product_images?.[0]?.imagePath || null;
       if (image && !image.startsWith('http')) {
-        try {
-          image = await this.s3Service.getPresignedGetUrl(this.bucket, image, 3600);
-        } catch {
-          image = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${image}`;
-        }
+        image = `/api/media/${image}`;
       }
       formatted.product = {
         id: review.products.id,

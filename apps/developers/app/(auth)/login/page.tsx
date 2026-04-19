@@ -1,59 +1,47 @@
-'use client';
+"use client";
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/providers/auth-provider';
-import { getGoogleAuthUrl, getLinkedInAuthUrl } from '@/lib/api/auth';
-import { resetRefreshState } from '@/lib/api-client';
-
-function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true" focusable="false" {...props}>
-      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.655 32.656 29.255 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.651-.389-3.917Z" />
-      <path fill="#FF3D00" d="M6.306 14.691 12.88 19.51C14.655 15.108 18.962 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691Z" />
-      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.197l-6.191-5.238C29.184 35.091 26.715 36 24 36c-5.234 0-9.62-3.318-11.282-7.946l-6.525 5.026C9.505 39.556 16.227 44 24 44Z" />
-      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.08 12.08 0 0 1-4.085 5.565l.003-.002 6.191 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.651-.389-3.917Z" />
-    </svg>
-  );
-}
-
-function LinkedInIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" {...props}>
-      <path fill="#0077B5" d="M20.447 20.452h-3.554v-5.569c0-1.327-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.476-.9 1.637-1.85 3.369-1.85 3.602 0 4.267 2.37 4.267 5.455v6.286ZM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124Zm1.777 13.019H3.559V9h3.555v11.452Z" />
-    </svg>
-  );
-}
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/providers/auth-provider";
+import { useLocale } from "@/providers/locale-provider";
+import { getGoogleAuthUrl, getLinkedInAuthUrl } from "@/lib/api/auth";
+import { resetRefreshState } from "@/lib/api-client";
+import {
+  TextField,
+  Label,
+  Input,
+  Button,
+  Alert,
+  Spinner,
+} from "@heroui/react";
+import { Mail } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { sendMagicLink, isLoading, error, clearError, isAuthenticated, isLoading: authLoading, isRateLimited } = useAuth();
+  const { sendMagicLink, isLoading, error, clearError, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { t } = useLocale();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !isRateLimited) {
-      router.replace('/dashboard');
+    if (!authLoading && isAuthenticated) {
+      router.replace("/app");
     }
-  }, [authLoading, isAuthenticated, isRateLimited, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    const sessionParam = searchParams.get('session');
-    if (sessionParam === 'expired') {
-      setSessionMessage('انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.');
-    } else if (sessionParam === 'invalid') {
-      setSessionMessage('جلسة غير صالحة. يرجى تسجيل الدخول مرة أخرى.');
-    }
+    const sessionParam = searchParams.get("session");
+    if (sessionParam === "expired") setSessionMessage("Session expired. Please sign in again.");
+    else if (sessionParam === "invalid") setSessionMessage("Invalid session. Please sign in again.");
     resetRefreshState();
   }, [searchParams]);
 
   if (authLoading || isAuthenticated) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="w-8 h-8 border-4 border-zinc-900 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner />
       </div>
     );
   }
@@ -62,107 +50,121 @@ function LoginContent() {
     e.preventDefault();
     clearError();
     setSessionMessage(null);
+    if (!email.trim()) return;
     try {
-      const response = await sendMagicLink(email);
-      router.push(`/check-email?email=${encodeURIComponent(email)}&type=${response.type}`);
+      const response = await sendMagicLink(email.trim());
+      router.push(`/check-email?email=${encodeURIComponent(email.trim())}&type=${response.type}`);
     } catch {
-      // Error handled by auth provider
+      /* error is set in auth provider */
     }
   };
 
   const handleGoogleLogin = () => {
+    sessionStorage.setItem("oauth_callback", "/app");
     window.location.href = getGoogleAuthUrl();
   };
 
   const handleLinkedInLogin = () => {
+    sessionStorage.setItem("oauth_callback", "/app");
     window.location.href = getLinkedInAuthUrl();
   };
 
   const displayError = sessionMessage || error;
 
   return (
-    <div className="w-full" dir="rtl">
-      {/* Title */}
-      <h1 className="text-center text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-2 leading-tight">
-        تسجيل الدخول إلى Rukny Developers
-      </h1>
-      <p className="text-center text-[13px] text-zinc-500 dark:text-zinc-400 mb-6">
-        أدخل بريدك الإلكتروني للمتابعة
-      </p>
+    <div className="flex flex-col items-center gap-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {t.auth.login.title}
+        </h1>
+        <p className="mt-2 text-sm text-muted">{t.auth.login.subtitle}</p>
+      </div>
 
       {/* Error */}
       {displayError && (
-        <div className="mb-6 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-red-600 dark:text-red-400 text-sm text-center">
-          {displayError}
-        </div>
+        <Alert status="danger" className="w-full">
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Description>{displayError}</Alert.Description>
+          </Alert.Content>
+        </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <input
-            id="email"
+      {/* Email form */}
+      <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+        <TextField className="w-full">
+          <Label className="text-sm font-medium text-foreground">
+            {t.auth.login.emailLabel}
+          </Label>
+          <Input
             type="email"
+            placeholder={t.auth.login.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full h-[48px] px-4 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-full bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400/20 transition-all text-center"
-            placeholder="البريد الإلكتروني"
-            required
-            disabled={isLoading}
-            dir="ltr"
+            autoComplete="email"
+            autoFocus
+            className="h-12 rounded-full px-4"
           />
-        </div>
+        </TextField>
 
-        <button
+        <Button
           type="submit"
-          disabled={isLoading}
-          className="flex items-center justify-center gap-2 h-[48px] w-full bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 active:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-zinc-900 text-[14px] rounded-full font-semibold transition-all"
+          variant="primary"
+          isDisabled={isLoading || !email.trim()}
+          className="h-12 w-full rounded-full text-sm font-medium"
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>جاري الإرسال...</span>
-            </>
-          ) : (
-            <span>المتابعة</span>
-          )}
-        </button>
+          {isLoading ? <Spinner className="size-4" /> : null}
+          <Mail className="size-4" />
+          {t.auth.login.continueWithEmail}
+        </Button>
       </form>
 
       {/* Divider */}
-      <div className="flex items-center gap-4 my-6">
-        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
-        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium whitespace-nowrap">أو</span>
-        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-700" />
+      <div className="flex w-full items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted">{t.auth.login.orContinueWith}</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Social */}
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="flex items-center justify-center gap-3 h-[48px] w-full rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 transition-all"
+      {/* OAuth buttons */}
+      <div className="flex w-full flex-col gap-3">
+        <Button
+          variant="outline"
+          onPress={handleGoogleLogin}
+          className="h-12 w-full rounded-full text-sm font-medium"
         >
-          <GoogleIcon />
-          <span className="text-[14px] font-medium text-zinc-700 dark:text-zinc-200">المتابعة مع Google</span>
-        </button>
+          <svg className="size-5" viewBox="0 0 24 24">
+            <path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+              fill="#4285F4"
+            />
+            <path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </svg>
+          {t.auth.login.google}
+        </Button>
 
-        <button
-          type="button"
-          onClick={handleLinkedInLogin}
-          className="flex items-center justify-center gap-3 h-[48px] w-full rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 active:bg-zinc-100 transition-all"
+        <Button
+          variant="outline"
+          onPress={handleLinkedInLogin}
+          className="h-12 w-full rounded-full text-sm font-medium"
         >
-          <LinkedInIcon />
-          <span className="text-[14px] font-medium text-zinc-700 dark:text-zinc-200">المتابعة مع LinkedIn</span>
-        </button>
-      </div>
-
-      {/* Terms */}
-      <div className="mt-8 pt-5 border-t border-zinc-100 dark:border-zinc-800">
-        <p className="text-center text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">
-          <a href="/terms" className="text-zinc-500 dark:text-zinc-400 hover:underline">شروط الخدمة</a>
-          <span className="mx-2">|</span>
-          <a href="/privacy" className="text-zinc-500 dark:text-zinc-400 hover:underline">سياسة الخصوصية</a>
-        </p>
+          <svg className="size-5" viewBox="0 0 24 24" fill="#0A66C2">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+          </svg>
+          {t.auth.login.linkedin}
+        </Button>
       </div>
     </div>
   );
@@ -170,11 +172,13 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="w-8 h-8 border-4 border-zinc-900 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );

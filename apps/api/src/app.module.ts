@@ -63,8 +63,13 @@ import { WhatsAppBusinessModule } from './integrations/whatsapp-business/whatsap
 import { InstagramModule } from './integrations/instagram/instagram.module';
 import { YouTubeModule } from './integrations/youtube/youtube.module';
 import { LinkedInModule } from './integrations/linkedin/linkedin.module';
+import { QasehPaymentModule } from './integrations/qaseh-payment/qaseh-payment.module';
 // import { PushNotificationsModule } from './integrations/push-notifications/push-notifications.module'; // Disabled - needs configuration
 import { DevModule } from './dev/dev.module';
+
+// Domain - Developer Portal & WhatsApp Provider
+import { DeveloperModule } from './domain/developer/developer.module';
+import { WhatsAppProviderModule } from './domain/whatsapp-provider/whatsapp-provider.module';
 
 // Infrastructure
 // Use the UploadModule under `modules` which provides presign/confirm endpoints
@@ -137,6 +142,12 @@ import { SharedModule } from './shared/modules/shared.module';
     // Domain - Utils
     UtilsModule,
 
+    // Domain - Developer Portal
+    DeveloperModule,
+
+    // Domain - WhatsApp Tech Provider
+    WhatsAppProviderModule,
+
     // Integrations
     GoogleCalendarModule,
     GoogleSheetsModule,
@@ -147,6 +158,7 @@ import { SharedModule } from './shared/modules/shared.module';
     InstagramModule,
     YouTubeModule,
     LinkedInModule,
+    QasehPaymentModule, // 💳 Al-Qaseh Payment Gateway
     // PushNotificationsModule, // 🔔 Web Push Notifications - Disabled (needs configuration)
     ...(process.env.NODE_ENV !== 'production' ? [DevModule] : []),
   ],

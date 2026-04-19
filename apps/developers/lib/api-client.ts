@@ -1,6 +1,5 @@
 /**
- * 🔌 API Client for Developers App
- * 
+ * API Client for Developers App
  * httpOnly Cookie-based auth with CSRF protection and refresh mutex.
  */
 
@@ -63,7 +62,7 @@ function getGlobalRefreshState(): RefreshState {
 }
 
 const REFRESH_FAILED_KEY = 'developers_refresh_failed';
-const REFRESH_FAILED_TTL_MS = 30_000;
+const REFRESH_FAILED_TTL_MS = 5_000;
 
 function isRefreshBlockedByPreviousFailure(): boolean {
   if (typeof window === 'undefined') return false;
@@ -136,8 +135,6 @@ function clearSilentRefresh(): void {
   }
 }
 
-const AUTH_PAGES = ['/login', '/register', '/callback', '/complete-profile', '/check-email', '/verify'];
-
 function handleAuthFailure(reason: 'expired' | 'invalid' = 'expired'): void {
   const state = getGlobalRefreshState();
   clearCsrfToken();
@@ -148,17 +145,16 @@ function handleAuthFailure(reason: 'expired' | 'invalid' = 'expired'): void {
 
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    const isProtected = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
-    const isAuthPage = AUTH_PAGES.some(p => pathname.startsWith(p));
+
+    const isProtected = pathname === '/app' || pathname.startsWith('/app/');
+    const authPages = ['/login', '/callback', '/check-email', '/complete-profile', '/verify'];
+    const isAuthPage = authPages.some(p => pathname.startsWith(p));
     if (isProtected && !isAuthPage) {
       window.location.href = `/login?session=${reason}`;
     }
   }
 }
 
-/**
- * Single entry point for ALL refresh operations (mutex).
- */
 export async function refreshOnce(): Promise<RefreshResult> {
   const state = getGlobalRefreshState();
   if (state.isLoggingOut) return { success: false };
@@ -215,7 +211,6 @@ export class ApiException extends Error {
 // ===== URL Builder =====
 function buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  // Auth endpoints go through BFF proxy
   const fullPath = path.startsWith('/auth/') ? `/api${path}` : `/api/v1${path}`;
   if (!params || Object.keys(params).length === 0) return fullPath;
   const qs = Object.entries(params)
@@ -256,23 +251,18 @@ async function apiClient<T>(endpoint: string, config: RequestConfig = {}): Promi
   }
 
   let response = await fetch(url, {
-    ...rest,
-    method,
-    headers,
+    ...rest, method, headers,
     body: body ? JSON.stringify(body) : undefined,
     credentials: 'include',
   });
 
-  // 401 → refresh → retry
   if (response.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       const newCsrf = getCsrfToken();
       if (newCsrf && method !== 'GET') headers['X-CSRF-Token'] = newCsrf;
       response = await fetch(url, {
-        ...rest,
-        method,
-        headers,
+        ...rest, method, headers,
         body: body ? JSON.stringify(body) : undefined,
         credentials: 'include',
       });

@@ -624,7 +624,7 @@ function CompleteProfileContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-6" dir="rtl">
+    <div className="min-h-screen flex flex-col items-center justify-center  p-6" dir="rtl">
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

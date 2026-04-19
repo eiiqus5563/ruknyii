@@ -4,7 +4,7 @@
  * The active template is stored in profile.themeKey and persisted via the API.
  */
 
-export type TemplateKey = 'classic' | 'portfolio';
+export type TemplateKey = 'classic' | 'portfolio' | 'store';
 
 export interface ProfileTemplate {
   key: TemplateKey;
@@ -47,6 +47,20 @@ export const PROFILE_TEMPLATES: ProfileTemplate[] = [
     ],
     previewColor: '#111111',
     previewGradient: 'from-neutral-800/20 to-neutral-900/10',
+  },
+  {
+    key: 'store',
+    name: 'Store Pro',
+    description: 'قالب متجر احترافي يركز بالكامل على عرض المنتجات مع فلاتر وتصنيفات',
+    badge: 'متجر',
+    features: [
+      'تركيز كامل على المنتجات',
+      'فلاتر وترتيب متقدم',
+      'تصنيفات أفقية',
+      'تصميم نظيف ومتجاوب',
+    ],
+    previewColor: '#1D1D1F',
+    previewGradient: 'from-zinc-800/20 to-zinc-900/10',
   },
 ];
 

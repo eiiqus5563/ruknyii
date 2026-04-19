@@ -85,6 +85,17 @@ model User {
   emailChangeRequests    EmailChangeRequest[]
   subscription           Subscription?
 
+  // Developer Portal relations
+  developerApps          DeveloperApp[]
+  developerApiKeys       DeveloperApiKey[]
+  developerWhatsappAccounts DeveloperWhatsappAccount[]
+  developerContacts      DeveloperContact[]
+  developerWebhooks      DeveloperWebhook[]
+  developerMessageLogs   WhatsappMessageLog[] @relation("developer_message_logs")
+  developerApiRequestLogs ApiRequestLog[]
+  developerSubscription  DeveloperSubscription? @relation("developer_subscription")
+  developerWallet        DeveloperWallet?       @relation("developer_wallet")
+
   @@index([telegramChatId])
   @@index([telegramConnectedAt])
   @@index([phoneNumber])
@@ -1045,33 +1056,38 @@ model order_items {
 }
 
 model orders {
-  id                 String         @id @default(uuid())
-  orderNumber        String         @unique
+  id                 String              @id @default(uuid())
+  orderNumber        String              @unique
   userId             String?
   storeId            String
   addressId          String?
   phoneNumber        String
-  status             OrderStatus    @default(PENDING)
-  subtotal           Decimal        @db.Decimal(12, 2)
-  shippingFee        Decimal        @default(0) @db.Decimal(12, 2)
-  discount           Decimal        @default(0) @db.Decimal(12, 2)
-  total              Decimal        @db.Decimal(12, 2)
-  currency           String         @default("IQD")
+  status             OrderStatus         @default(PENDING)
+  subtotal           Decimal             @db.Decimal(12, 2)
+  shippingFee        Decimal             @default(0) @db.Decimal(12, 2)
+  discount           Decimal             @default(0) @db.Decimal(12, 2)
+  total              Decimal             @db.Decimal(12, 2)
+  currency           String              @default("IQD")
   customerNote       String?
   storeNote          String?
   estimatedDelivery  DateTime?
   deliveredAt        DateTime?
   cancelledAt        DateTime?
   cancellationReason String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   couponId           String?
+  // 💳 Payment Gateway Fields
+  paymentMethod      OrderPaymentMethod  @default(CASH)
+  paymentStatus      OrderPaymentStatus  @default(UNPAID)
+  paymentId          String?             /// Qaseh payment_id
+  paymentToken       String?             /// Qaseh payment token
   coupon_usages      coupon_usages?
   order_items        order_items[]
-  addresses          addresses?     @relation(fields: [addressId], references: [id])
-  coupons            coupons?       @relation(fields: [couponId], references: [id])
-  stores             Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  users              User?          @relation(fields: [userId], references: [id])
+  addresses          addresses?          @relation(fields: [addressId], references: [id])
+  coupons            coupons?            @relation(fields: [couponId], references: [id])
+  stores             Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  users              User?               @relation(fields: [userId], references: [id])
 
   @@index([couponId])
   @@index([createdAt])
@@ -1080,6 +1096,7 @@ model orders {
   @@index([storeId])
   @@index([userId])
   @@index([phoneNumber])
+  @@index([paymentId])
 }
 
 model posts {
@@ -1734,6 +1751,18 @@ enum NotificationType {
   TODO_DUE_SOON
   SYSTEM
   MESSAGE
+
+  // Developer Platform
+  DEV_API_KEY_CREATED
+  DEV_API_KEY_REVOKED
+  DEV_API_KEY_EXPIRED
+  DEV_WALLET_LOW_BALANCE
+  DEV_WALLET_TOPPED_UP
+  DEV_MESSAGES_FAILED
+  DEV_WEBHOOK_FAILING
+  DEV_SUBSCRIPTION_CHANGED
+  DEV_USAGE_WARNING
+  DEV_PHONE_VERIFIED
 }
 
 enum OrderStatus {
@@ -1744,6 +1773,22 @@ enum OrderStatus {
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+  REFUNDED
+}
+
+/// 💳 طريقة الدفع للطلبات
+enum OrderPaymentMethod {
+  CASH
+  QASEH_CARD
+  BANK_TRANSFER
+}
+
+/// 💳 حالة الدفع للطلبات
+enum OrderPaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
   REFUNDED
 }
 
@@ -1758,6 +1803,7 @@ enum ProductStatus {
   ACTIVE
   INACTIVE
   OUT_OF_STOCK
+  DISCONTINUED
 }
 
 enum SecurityAction {
@@ -1851,6 +1897,7 @@ enum OtpType {
   CHECKOUT
   LOGIN
   VERIFICATION
+  APP_VERIFICATION
 }
 
 /// 📨 قناة إرسال الرسائل
@@ -2036,4 +2083,618 @@ model download_tokens {
   @@index([orderItemId])
   @@index([expiresAt])
   @@map("download_tokens")
+}
+
+// ============================================
+// � Developer Apps — تطبيقات المطوّرين
+// ============================================
+
+/// 📱 حالة التطبيق
+enum DeveloperAppStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+/// نوع التطبيق
+enum DeveloperAppType {
+  BUSINESS
+  CONSUMER
+}
+
+/// 📱 تطبيق المطوّر
+model DeveloperApp {
+  id              String              @id @default(uuid())
+  appId           String              @unique
+  userId          String
+  name            String
+  contactEmail    String?
+  appType         DeveloperAppType    @default(BUSINESS)
+  description     String?
+  businessId      String?
+  icon            String?
+  status          DeveloperAppStatus  @default(ACTIVE)
+  verified        Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeys         DeveloperApiKey[]
+  appWallet       DeveloperAppWallet?
+  whatsappAccounts DeveloperWhatsappAccount[]
+
+  @@index([userId])
+  @@index([appId])
+  @@index([status])
+  @@map("developer_apps")
+}
+
+model DeveloperAppWallet {
+  id              String        @id @default(uuid())
+  developerAppId  String        @unique
+  balance         Int           @default(0)
+  currency        String        @default("IQD")
+  totalAllocated  Int           @default(0)
+  totalSpent      Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  developerApp    DeveloperApp  @relation(fields: [developerAppId], references: [id], onDelete: Cascade)
+
+  @@index([developerAppId])
+  @@index([balance])
+  @@map("developer_app_wallets")
+}
+
+// ============================================
+// �🔑 Developer API — مفاتيح المطوّرين
+// ============================================
+
+/// 🔐 حالة مفتاح API
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+/// 🔑 مفتاح API للمطوّر
+model DeveloperApiKey {
+  id              String       @id @default(uuid())
+  slug            String       @unique /// معرّف قصير من 6 أرقام للعرض في الروابط
+  userId          String
+  developerAppId  String?      /// مرتبط بتطبيق محدد (اختياري للتوافق الخلفي)
+  name            String       /// اسم وصفي ("Production Key", "Test Key")
+  keyPrefix       String       /// أول 8 أحرف (rk_live_)
+  keySuffix       String       /// آخر 4 أحرف (للتعريف)
+  keyHash         String       @unique /// SHA-256 hash
+  encryptedKey    String?      /// AES-256-GCM encrypted raw key (for 2FA-gated reveal)
+  scopes          String[]     @default(["whatsapp:send", "whatsapp:read", "templates:read", "contacts:read"])
+  environment     String       @default("live") /// "live" | "test"
+  status          ApiKeyStatus @default(ACTIVE)
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  ipAllowlist     String[]     @default([])
+  requestCount    BigInt       @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  developerApp    DeveloperApp? @relation(fields: [developerAppId], references: [id], onDelete: Cascade)
+  messageLogs     WhatsappMessageLog[]
+  apiRequestLogs  ApiRequestLog[]
+
+  @@index([keyHash])
+  @@index([userId])
+  @@index([developerAppId])
+  @@index([status])
+  @@index([slug])
+  @@map("developer_api_keys")
+}
+
+// ============================================
+// 📱 WhatsApp Business Account — حساب WABA
+// ============================================
+
+/// 📱 حالة حساب WABA
+enum WabaAccountStatus {
+  PENDING_SETUP
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DISCONNECTED
+}
+
+/// 📱 حساب WhatsApp Business للمطوّر
+model DeveloperWhatsappAccount {
+  id                    String            @id @default(uuid())
+  userId                String
+  developerAppId        String
+  wabaId                String            @unique /// Meta WABA ID
+  businessName          String?
+  businessId            String?           /// Meta Business ID
+  currency              String            @default("USD")
+  timezoneId            String            @default("Asia/Baghdad")
+  status                WabaAccountStatus @default(PENDING_SETUP)
+  accessTokenEncrypted  String?           /// مشفّر بـ AES-256-GCM
+  tokenExpiresAt        DateTime?
+  webhookSubscribed     Boolean           @default(false)
+  metadata              Json?
+  connectedAt           DateTime?
+  disconnectedAt        DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  developerApp          DeveloperApp      @relation(fields: [developerAppId], references: [id], onDelete: Cascade)
+  phoneNumbers          DeveloperPhoneNumber[]
+  templates             DeveloperWhatsappTemplate[]
+  messageLogs           WhatsappMessageLog[]
+
+  @@index([userId])
+  @@index([developerAppId])
+  @@index([wabaId])
+  @@index([status])
+  @@map("developer_whatsapp_accounts")
+}
+
+// ============================================
+// 📞 Developer Phone Numbers — أرقام الهاتف
+// ============================================
+
+/// 📞 حالة رقم الهاتف
+enum PhoneNumberStatus {
+  PENDING
+  VERIFIED
+  ACTIVE
+  DISABLED
+  BANNED
+}
+
+/// 📞 تقييم الجودة
+enum QualityRating {
+  GREEN
+  YELLOW
+  RED
+  UNKNOWN
+}
+
+/// 📞 رقم هاتف مربوط بـ WABA
+model DeveloperPhoneNumber {
+  id                    String             @id @default(uuid())
+  accountId             String
+  phoneNumber           String             /// الرقم الكامل مع الكود الدولي
+  displayPhoneNumber    String?            /// الرقم كما يظهر في WhatsApp
+  verifiedName          String?            /// الاسم المعتمد
+  phoneNumberId         String             @unique /// Meta Phone Number ID
+  qualityRating         QualityRating      @default(UNKNOWN)
+  messagingLimit        String?            /// "TIER_1K", "TIER_10K", "TIER_100K", "UNLIMITED"
+  status                PhoneNumberStatus  @default(PENDING)
+  nameStatus            String?            /// حالة اسم العرض
+  profilePictureUrl     String?
+  aboutText             String?
+  address               String?            /// عنوان النشاط التجاري
+  description           String?            /// وصف النشاط التجاري
+  email                 String?            /// بريد النشاط التجاري
+  websites              Json?              /// قائمة مواقع الويب ["https://..."]
+  category              String?            /// تصنيف النشاط التجاري
+  isOfficialBusinessAccount Boolean        @default(false)
+  platformType          String?            @default("CLOUD_API")
+  codeVerificationStatus String?           /// "VERIFIED" | "NOT_VERIFIED"
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  account               DeveloperWhatsappAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  messageLogs           WhatsappMessageLog[]
+
+  @@index([accountId])
+  @@index([phoneNumberId])
+  @@index([status])
+  @@map("developer_phone_numbers")
+}
+
+// ============================================
+// 📋 WhatsApp Templates — قوالب الرسائل
+// ============================================
+
+/// 📋 فئة القالب
+enum TemplateCategory {
+  AUTHENTICATION
+  MARKETING
+  UTILITY
+}
+
+/// 📋 حالة القالب
+enum TemplateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+  DISABLED
+}
+
+/// 📋 قالب رسالة WhatsApp
+model DeveloperWhatsappTemplate {
+  id                    String            @id @default(uuid())
+  accountId             String
+  metaTemplateId        String?           /// معرّف القالب في Meta
+  name                  String
+  language              String            @default("ar")
+  category              TemplateCategory
+  status                TemplateStatus    @default(PENDING)
+  components            Json              /// Header, Body, Footer, Buttons
+  rejectedReason        String?
+  qualityScore          Json?
+  messageSentInTemplate Int               @default(0)
+  lastSyncedAt          DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  account               DeveloperWhatsappAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  messageLogs           WhatsappMessageLog[]
+
+  @@unique([accountId, name, language])
+  @@index([accountId])
+  @@index([status])
+  @@index([category])
+  @@map("developer_whatsapp_templates")
+}
+
+// ============================================
+// 📨 WhatsApp Message Logs — سجل الرسائل
+// ============================================
+
+/// 📨 اتجاه الرسالة
+enum MessageDirection {
+  OUTBOUND
+  INBOUND
+}
+
+/// 📨 نوع الرسالة
+enum WhatsappMessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACTS
+  TEMPLATE
+  INTERACTIVE
+  REACTION
+}
+
+/// 📨 حالة الرسالة
+enum MessageLogStatus {
+  ACCEPTED
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+/// 📨 فئة المحادثة (للفوترة)
+enum ConversationCategory {
+  AUTHENTICATION
+  MARKETING
+  UTILITY
+  SERVICE
+  REFERRAL_CONVERSION
+}
+
+/// 📨 سجل رسالة واحدة
+model WhatsappMessageLog {
+  id                    String                @id @default(uuid())
+  userId                String
+  accountId             String
+  phoneNumberId         String
+  apiKeyId              String?
+  templateId            String?
+  direction             MessageDirection
+  messageType           WhatsappMessageType
+  status                MessageLogStatus      @default(ACCEPTED)
+  recipientNumber       String
+  senderNumber          String?
+  metaMessageId         String?               @unique /// wamid.xxxxx
+  conversationId        String?               /// Meta conversation ID
+  conversationCategory  ConversationCategory?
+  content               Json?                 /// محتوى الرسالة
+  errorCode             String?
+  errorMessage          String?
+  pricing               Json?                 /// {amount, currency, category}
+  sentAt                DateTime?
+  deliveredAt           DateTime?
+  readAt                DateTime?
+  failedAt              DateTime?
+  createdAt             DateTime              @default(now())
+
+  user                  User                  @relation("developer_message_logs", fields: [userId], references: [id], onDelete: Cascade)
+  account               DeveloperWhatsappAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  phoneNumber           DeveloperPhoneNumber  @relation(fields: [phoneNumberId], references: [id], onDelete: Cascade)
+  apiKey                DeveloperApiKey?      @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  template              DeveloperWhatsappTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([phoneNumberId])
+  @@index([metaMessageId])
+  @@index([status])
+  @@index([direction])
+  @@index([createdAt])
+  @@index([recipientNumber])
+  @@map("whatsapp_message_logs")
+}
+
+// ============================================
+// 👥 Developer Contacts — جهات الاتصال
+// ============================================
+
+/// 👥 جهة اتصال المطوّر
+model DeveloperContact {
+  id              String          @id @default(uuid())
+  userId          String
+  phoneNumber     String
+  name            String?
+  email           String?
+  tags            String[]        @default([])
+  customFields    Json?
+  waId            String?         /// WhatsApp ID (بعد التحقق)
+  isValid         Boolean         @default(true)
+  lastMessageAt   DateTime?
+  messageCount    Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, phoneNumber])
+  @@index([userId])
+  @@index([tags])
+  @@index([createdAt])
+  @@map("developer_contacts")
+}
+
+// ============================================
+// 🔔 Developer Webhooks — خطافات المطوّر
+// ============================================
+
+/// 🔔 حالة Webhook
+enum WebhookStatus {
+  ACTIVE
+  PAUSED
+  AUTO_DISABLED
+}
+
+/// 🔔 Webhook للمطوّر
+model DeveloperWebhook {
+  id              String          @id @default(uuid())
+  userId          String
+  url             String          /// عنوان HTTPS لاستقبال الأحداث
+  secret          String          /// HMAC-SHA256 signing secret
+  events          String[]        /// ["message.sent", "message.delivered", ...]
+  status          WebhookStatus   @default(ACTIVE)
+  description     String?
+  failureCount    Int             @default(0)
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  lastResponseCode Int?
+  disabledReason  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveryLogs    WebhookDeliveryLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("developer_webhooks")
+}
+
+/// 🔔 سجل تسليم Webhook
+model WebhookDeliveryLog {
+  id              String       @id @default(uuid())
+  webhookId       String
+  eventType       String       /// "message.sent", "message.delivered", etc.
+  payload         Json
+  responseCode    Int?
+  responseBody    String?
+  duration        Int?         /// وقت الاستجابة بالمللي ثانية
+  success         Boolean      @default(false)
+  errorMessage    String?
+  attemptNumber   Int          @default(1)
+  nextRetryAt     DateTime?
+  createdAt       DateTime     @default(now())
+
+  webhook         DeveloperWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([eventType])
+  @@index([success])
+  @@index([createdAt])
+  @@map("webhook_delivery_logs")
+}
+
+// ============================================
+// 📊 API Request Logs — سجل طلبات API
+// ============================================
+
+/// 📊 سجل طلب API
+model ApiRequestLog {
+  id              String       @id @default(uuid())
+  userId          String
+  apiKeyId        String?
+  method          String       /// GET, POST, PATCH, DELETE
+  path            String       /// /v1/whatsapp/messages
+  statusCode      Int
+  responseTime    Int          /// بالمللي ثانية
+  requestBody     Json?
+  responseBody    Json?
+  ipAddress       String?
+  userAgent       String?
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          DeveloperApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([apiKeyId])
+  @@index([path])
+  @@index([statusCode])
+  @@index([createdAt])
+  @@map("api_request_logs")
+}
+
+// ============================================
+// 💳 Developer Subscription — اشتراك المطوّر
+// ============================================
+
+/// 💳 خطة المطوّر
+enum DeveloperPlan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+/// 💳 اشتراك المطوّر (منفصل عن اشتراك المستخدم العادي)
+model DeveloperSubscription {
+  id                  String         @id @default(uuid())
+  userId              String         @unique
+  plan                DeveloperPlan  @default(FREE)
+  status              SubscriptionStatus @default(ACTIVE)
+  billingCycle        BillingCycle?
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  cancelledAt         DateTime?
+  messagesUsed        Int            @default(0)
+  messagesLimit       Int            @default(1000)
+  apiKeysUsed         Int            @default(0)
+  apiKeysLimit        Int            @default(1)
+  phoneNumbersUsed    Int            @default(0)
+  phoneNumbersLimit   Int            @default(1)
+  webhooksUsed        Int            @default(0)
+  webhooksLimit       Int            @default(2)
+  contactsUsed        Int            @default(0)
+  contactsLimit       Int            @default(500)
+  appsUsed            Int            @default(0)
+  appsLimit           Int            @default(3)
+  rateLimitPerMinute  Int            @default(30)
+  logRetentionDays    Int            @default(7)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  user                User           @relation("developer_subscription", fields: [userId], references: [id], onDelete: Cascade)
+  payments            DeveloperPayment[]
+
+  @@index([plan])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("developer_subscriptions")
+}
+
+/// 💰 نوع الدفع
+enum DeveloperPaymentType {
+  SUBSCRIPTION
+  TOP_UP
+  OVERAGE
+  REFUND
+}
+
+/// 💰 دفعة المطوّر
+model DeveloperPayment {
+  id                String                @id @default(uuid())
+  subscriptionId    String
+  amount            Int                   /// المبلغ بالدينار العراقي (IQD)
+  type              DeveloperPaymentType
+  status            PaymentStatus         @default(PENDING)
+  description       String?
+  paymentMethod     String?               /// "zaincash" | "fastpay" | "card"
+  externalId        String?               /// معرّف من بوابة الدفع
+  paidAt            DateTime?
+  failedAt          DateTime?
+  failureReason     String?
+  metadata          Json?
+  createdAt         DateTime              @default(now())
+
+  subscription      DeveloperSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("developer_payments")
+}
+
+// ============================================
+// 💰 Developer Wallet — محفظة المطوّر
+// ============================================
+
+/// 💰 حالة معاملة المحفظة
+enum WalletTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+/// 💰 نوع معاملة المحفظة
+enum WalletTransactionType {
+  TOP_UP            /// شحن رصيد
+  MESSAGE_CHARGE    /// خصم رسالة
+  REFUND            /// استرداد
+  AUTO_RECHARGE     /// شحن تلقائي
+  ADJUSTMENT        /// تعديل يدوي (من الإدارة)
+  APP_ALLOCATION    /// تحويل من المحفظة الرئيسية إلى التطبيق
+}
+
+/// 💰 محفظة المطوّر
+model DeveloperWallet {
+  id                    String          @id @default(uuid())
+  userId                String          @unique
+  balance               Int             @default(0) /// الرصيد بالدينار العراقي (IQD)
+  currency              String          @default("IQD")
+  autoRechargeEnabled   Boolean         @default(false)
+  autoRechargeAmount    Int?            /// مبلغ الشحن التلقائي
+  autoRechargeThreshold Int?            /// الحد الأدنى لتفعيل الشحن التلقائي
+  lowBalanceAlert       Int?            /// تنبيه انخفاض الرصيد
+  totalTopUps           Int             @default(0) /// إجمالي الشحن
+  totalSpent            Int             @default(0) /// إجمالي الإنفاق
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  user                  User            @relation("developer_wallet", fields: [userId], references: [id], onDelete: Cascade)
+  transactions          WalletTransaction[]
+
+  @@index([userId])
+  @@index([balance])
+  @@map("developer_wallets")
+}
+
+/// 💰 معاملة محفظة
+model WalletTransaction {
+  id              String                   @id @default(uuid())
+  walletId        String
+  type            WalletTransactionType
+  amount          Int                      /// المبلغ (موجب دائماً)
+  balanceBefore   Int                      /// الرصيد قبل العملية
+  balanceAfter    Int                      /// الرصيد بعد العملية
+  status          WalletTransactionStatus  @default(PENDING)
+  description     String?
+  referenceId     String?                  /// messageLogId أو paymentId
+  referenceType   String?                  /// "message" | "payment" | "admin"
+  paymentMethod   String?                  /// "zaincash" | "fastpay" | "card" (للشحن فقط)
+  externalId      String?                  /// معرّف من بوابة الدفع
+  metadata        Json?
+  createdAt       DateTime                 @default(now())
+
+  wallet          DeveloperWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([referenceId])
+  @@map("wallet_transactions")
 }

@@ -317,8 +317,8 @@ function PaymentVerifyContent() {
                   <span className="text-[11px] text-zinc-400 dark:text-zinc-500 mr-auto">{items.length} منتج</span>
                 </div>
                 <div className="space-y-2 sm:space-y-2.5">
-                  {items.slice(0, 3).map((item) => (
-                    <div key={item.productId} className="flex items-center gap-2.5 sm:gap-3">
+                  {items.slice(0, 3).map((item, index) => (
+                    <div key={`${item.productId}-${item.variantId ?? index}`} className="flex items-center gap-2.5 sm:gap-3">
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0">
                         {item.image ? (
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />

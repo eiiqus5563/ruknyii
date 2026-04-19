@@ -510,10 +510,11 @@ export class OrdersService {
       addressId?: string;
       customerNote?: string;
       phoneNumber?: string;
+      paymentMethod?: string;
       items: Array<{ productId: string; quantity: number; variantId?: string }>;
     },
   ) {
-    const { addressId, customerNote, phoneNumber: dtoPhone, items } = dto;
+    const { addressId, customerNote, phoneNumber: dtoPhone, paymentMethod, items } = dto;
 
     if (!items || items.length === 0) {
       throw new BadRequestException('يجب إضافة منتج واحد على الأقل');
@@ -630,6 +631,7 @@ export class OrdersService {
         discount: 0,
         total,
         customerNote,
+        ...(paymentMethod ? { paymentMethod: paymentMethod as any } : {}),
         // Digital-only orders are delivered immediately
         ...(allDigital ? { status: 'DELIVERED' as any, deliveredAt: new Date() } : {}),
       },

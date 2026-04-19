@@ -28,15 +28,10 @@ export class ProductsService {
     this.bucket = this.config.get<string>('S3_BUCKET', 'rukny-storage');
   }
 
-  private async resolveImageUrl(imagePath?: string | null): Promise<string | null> {
+  private resolveImageUrl(imagePath?: string | null): string | null {
     if (!imagePath) return null;
     if (imagePath.startsWith('http')) return imagePath;
-
-    try {
-      return await this.s3.getPresignedGetUrl(this.bucket, imagePath, 3600);
-    } catch {
-      return `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${imagePath}`;
-    }
+    return `/api/media/${imagePath}`;
   }
 
   private buildProductsWhereClause(query: ProductsQuery) {

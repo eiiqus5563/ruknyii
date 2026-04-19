@@ -193,7 +193,7 @@ export class ProductsService {
       return [];
     }
 
-    const where: any = { storeId: store.id };
+    const where: any = { storeId: store.id, status: { not: 'DISCONTINUED' } };
 
     if (filters?.status) {
       where.status = filters.status;
@@ -245,29 +245,17 @@ export class ProductsService {
   }
 
   /**
-   * Resolve product_images imagePath to presigned S3 URLs
+   * Resolve product_images imagePath to stable proxy URLs (no expiration)
    */
   private async resolveProductImageUrls<T extends { product_images: { imagePath: string }[] }>(product: T): Promise<T> {
-    const imagesWithUrls = await Promise.all(
-      product.product_images.map(async (img) => {
-        let url = img.imagePath;
-        if (!img.imagePath.startsWith('http')) {
-          try {
-            url = await this.s3Service.getPresignedGetUrl(
-              this.bucket,
-              img.imagePath,
-              3600,
-            );
-          } catch (error) {
-            this.logger.warn(
-              `Failed to generate presigned URL for ${img.imagePath}`,
-            );
-            url = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${img.imagePath}`;
-          }
-        }
-        return { ...img, imagePath: url };
-      }),
-    );
+    const imagesWithUrls = product.product_images.map((img) => {
+      let url = img.imagePath;
+      if (!img.imagePath.startsWith('http')) {
+        // Use stable proxy URL instead of expiring presigned URL
+        url = `/api/media/${img.imagePath}`;
+      }
+      return { ...img, imagePath: url };
+    });
     return { ...product, product_images: imagesWithUrls };
   }
 
@@ -540,23 +528,6 @@ export class ProductsService {
       throw new ForbiddenException('You can only delete your own products');
     }
 
-    // حذف الصور من S3
-    if (product.product_images && product.product_images.length > 0) {
-      for (const image of product.product_images) {
-        try {
-          // تحقق مما إذا كان المسار هو مفتاح S3 (لا يبدأ بـ http)
-          if (!image.imagePath.startsWith('http')) {
-            await this.s3Service.deleteObject(this.bucket, image.imagePath);
-            this.logger.debug(`تم حذف الصورة من S3: ${image.imagePath}`);
-          }
-        } catch (error) {
-          this.logger.warn(
-            `فشل حذف الصورة من S3: ${image.imagePath} - ${error.message}`,
-          );
-        }
-      }
-    }
-
     // Check if product has order items - soft delete to preserve order history
     const orderItemsCount = await this.prisma.order_items.count({
       where: { productId: id },
@@ -564,24 +535,47 @@ export class ProductsService {
 
     if (orderItemsCount > 0) {
       // Soft delete: archive the product and clean up non-critical relations
+      // Keep S3 images intact for order history display
       await this.prisma.$transaction([
         this.prisma.cart_items.deleteMany({ where: { productId: id } }),
         this.prisma.wishlists.deleteMany({ where: { productId: id } }),
         this.prisma.products.update({
           where: { id },
-          data: { status: 'INACTIVE', quantity: 0 },
+          data: { status: 'DISCONTINUED', quantity: 0 },
         }),
       ]);
+      this.logger.log(`Soft-deleted product ${id} (has ${orderItemsCount} order items)`);
     } else {
       // Hard delete: no order references, safe to remove entirely
+      // Delete S3 images first
+      if (product.product_images && product.product_images.length > 0) {
+        for (const image of product.product_images) {
+          try {
+            if (!image.imagePath.startsWith('http')) {
+              await this.s3Service.deleteObject(this.bucket, image.imagePath);
+              this.logger.debug(`تم حذف الصورة من S3: ${image.imagePath}`);
+            }
+          } catch (error) {
+            this.logger.warn(
+              `فشل حذف الصورة من S3: ${image.imagePath} - ${error.message}`,
+            );
+          }
+        }
+      }
       await this.prisma.products.delete({ where: { id } });
+      this.logger.log(`Hard-deleted product ${id}`);
     }
 
-    // Invalidate dashboard cache for store owner
+    // Invalidate caches for store owner
     try {
       const ownerId = product.stores?.userId;
       if (ownerId) {
         await this.redisService.del(`dashboard:stats:${ownerId}`);
+        // Invalidate products cache
+        const keys = await this.redisService.keys(`products:my:${ownerId}:*`);
+        for (const key of keys) {
+          await this.redisService.del(key);
+        }
       }
     } catch (err) {
       this.logger.warn(
@@ -679,23 +673,11 @@ export class ProductsService {
       });
     });
 
-    // Generate presigned URLs for images
-    const productsWithUrls = await Promise.all(
-      products.map(async (product) => {
+    // Generate stable proxy URLs for images
+    const productsWithUrls = products.map((product) => {
         let imageUrl = product.product_images[0]?.imagePath || null;
         if (imageUrl && !imageUrl.startsWith('http')) {
-          try {
-            imageUrl = await this.s3Service.getPresignedGetUrl(
-              this.bucket,
-              imageUrl,
-              3600,
-            );
-          } catch (error) {
-            this.logger.warn(
-              `Failed to generate presigned URL for ${imageUrl}`,
-            );
-            imageUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${imageUrl}`;
-          }
+          imageUrl = `/api/media/${imageUrl}`;
         }
 
         return {
@@ -708,8 +690,7 @@ export class ProductsService {
           reviewsCount: product._count.reviews,
           status: product.status,
         };
-      }),
-    );
+      });
 
     return { data: productsWithUrls };
   }

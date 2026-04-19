@@ -60,6 +60,7 @@ import { trackLinkClick } from '@/lib/api/social-links';
 import { formatCurrency } from '@/lib/currency';
 import { getTemplate } from '@/lib/profile-templates';
 import { PortfolioTemplate } from './templates/portfolio-template';
+import { StoreTemplate } from './templates/store-template';
 import { addToCart as addToCartStore, getCart, getCartCount, getCartTotal, getCartCurrency, syncCartStock } from '@/lib/cart-store';
 import { CartDialog } from '@/components/cart-dialog';
 
@@ -1687,6 +1688,30 @@ export default function PublicProfilePage() {
         {sharedModals}
         {cartElements}
       </div>
+    );
+  }
+
+  // ─── Store Pro Template ────────────────────────────────────────────────────────
+  if (activeTemplate.key === 'store') {
+    return (
+      <StoreTemplate
+        profile={profile}
+        storeId={storeId}
+        products={products}
+        isOwnProfile={isOwnProfile}
+        isFollowing={isFollowing}
+        followLoading={followLoading}
+        onFollow={handleFollow}
+        onShowShare={() => setShowShareModal(true)}
+        onShowQR={() => setShowQRModal(true)}
+        showQRModal={showQRModal}
+        showShareModal={showShareModal}
+        onCloseQR={() => setShowQRModal(false)}
+        onCloseShare={() => setShowShareModal(false)}
+        copied={copied}
+        onCopyLink={handleCopyLink}
+        profileUrl={profileUrl}
+      />
     );
   }
 

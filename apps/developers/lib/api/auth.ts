@@ -1,13 +1,3 @@
-/**
- * 🔐 Auth API - Developers App Authentication endpoints
- *
- * Auth Methods:
- * 1. QuickSign (Magic Link) - Email-based passwordless auth
- * 2. OAuth (Google/LinkedIn) - Social login
- *
- * Token Strategy: httpOnly cookies, CSRF token in JS cookie
- */
-
 import { z } from 'zod';
 import api, { setCsrfToken, clearCsrfToken, refreshOnce } from '../api-client';
 
@@ -39,14 +29,6 @@ export const AuthResponseSchema = z.object({
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
-// ============ QuickSign Types ============
-
-export const QuickSignRequestSchema = z.object({
-  email: z.string().email('بريد إلكتروني غير صالح'),
-});
-
-export type QuickSignRequest = z.infer<typeof QuickSignRequestSchema>;
-
 export const QuickSignResponseSchema = z.object({
   success: z.boolean(),
   message: z.string(),
@@ -56,11 +38,10 @@ export const QuickSignResponseSchema = z.object({
 
 export type QuickSignResponse = z.infer<typeof QuickSignResponseSchema>;
 
-// ============ QuickSign API Functions ============
+// ============ QuickSign ============
 
 export async function requestQuickSign(email: string): Promise<QuickSignResponse> {
-  const validated = QuickSignRequestSchema.parse({ email });
-  const { data } = await api.post<QuickSignResponse>('/auth/quicksign/request', validated);
+  const { data } = await api.post<QuickSignResponse>('/auth/quicksign/request', { email });
   return QuickSignResponseSchema.parse(data);
 }
 
@@ -81,45 +62,18 @@ export async function completeProfile(input: CompleteProfileInput): Promise<{ su
   return z.object({ success: z.boolean(), user: UserSchema }).parse(data);
 }
 
-export interface UpdateOAuthProfileInput {
-  name: string;
-  username: string;
-  phone?: string;
-  storeCategory?: string;
-  storeDescription?: string;
-  employeesCount?: string;
-  storeCountry?: string;
-  storeCity?: string;
-  storeAddress?: string;
-}
-
-export async function updateOAuthProfile(input: UpdateOAuthProfileInput): Promise<{
-  success: boolean;
-  user: User;
-  store?: { slug: string } | null;
-  message: string;
-}> {
-  const { data } = await api.post<{ success: boolean; user: User; store?: { slug: string } | null; message: string }>(
-    '/auth/update-profile',
-    input,
-  );
-  return z.object({
-    success: z.boolean(),
-    user: UserSchema,
-    store: z.object({ slug: z.string() }).nullable().optional(),
-    message: z.string(),
-  }).parse(data);
+export async function updateOAuthProfile(input: CompleteProfileInput): Promise<{ success: boolean; user: User; message: string }> {
+  const { data } = await api.post<{ success: boolean; user: User; message: string }>('/auth/update-profile', input);
+  return z.object({ success: z.boolean(), user: UserSchema, message: z.string() }).parse(data);
 }
 
 export async function checkUsername(username: string): Promise<{ available: boolean; suggestions?: string[] }> {
   const safeUsername = encodeURIComponent(username.trim());
-  const { data } = await api.get<{ available: boolean; suggestions?: string[] }>(
-    `/auth/quicksign/check-username/${safeUsername}`,
-  );
+  const { data } = await api.get<{ available: boolean; suggestions?: string[] }>(`/auth/quicksign/check-username/${safeUsername}`);
   return z.object({ available: z.boolean(), suggestions: z.array(z.string()).optional() }).parse(data);
 }
 
-// ============ Core Auth Functions ============
+// ============ Core Auth ============
 
 export async function getCurrentUser(): Promise<User> {
   const { data } = await api.get<User>('/auth/me');
@@ -138,26 +92,23 @@ export async function refreshToken(): Promise<AuthResponse> {
 }
 
 export async function logout(): Promise<void> {
-  try {
-    await api.post('/auth/logout');
-  } finally {
-    clearCsrfToken();
-  }
+  try { await api.post('/auth/logout'); } finally { clearCsrfToken(); }
 }
 
-// ============ OAuth Functions ============
+// ============ OAuth ============
 
 import { API_BACKEND_URL } from '../config';
 
 export function getGoogleAuthUrl(): string {
-  return `${API_BACKEND_URL}/api/v1/auth/google`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${API_BACKEND_URL}/api/v1/auth/google?redirect_origin=${encodeURIComponent(origin)}`;
 }
 
 export function getLinkedInAuthUrl(): string {
-  return `${API_BACKEND_URL}/api/v1/auth/linkedin`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${API_BACKEND_URL}/api/v1/auth/linkedin?redirect_origin=${encodeURIComponent(origin)}`;
 }
 
-// OAuth exchange mutex
 const OAUTH_EXCHANGE_KEY = '__developers_oauth_exchange__';
 
 interface OAuthExchangeState {
@@ -180,9 +131,7 @@ function getOAuthExchangeState(): OAuthExchangeState {
 
 export async function exchangeOAuthCode(code: string): Promise<AuthResponse> {
   const state = getOAuthExchangeState();
-  if (state.usedCodes.has(code)) {
-    throw new Error('This authorization code has already been used');
-  }
+  if (state.usedCodes.has(code)) throw new Error('This authorization code has already been used');
   const existing = state.codes.get(code);
   if (existing) return existing;
 
@@ -200,4 +149,23 @@ export async function exchangeOAuthCode(code: string): Promise<AuthResponse> {
 
   state.codes.set(code, promise);
   return promise;
+}
+
+// ============ 2FA ============
+
+export async function check2FASession(sessionId: string): Promise<{ valid: boolean; method?: string }> {
+  const { data } = await api.get<{ valid: boolean; method?: string }>(`/auth/2fa/check-session/${sessionId}`);
+  return data;
+}
+
+export async function verify2FALogin(token: string, pendingSessionId: string, rememberDevice?: boolean): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/2fa/verify-login', { token, pendingSessionId, rememberDevice });
+  const validated = AuthResponseSchema.parse(data);
+  if (validated.csrf_token) setCsrfToken(validated.csrf_token);
+  return validated;
+}
+
+export async function get2FAStatus(): Promise<{ enabled: boolean; backupCodesRemaining: number }> {
+  const { data } = await api.get<{ enabled: boolean; backupCodesRemaining: number }>('/auth/2fa/status');
+  return data;
 }

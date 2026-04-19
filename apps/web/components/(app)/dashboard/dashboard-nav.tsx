@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LogOut, User, Settings, Search, X, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNotifications } from '@/lib/hooks/use-notifications';
 import { NotificationPanel } from '@/components/(app)/notifications/notification-panel';
 
@@ -173,30 +176,28 @@ export function DashboardNav() {
           />
 
           {/* Divider */}
-          <div className="h-5 w-px bg-border/20" />
+          <div className="h-5 w-px bg-border/20" aria-hidden />
 
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex size-9 items-center justify-center rounded-2xl transition-colors hover:bg-muted/60 outline-none cursor-pointer"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
                 aria-label="قائمة المستخدم"
               >
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user?.name || ''}
-                    className="size-8 rounded-full object-cover ring-1 ring-border/50"
-                  />
-                ) : (
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                <Avatar>
+                  {user?.avatar ? (
+                    <AvatarImage src={user.avatar} alt={user?.name || ''} />
+                  ) : null}
+                  <AvatarFallback className="bg-primary text-[11px] font-bold text-primary-foreground">
                     {user?.name?.charAt(0)?.toUpperCase() ?? 'R'}
-                  </div>
-                )}
-              </button>
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 ">
+            <DropdownMenuContent align="start" className="w-52">
               <DropdownMenuLabel className="px-3 py-2 justify-items-end">
                 <p className="text-sm font-medium text-foreground">
                   {user?.name ?? 'المستخدم'}
@@ -234,16 +235,22 @@ export function DashboardNav() {
 
           {/* Back link — shown when on a sub-page */}
           {parent && (
-            <>
-              <div className="h-5 w-px bg-border/20" />
-              <Link
-                href={parent.href}
-                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              >
-                <span>العودة لـ{parent.label}</span>
-                <ArrowLeft className="size-3" />
-              </Link>
-            </>
+            <TooltipProvider>
+              <div className="h-5 w-px bg-border/20" aria-hidden />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl text-muted-foreground" asChild>
+                    <Link href={parent.href}>
+                      <span>العودة لـ{parent.label}</span>
+                      <ArrowLeft className="size-3" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{parent.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>

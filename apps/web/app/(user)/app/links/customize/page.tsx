@@ -11,6 +11,7 @@ import {
   Sparkles,
   Layout,
   Briefcase,
+  ShoppingBag,
   Type,
   FileText,
   MousePointerClick,
@@ -36,6 +37,7 @@ import { useAuth } from '@/providers';
 const TEMPLATE_ICONS: Record<TemplateKey, React.FC<{ className?: string }>> = {
   classic: Layout,
   portfolio: Briefcase,
+  store: ShoppingBag
 };
 
 /* ------------------------------------------------------------------ */
@@ -80,6 +82,29 @@ function MiniPreview({ templateKey, profile }: MiniPreviewProps) {
           transition={{ duration: 0.2 }}
         >
           {templateKey === 'classic' && <ClassicPreview profile={profile} />}
+          {templateKey === 'store' && (
+            <div className="w-full h-full bg-[#fafaf8] flex flex-col overflow-hidden">
+              <div className="h-5 bg-white border-b border-[#f0ede8] flex items-center px-2">
+                <div className="w-3 h-3 rounded-full bg-[#1D1D1F]" />
+                <div className="mx-auto h-1.5 w-10 rounded bg-[#e0ddd8]" />
+                <ShoppingBag className="w-2.5 h-2.5 text-[#1D1D1F]" />
+              </div>
+              <div className="flex gap-1 px-2 py-1.5">
+                {['الكل', 'ملابس', 'أحذية'].map((c, i) => (
+                  <span key={c} className={cn('text-[5px] px-1.5 py-0.5 rounded-full', i === 0 ? 'bg-[#1D1D1F] text-white' : 'bg-white text-[#999] border border-[#e0ddd8]')}>{c}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 px-2 flex-1">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex flex-col">
+                    <div className="aspect-square rounded-md bg-[#ebe8e4]" />
+                    <div className="h-1 w-8 bg-[#d4cdc2] rounded mt-1" />
+                    <div className="h-1.5 w-5 bg-[#1D1D1F] rounded mt-0.5" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -501,6 +526,30 @@ export default function CustomizePage() {
             </div>
             <Paintbrush className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
           </button>
+        </motion.div>
+      )}
+
+      {/* ─── Store Pro Customization (banner slider + cover) ─── */}
+      {(activeKey === 'store' || selectedKey === 'store') && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-3"
+        >
+          <a
+            href="/app/settings/store"
+            className="w-full flex items-center gap-3 rounded-2xl bg-card border border-border/60 p-4 sm:p-5 hover:bg-accent transition-all group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shrink-0 group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
+              <ShoppingBag className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 text-right min-w-0">
+              <h3 className="font-bold text-sm text-foreground">تخصيص المتجر</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">سلايدر الإعلانات وصورة الخلفية وإعدادات المتجر</p>
+            </div>
+            <Paintbrush className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+          </a>
         </motion.div>
       )}
 

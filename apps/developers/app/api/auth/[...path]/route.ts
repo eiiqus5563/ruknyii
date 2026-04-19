@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * 🔒 Auth BFF Proxy — Forwards auth requests to NestJS API
- * Preserves Set-Cookie headers for httpOnly cookie auth
- */
-
 const API_BACKEND_URL =
   process.env.API_BACKEND_URL || process.env.API_URL || 'http://localhost:3001';
 
 // Rate limiter
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 setInterval(() => {
   const now = Date.now();
@@ -31,13 +26,13 @@ function isRateLimited(ip: string): boolean {
   return entry.count > RATE_LIMIT_MAX;
 }
 
-const FORWARD_REQUEST_HEADERS = [
+const FORWARD_HEADERS = [
   'content-type', 'accept', 'cookie', 'origin', 'referer',
   'user-agent', 'x-forwarded-for', 'x-real-ip', 'x-forwarded-proto',
   'x-request-id', 'x-csrf-token',
 ];
 
-const ALLOWED_AUTH_PREFIXES = [
+const ALLOWED_PREFIXES = [
   'me', 'refresh', 'logout', 'logout-all',
   'sessions', 'activity', 'ws-token',
   'google', 'linkedin', 'oauth',
@@ -49,6 +44,7 @@ async function proxyToApi(request: NextRequest, pathSegments: string[]) {
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || request.headers.get('x-real-ip')
     || 'unknown';
+
   if (isRateLimited(clientIp)) {
     return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -58,20 +54,17 @@ async function proxyToApi(request: NextRequest, pathSegments: string[]) {
 
   const path = pathSegments.join('/');
   const firstSegment = pathSegments[0]?.toLowerCase();
-  if (!firstSegment || !ALLOWED_AUTH_PREFIXES.includes(firstSegment)) {
+  if (!firstSegment || !ALLOWED_PREFIXES.includes(firstSegment)) {
     return new NextResponse(JSON.stringify({ error: 'Invalid auth path' }), {
-      status: 400,
-      headers: { 'content-type': 'application/json' },
+      status: 400, headers: { 'content-type': 'application/json' },
     });
   }
 
   const url = new URL(`/api/v1/auth/${path}`, API_BACKEND_URL);
-  request.nextUrl.searchParams.forEach((value, key) => {
-    url.searchParams.set(key, value);
-  });
+  request.nextUrl.searchParams.forEach((value, key) => url.searchParams.set(key, value));
 
   const headers = new Headers();
-  for (const key of FORWARD_REQUEST_HEADERS) {
+  for (const key of FORWARD_HEADERS) {
     const value = request.headers.get(key);
     if (value) headers.set(key, value);
   }
@@ -102,18 +95,18 @@ async function proxyToApi(request: NextRequest, pathSegments: string[]) {
   return new NextResponse(body, { status: apiRes.status, headers: resHeaders });
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyToApi(request, path);
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return proxyToApi(request, (await params).path);
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
-  const { path } = await params;
-  return proxyToApi(request, path);
+export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return proxyToApi(request, (await params).path);
+}
+
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return proxyToApi(request, (await params).path);
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  return proxyToApi(request, (await params).path);
 }

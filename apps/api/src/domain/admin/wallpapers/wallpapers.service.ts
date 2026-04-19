@@ -21,13 +21,11 @@ export class WallpapersService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    return Promise.all(
-      wallpapers.map(async (w) => ({
+    return wallpapers.map((w) => ({
         ...w,
         fileSize: Number(w.fileSize),
-        url: await this.s3.getPresignedGetUrl(this.bucket, w.s3Key, 3600),
-      })),
-    );
+        url: `/api/media/${w.s3Key}`,
+      }));
   }
 
   /** List active wallpapers (public) */
@@ -37,14 +35,12 @@ export class WallpapersService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    return Promise.all(
-      wallpapers.map(async (w) => ({
+    return wallpapers.map((w) => ({
         id: w.id,
         nameAr: w.nameAr,
         fileType: w.fileType,
-        url: await this.s3.getPresignedGetUrl(this.bucket, w.s3Key, 3600),
-      })),
-    );
+        url: `/api/media/${w.s3Key}`,
+      }));
   }
 
   /** Get a fresh presigned URL for a wallpaper by ID */
@@ -54,7 +50,7 @@ export class WallpapersService {
       select: { s3Key: true },
     });
     if (!wallpaper) return null;
-    return this.s3.getPresignedGetUrl(this.bucket, wallpaper.s3Key, 3600);
+    return `/api/media/${wallpaper.s3Key}`;
   }
 
   /** Upload file to S3 and create DB record in one step */
@@ -88,7 +84,7 @@ export class WallpapersService {
     return {
       ...wallpaper,
       fileSize: Number(wallpaper.fileSize),
-      url: await this.s3.getPresignedGetUrl(this.bucket, key, 3600),
+      url: `/api/media/${key}`,
     };
   }
 

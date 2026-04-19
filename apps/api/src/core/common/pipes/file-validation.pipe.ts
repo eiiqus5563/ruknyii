@@ -1,6 +1,24 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 import { fileTypeFromBuffer } from 'file-type';
 
+function normalizeBinaryInput(input: unknown): Buffer | null {
+  if (!input) return null;
+  if (Buffer.isBuffer(input)) return input;
+  if (input instanceof Uint8Array) return Buffer.from(input);
+  if (input instanceof ArrayBuffer) return Buffer.from(input);
+  if (
+    typeof input === 'object' &&
+    input !== null &&
+    'type' in input &&
+    'data' in input &&
+    (input as { type?: string }).type === 'Buffer' &&
+    Array.isArray((input as { data?: unknown[] }).data)
+  ) {
+    return Buffer.from((input as { data: number[] }).data);
+  }
+  return null;
+}
+
 /**
  * 🔒 File Validation Pipe
  *
@@ -49,7 +67,8 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     // 2. Get buffer (works for both memoryStorage and diskStorage)
-    const buffer = file.buffer || (file.path ? require('fs').readFileSync(file.path) : null);
+    const buffer = normalizeBinaryInput(file.buffer)
+      || (file.path ? normalizeBinaryInput(require('fs').readFileSync(file.path)) : null);
 
     if (!buffer || buffer.length === 0) {
       throw new BadRequestException('Invalid file: empty or unreadable');

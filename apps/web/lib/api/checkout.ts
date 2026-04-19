@@ -152,6 +152,7 @@ export interface CreateCheckoutOrderPayload {
   items: { productId: string; quantity: number; price: number; variantId?: string }[];
   shippingAddressId?: string;
   phoneNumber?: string;
+  paymentMethod?: 'CASH' | 'QASEH_CARD' | 'BANK_TRANSFER';
   notes?: string;
 }
 
@@ -171,6 +172,12 @@ export interface CheckoutOrderResult {
       expiresAt: string | null;
     }>;
   }>;
+  payment?: {
+    paymentId: string;
+    paymentUrl: string;
+    token: string;
+  };
+  paymentError?: boolean;
 }
 
 export async function createCheckoutOrder(

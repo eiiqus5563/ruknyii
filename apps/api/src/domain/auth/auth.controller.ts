@@ -477,12 +477,9 @@ export class AuthController {
       needsProfileCompletion: result.needsProfileCompletion,
     }, ipAddress);
 
-    // Redirect with code only — في التطوير استخدم FRONTEND_URL_DEV إن وُجد
-    const base =
-      process.env.NODE_ENV === 'development' && process.env.FRONTEND_URL_DEV
-        ? process.env.FRONTEND_URL_DEV
-        : process.env.AUTH_FRONTEND_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${base}/auth/callback?code=${code}`;
+    // Redirect — use state (from redirect_origin) if valid, else fallback
+    const base = this.resolveRedirectBase(req.query?.state);
+    const redirectUrl = `${base}/callback?code=${code}`;
     res.redirect(redirectUrl);
   }
 
@@ -569,12 +566,61 @@ export class AuthController {
       needsProfileCompletion: result.needsProfileCompletion,
     }, ipAddress);
 
-    // Redirect with code only — في التطوير استخدم FRONTEND_URL_DEV إن وُجد
-    const base =
+    // Redirect — use state (from redirect_origin) if valid, else fallback
+    const base = this.resolveRedirectBase(req.query?.state);
+    const redirectUrl = `${base}/callback?code=${code}`;
+    res.redirect(redirectUrl);
+  }
+
+  /**
+   * Resolve redirect base URL from OAuth state parameter.
+   * Validates against allowed origins to prevent open redirect.
+   */
+  private resolveRedirectBase(stateOrigin?: string): string {
+    const fallback =
       process.env.NODE_ENV === 'development' && process.env.FRONTEND_URL_DEV
         ? process.env.FRONTEND_URL_DEV
         : process.env.AUTH_FRONTEND_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${base}/auth/callback?code=${code}`;
-    res.redirect(redirectUrl);
+
+    if (!stateOrigin || typeof stateOrigin !== 'string') return fallback;
+
+    // Validate against allowed origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3003',
+      'http://localhost:3004',
+      'https://localhost:3000',
+      'https://localhost:3003',
+      'https://localhost:3004',
+      'https://rukny.io',
+      'https://www.rukny.io',
+      'https://app.rukny.io',
+      'https://accounts.rukny.io',
+      'https://business.rukny.io',
+      'https://developers.rukny.io',
+      process.env.FRONTEND_URL,
+      process.env.AUTH_FRONTEND_URL,
+      process.env.DEVELOPERS_FRONTEND_URL,
+      process.env.BUSINESS_FRONTEND_URL,
+    ].filter(Boolean) as string[];
+
+    // Normalize: remove trailing slash
+    const normalized = stateOrigin.replace(/\/+$/, '');
+
+    if (allowedOrigins.some(o => o.replace(/\/+$/, '') === normalized)) {
+      return normalized;
+    }
+
+    // In development, allow any localhost origin
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const url = new URL(normalized);
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+          return normalized;
+        }
+      } catch { /* invalid URL */ }
+    }
+
+    return fallback;
   }
 }

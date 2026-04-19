@@ -56,8 +56,7 @@ export class ProfilesService {
     if (!heroSettings?.logoCloud?.logos?.length) return heroSettings;
     try {
       const logos = heroSettings.logoCloud.logos;
-      const resolvedLogos = await Promise.all(
-        logos.map(async (logo: any) => {
+      const resolvedLogos = logos.map((logo: any) => {
           const keyFromLogoKey =
             typeof logo?.key === 'string' && logo.key && !logo.key.startsWith('http')
               ? logo.key
@@ -74,20 +73,10 @@ export class ProfilesService {
           const sourceKey = keyFromLogoKey || keyFromSrc || keyFromS3Url;
 
           if (sourceKey) {
-            try {
-              const url = await this.s3Service.getPresignedGetUrl(
-                this.bucket,
-                sourceKey,
-                3600,
-              );
-              return { ...logo, key: sourceKey, src: url };
-            } catch {
-              return logo;
-            }
+            return { ...logo, key: sourceKey, src: `/api/media/${sourceKey}` };
           }
           return logo;
-        }),
-      );
+        });
       return {
         ...heroSettings,
         logoCloud: { ...heroSettings.logoCloud, logos: resolvedLogos },
@@ -201,20 +190,13 @@ export class ProfilesService {
         }),
       ]);
 
-      // Convert banner keys to presigned URLs (for private S3 buckets)
+      // Convert banner keys to stable proxy URLs
       const bannerKeys = (profile.user.bannerUrls || []).filter(
         (key: string) => key && !key.startsWith('http'),
       );
-      const bannerUrls =
-        bannerKeys.length > 0
-          ? await this.s3Service.getPresignedGetUrls(
-              this.bucket,
-              bannerKeys,
-              3600,
-            )
-          : [];
+      const bannerUrls = bannerKeys.map((key: string) => `/api/media/${key}`);
 
-      // Convert avatar and cover keys (if any) to presigned URLs
+      // Convert avatar and cover keys to stable proxy URLs
       let avatarUrl = (profile as any).avatar as string | undefined | null;
       let coverUrl = (profile as any).coverImage as string | undefined | null;
 
@@ -222,43 +204,20 @@ export class ProfilesService {
       const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
       
       if (avatarUrl && !avatarUrl.startsWith('http')) {
-        // Check if it's a legacy local path
         if (avatarUrl.startsWith('/uploads/')) {
-          // Legacy local paths are no longer supported, clear them
-          // User needs to upload a new avatar via S3
           this.logger.warn(`Legacy local avatar path detected for user, clearing: ${avatarUrl}`);
           avatarUrl = null;
         } else {
-          try {
-            avatarUrl = await this.s3Service.getPresignedGetUrl(
-              this.bucket,
-              avatarUrl,
-              3600,
-            );
-          } catch (e) {
-            this.logger.warn(`Failed to get presigned URL for avatar: ${e}`);
-            avatarUrl = null;
-          }
+          avatarUrl = `/api/media/${avatarUrl}`;
         }
       }
 
       if (coverUrl && !coverUrl.startsWith('http')) {
-        // Check if it's a legacy local path
         if (coverUrl.startsWith('/uploads/')) {
-          // Legacy local paths are no longer supported, clear them
           this.logger.warn(`Legacy local cover path detected for user, clearing: ${coverUrl}`);
           coverUrl = null;
         } else {
-          try {
-            coverUrl = await this.s3Service.getPresignedGetUrl(
-              this.bucket,
-              coverUrl,
-              3600,
-            );
-          } catch (e) {
-            this.logger.warn(`Failed to get presigned URL for coverImage: ${e}`);
-            coverUrl = null;
-          }
+          coverUrl = `/api/media/${coverUrl}`;
         }
       }
 
@@ -311,7 +270,7 @@ export class ProfilesService {
       throw new NotFoundException('Profile not found');
     }
 
-    // Convert avatar/cover to presigned URLs when needed
+    // Convert avatar/cover to stable proxy URLs
     try {
       let avatarUrl = (profile as any)?.avatar;
       let coverUrl = (profile as any)?.coverImage;
@@ -322,11 +281,7 @@ export class ProfilesService {
           this.logger.warn(`Legacy local avatar path detected, clearing: ${avatarUrl}`);
           avatarUrl = null;
         } else {
-          avatarUrl = await this.s3Service.getPresignedGetUrl(
-            this.bucket,
-            avatarUrl,
-            3600,
-          );
+          avatarUrl = `/api/media/${avatarUrl}`;
         }
       }
       if (coverUrl && !coverUrl.startsWith('http')) {
@@ -334,11 +289,7 @@ export class ProfilesService {
           this.logger.warn(`Legacy local cover path detected, clearing: ${coverUrl}`);
           coverUrl = null;
         } else {
-          coverUrl = await this.s3Service.getPresignedGetUrl(
-            this.bucket,
-            coverUrl,
-            3600,
-          );
+          coverUrl = `/api/media/${coverUrl}`;
         }
       }
       const resolvedHeroSettings = await this.resolveLogoUrls(

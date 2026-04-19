@@ -13,6 +13,8 @@ import {
   ClipboardList,
   Package,
   Download,
+  CreditCard,
+  Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
@@ -66,6 +68,7 @@ function PaymentActionContent() {
   const [address, setAddress] = useState<AddressInfo>({ city: '', district: '', street: '', buildingNo: '', landmark: '', note: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QASEH_CARD'>('CASH');
 
   const STEPS = allDigital ? STEPS_DIGITAL : STEPS_PHYSICAL;
   const stepIndex = STEPS.findIndex((s) => s.key === step);
@@ -140,8 +143,24 @@ function PaymentActionContent() {
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, ...(i.variantId ? { variantId: i.variantId } : {}) })),
         ...(addressId ? { shippingAddressId: addressId } : {}),
         phoneNumber: phone,
+        paymentMethod,
         notes: address.note || undefined,
       }, token);
+
+      // 💳 If Qaseh card payment, redirect to payment gateway
+      if (paymentMethod === 'QASEH_CARD' && orderResult.payment?.paymentUrl) {
+        // Save order info for after redirect
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('rukny_pending_payment', JSON.stringify({
+            orderNumbers: orderResult.orders.map((o) => o.orderNumber),
+            storeUsername: session.storeUsername,
+            phone,
+            sessionId,
+          }));
+        }
+        window.location.href = orderResult.payment.paymentUrl;
+        return;
+      }
 
       // Cleanup
       clearCart();
@@ -417,10 +436,64 @@ function PaymentActionContent() {
                       </SummarySection>
                     </div>
 
+                    {/* Payment Method Selector */}
+                    {!allDigital && (
+                      <div className="bg-white dark:bg-zinc-900 rounded-[24px] sm:rounded-[28px] border border-zinc-200 dark:border-zinc-800 p-5 sm:p-7">
+                        <StepTitle icon={<CreditCard className="w-5 h-5 text-white dark:text-zinc-900" />} title="طريقة الدفع" />
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('CASH')}
+                            className={cn(
+                              'w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-right',
+                              paymentMethod === 'CASH'
+                                ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800/50'
+                                : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600',
+                            )}
+                          >
+                            <div className={cn(
+                              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                              paymentMethod === 'CASH' ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-100 dark:bg-zinc-800',
+                            )}>
+                              <Banknote className={cn('w-5 h-5', paymentMethod === 'CASH' ? 'text-white dark:text-zinc-900' : 'text-zinc-400')} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[14px] font-semibold text-zinc-900 dark:text-white">الدفع عند الاستلام</p>
+                              <p className="text-[12px] text-zinc-400 dark:text-zinc-500">ادفع نقداً عند وصول الطلب</p>
+                            </div>
+                            {paymentMethod === 'CASH' && <CheckCircle2 className="w-5 h-5 text-zinc-900 dark:text-white shrink-0" />}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('QASEH_CARD')}
+                            className={cn(
+                              'w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-right',
+                              paymentMethod === 'QASEH_CARD'
+                                ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800/50'
+                                : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600',
+                            )}
+                          >
+                            <div className={cn(
+                              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                              paymentMethod === 'QASEH_CARD' ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-100 dark:bg-zinc-800',
+                            )}>
+                              <CreditCard className={cn('w-5 h-5', paymentMethod === 'QASEH_CARD' ? 'text-white dark:text-zinc-900' : 'text-zinc-400')} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[14px] font-semibold text-zinc-900 dark:text-white">الدفع بالبطاقة</p>
+                              <p className="text-[12px] text-zinc-400 dark:text-zinc-500">ادفع ببطاقة الائتمان أو الخصم المباشر</p>
+                            </div>
+                            {paymentMethod === 'QASEH_CARD' && <CheckCircle2 className="w-5 h-5 text-zinc-900 dark:text-white shrink-0" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Desktop CTA */}
                     <div className="hidden lg:block">
                       <PrimaryButton onClick={handlePlaceOrder} loading={loading}>
-                        تأكيد الطلب نهائياً 🎉
+                        {paymentMethod === 'QASEH_CARD' ? 'المتابعة للدفع 💳' : 'تأكيد الطلب نهائياً 🎉'}
                       </PrimaryButton>
                     </div>
                   </div>
@@ -483,7 +556,7 @@ function PaymentActionContent() {
           )}
           {step === 'confirm' && (
             <PrimaryButton onClick={handlePlaceOrder} loading={loading}>
-              تأكيد الطلب نهائياً 🎉
+              {paymentMethod === 'QASEH_CARD' ? 'المتابعة للدفع 💳' : 'تأكيد الطلب نهائياً 🎉'}
             </PrimaryButton>
           )}
         </div>

@@ -72,8 +72,8 @@ export function MobileDock() {
   const toggleMenu = useCallback(() => setIsOpen((v) => !v), []);
   const closeMenu = useCallback(() => setIsOpen(false), []);
 
-  // Hide dock on full-screen form pages (create, preview, edit)
-  const hiddenPaths = ['/app/forms/create', '/app/forms/preview', '/forms/create', '/forms/preview'];
+  // Hide dock on full-screen pages (create, preview, edit)
+  const hiddenPaths = ['/app/forms/create', '/app/forms/preview', '/forms/create', '/forms/preview', '/app/store/products/create'];
   const isFormEditRoute = /\/app\/forms\/[^/]+\/edit/.test(pathname) || /\/forms\/[^/]+\/edit/.test(pathname);
   if (hiddenPaths.some(p => pathname.startsWith(p)) || isFormEditRoute) {
     return null;

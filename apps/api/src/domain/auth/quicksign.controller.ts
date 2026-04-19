@@ -478,7 +478,7 @@ export class QuickSignController {
     }, ipAddress);
 
     // Redirect مع code فقط - نفس نظام OAuth
-    const callbackUrl = `${frontendUrl}/auth/callback?code=${code}`;
+    const callbackUrl = `${frontendUrl}/callback?code=${code}`;
     if (!isProduction) console.log('🔄 Redirecting to:', callbackUrl);
     res.redirect(callbackUrl);
   }

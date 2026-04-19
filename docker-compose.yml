@@ -112,6 +112,10 @@ services:
       WHATSAPP_BUSINESS_ACCOUNT_ID: ${WHATSAPP_BUSINESS_ACCOUNT_ID}
       WHATSAPP_AUTH_TEMPLATE_NAME: ${WHATSAPP_AUTH_TEMPLATE_NAME:-auth_otp}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+      # WhatsApp Embedded Signup (Meta App)
+      WHATSAPP_APP_ID: ${WHATSAPP_APP_ID}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET}
+      WHATSAPP_CONFIG_ID: ${WHATSAPP_CONFIG_ID}
       # WhatsApp Personal API (TechnoPlus)
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-https://message.dashboard.technoplus.tech}
       WHATSAPP_SESSION_ID: ${WHATSAPP_SESSION_ID}
@@ -120,6 +124,12 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:notifications@rukny.work}
+      # Al-Qaseh Payment Gateway
+      QASEH_API_URL: ${QASEH_API_URL:-https://api-test.alqaseh.com/v1}
+      QASEH_CLIENT_ID: ${QASEH_CLIENT_ID}
+      QASEH_CLIENT_SECRET: ${QASEH_CLIENT_SECRET}
+      QASEH_REDIRECT_URL: ${QASEH_REDIRECT_URL}
+      QASEH_WEBHOOK_URL: ${QASEH_WEBHOOK_URL}
     networks:
       - rukny_network
 
@@ -168,6 +178,46 @@ services:
     networks:
       - rukny_network
 
+  # ─── Next.js Business App ───
+  business:
+    build:
+      context: ./apps/business
+      dockerfile: Dockerfile
+      args:
+        - API_BACKEND_URL=http://api:3001
+    container_name: rukny_business
+    restart: always
+    ports:
+      - "127.0.0.1:3003:3003"
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      API_BACKEND_URL: http://api:3001
+      API_URL: http://api:3001
+    networks:
+      - rukny_network
+
+  # ─── Next.js Developers App ───
+  developers:
+    build:
+      context: ./apps/developers
+      dockerfile: Dockerfile
+      args:
+        - API_BACKEND_URL=http://api:3001
+    container_name: rukny_developers
+    restart: always
+    ports:
+      - "127.0.0.1:3004:3004"
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      API_BACKEND_URL: http://api:3001
+      API_URL: http://api:3001
+    networks:
+      - rukny_network
+
   # ─── pgAdmin Database Manager ───
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -207,6 +257,8 @@ services:
       - web
       - api
       - admin
+      - business
+      - developers
     networks:
       - rukny_network
 

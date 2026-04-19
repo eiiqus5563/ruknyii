@@ -152,6 +152,8 @@ async function bootstrap() {
     'http://127.0.0.1:3003',
     'http://localhost:3004',
     'http://127.0.0.1:3004',
+    'https://localhost:3004',
+    'https://127.0.0.1:3004',
     // Production domains
     'https://rukny.io',
     'https://www.rukny.io',

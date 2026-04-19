@@ -51,7 +51,7 @@ export class EventsRegistrationService {
       userId,
       attendeeCount,
       notes,
-    );
+    ); 
 
     // Send notifications
     await this.sendRegistrationNotifications(registration, event);
@@ -443,7 +443,7 @@ export class EventsRegistrationService {
     try {
       await this.redisService.del(`dashboard:stats:${ownerId}`);
     } catch (err) {
-      console.warn('Redis cache invalidation error:', err?.message || err);
+      console.warn('Redis cache invalidation error:', err instanceof Error ? err.message : err);
     }
   }
 }

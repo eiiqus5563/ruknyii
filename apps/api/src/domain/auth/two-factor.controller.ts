@@ -380,7 +380,29 @@ export class TwoFactorController {
   }
 
   /**
-   * 🔓 التحقق من 2FA عند تسجيل الدخول
+   * � التحقق من رمز OTP للمستخدم المُسجَّل (لحماية عمليات حساسة مثل كشف API Key)
+   */
+  @Post('verify-token')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'التحقق من رمز OTP للمستخدم المسجل' })
+  @ApiResponse({ status: 200, description: 'نتيجة التحقق' })
+  async verifyToken(
+    @CurrentUser() user: any,
+    @Body() dto: Verify2FADto,
+  ) {
+    try {
+      const result = await this.twoFactorService.verifyToken(user.id, dto.token);
+      return { valid: result.valid };
+    } catch {
+      return { valid: false, message: 'رمز التحقق غير صحيح' };
+    }
+  }
+
+  /**
+   * �🔓 التحقق من 2FA عند تسجيل الدخول
    *
    * يُستخدم بعد التحقق الأولي (QuickSign/OAuth) إذا كان 2FA مفعلاً
    */

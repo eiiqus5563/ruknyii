@@ -13,11 +13,13 @@ import {
   ValidateNested,
   IsOptional,
   IsNumber,
+  IsEnum,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { CheckoutSessionGuard } from '../../core/common/guards/auth/checkout-session.guard';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
+import { QasehPaymentService } from '../../integrations/qaseh-payment/qaseh-payment.service';
 
 /**
  * Item في السلة
@@ -69,6 +71,7 @@ class CreateCheckoutOrderDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @IsEnum(['CASH', 'QASEH_CARD', 'BANK_TRANSFER'])
   paymentMethod?: string;
 
   @ApiPropertyOptional()
@@ -105,6 +108,7 @@ export class CheckoutOrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly prisma: PrismaService,
+    private readonly qasehPayment: QasehPaymentService,
   ) {}
 
   /**
@@ -179,6 +183,7 @@ export class CheckoutOrdersController {
           addressId: createOrderDto.shippingAddressId,
           customerNote: createOrderDto.notes,
           phoneNumber: sessionPhone || createOrderDto.phoneNumber,
+          paymentMethod: createOrderDto.paymentMethod || 'CASH',
           items: createOrderDto.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -188,6 +193,54 @@ export class CheckoutOrdersController {
       );
 
       console.log(`✅ Order created: ${order.id}`);
+
+      // 💳 If payment method is QASEH_CARD, initiate payment
+      if (createOrderDto.paymentMethod === 'QASEH_CARD' && this.qasehPayment.isConfigured()) {
+        try {
+          const itemDescriptions = createOrderDto.items
+            .map((item, i) => `${i + 1}. x${item.quantity}`)
+            .join(', ');
+          const description = `طلب ${order.orderNumber}: ${itemDescriptions}`.substring(0, 250);
+
+          const payment = await this.qasehPayment.createPayment({
+            orderId: order.orderNumber,
+            amount: Number(order.total),
+            currency: order.currency || 'IQD',
+            description,
+            customData: { rukny_order_id: order.id },
+          });
+
+          // Update order with Qaseh payment info
+          await this.prisma.orders.update({
+            where: { id: order.id },
+            data: {
+              paymentId: payment.payment_id,
+              paymentToken: payment.token,
+              paymentStatus: 'PENDING',
+            },
+          });
+
+          return {
+            success: true,
+            message: 'تم إنشاء الطلب - يرجى إكمال الدفع',
+            orders: [{ ...order, paymentId: payment.payment_id }],
+            payment: {
+              paymentId: payment.payment_id,
+              paymentUrl: this.qasehPayment.getPaymentPageUrl(payment.token),
+              token: payment.token,
+            },
+          };
+        } catch (paymentError) {
+          console.error('❌ Qaseh payment initiation failed:', paymentError);
+          // Order is still created, payment can be retried
+          return {
+            success: true,
+            message: 'تم إنشاء الطلب لكن فشل بدء الدفع. يمكنك إعادة المحاولة.',
+            orders: [order],
+            paymentError: true,
+          };
+        }
+      }
 
       return {
         success: true,

@@ -47,12 +47,15 @@ const ALLOWED_ORIGINS: string[] = [
   process.env.APP_FRONTEND_URL,
   process.env.AUTH_FRONTEND_URL,
   process.env.BUSINESS_FRONTEND_URL, // Business app (e.g. https://business.rukny.io)
+  process.env.DEVELOPERS_FRONTEND_URL, // Developers app (e.g. https://developers.rukny.io)
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3003',
   'http://127.0.0.1:3003',
   'http://localhost:3004',
   'http://127.0.0.1:3004',
+  'https://localhost:3004',
+  'https://127.0.0.1:3004',
   // Local network IPs are handled dynamically in validateCsrfOrigin()
 ].filter(Boolean) as string[];
 

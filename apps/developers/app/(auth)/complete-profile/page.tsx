@@ -1,178 +1,185 @@
-'use client';
+"use client";
 
-import { useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { useAuth } from '@/providers/auth-provider';
-import { checkUsername } from '@/lib/api/auth';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/auth-provider";
+import { useLocale } from "@/providers/locale-provider";
+import { checkUsername, type CompleteProfileInput } from "@/lib/api/auth";
+import {
+  TextField,
+  Label,
+  Input,
+  Description,
+  FieldError,
+  Button,
+  Spinner,
+} from "@heroui/react";
+import { User, AtSign, Check, X } from "lucide-react";
 
-function CompleteProfileContent() {
+export default function CompleteProfilePage() {
   const router = useRouter();
-  const { user, completeUserProfile, completeOAuthProfile, error, clearError } = useAuth();
-  const [name, setName] = useState(user?.name || '');
-  const [username, setUsername] = useState(user?.username || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nameError, setNameError] = useState('');
-  const [usernameError, setUsernameError] = useState('');
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [checkingUsername, setCheckingUsername] = useState(false);
+  const { user, completeUserProfile, completeOAuthProfile, isLoading } = useAuth();
+  const { t } = useLocale();
 
-  const sanitizeUsername = (text: string): string => {
-    return text.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30);
-  };
+  const [name, setName] = useState(user?.name || "");
+  const [username, setUsername] = useState(user?.username || "");
+  const [usernameStatus, setUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken"
+  >("idle");
+  const [errors, setErrors] = useState<{ name?: string; username?: string }>({});
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const sanitizeName = (text: string): string => {
-    return text.replace(/[<>{}[\]\\]/g, '').replace(/\s{2,}/g, ' ').slice(0, 50);
-  };
+  useEffect(() => {
+    if (user?.name && user?.username && user?.profileCompleted) {
+      router.replace("/app");
+    }
+  }, [user, router]);
 
-  const handleUsernameChange = async (value: string) => {
-    const sanitized = sanitizeUsername(value);
-    setUsername(sanitized);
-    setUsernameError('');
-    setUsernameAvailable(null);
-
-    if (sanitized.length >= 3) {
-      setCheckingUsername(true);
-      try {
-        const { available } = await checkUsername(sanitized);
-        setUsernameAvailable(available);
-        if (!available) setUsernameError('اسم المستخدم غير متاح');
-      } catch {
-        // Ignore check errors
-      } finally {
-        setCheckingUsername(false);
+  const checkUsernameAvailability = useCallback(
+    async (value: string) => {
+      if (value.length < 3) {
+        setUsernameStatus("idle");
+        return;
       }
+      setUsernameStatus("checking");
+      try {
+        const result = await checkUsername(value);
+        setUsernameStatus(result.available ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    },
+    []
+  );
+
+  const handleUsernameChange = (value: string) => {
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(sanitized);
+    setErrors((prev) => ({ ...prev, username: undefined }));
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (sanitized.length >= 3) {
+      debounceRef.current = setTimeout(
+        () => checkUsernameAvailability(sanitized),
+        500
+      );
+    } else {
+      setUsernameStatus("idle");
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
-    setUsernameError('');
-    clearError();
-
-    if (!name.trim()) {
-      setNameError('يرجى إدخال الاسم');
-      return;
-    }
-    if (!username.trim() || username.trim().length < 3) {
-      setUsernameError('اسم المستخدم يجب أن يكون 3 أحرف على الأقل');
-      return;
-    }
-    if (usernameAvailable === false) {
-      setUsernameError('اسم المستخدم غير متاح');
+    const newErrors: { name?: string; username?: string } = {};
+    if (!name.trim()) newErrors.name = "Name is required";
+    if (!username.trim()) newErrors.username = "Username is required";
+    else if (username.length < 3) newErrors.username = "At least 3 characters";
+    else if (usernameStatus === "taken") newErrors.username = t.auth.completeProfile.usernameTaken;
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
       return;
     }
 
-    setIsSubmitting(true);
+    const input: CompleteProfileInput = { name: name.trim(), username: username.trim() };
     try {
-      if (user?.emailVerified) {
-        await completeOAuthProfile({ name: name.trim(), username: username.trim() });
+      if (user?.profileCompleted === false) {
+        await completeOAuthProfile(input);
       } else {
-        await completeUserProfile({ name: name.trim(), username: username.trim() });
+        await completeUserProfile(input);
       }
-      router.replace('/dashboard');
+      router.push("/app");
     } catch {
-      // Error handled by auth provider
-    } finally {
-      setIsSubmitting(false);
+      /* error handled in provider */
     }
   };
 
+  const usernameStatusIcon =
+    usernameStatus === "checking" ? (
+      <Spinner className="size-4" />
+    ) : usernameStatus === "available" ? (
+      <Check className="size-4 text-green-600" />
+    ) : usernameStatus === "taken" ? (
+      <X className="size-4 text-red-500" />
+    ) : null;
+
   return (
-    <div className="w-full py-10" dir="rtl">
-      <div className="flex flex-col items-center w-full">
-        {/* Header */}
-        <div className="text-center mb-7">
-          <h1 className="text-4xl font-light tracking-tight text-zinc-900 dark:text-white mb-2">
-            أكمل ملفك الشخصي
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            أدخل بياناتك للمتابعة
-          </p>
-        </div>
+    <div className="flex flex-col items-center gap-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {t.auth.completeProfile.title}
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          {t.auth.completeProfile.subtitle}
+        </p>
+      </div>
 
-        {/* Error */}
-        {error && (
-          <div className="w-full mb-5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-red-600 dark:text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="flex w-full flex-col gap-5">
+        <TextField isInvalid={!!errors.name} className="w-full">
+          <Label className="text-sm font-medium text-foreground">
+            <User className="inline size-4 ltr:mr-1.5 rtl:ml-1.5" />
+            {t.auth.completeProfile.nameLabel}
+          </Label>
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setErrors((prev) => ({ ...prev, name: undefined }));
+            }}
+            placeholder={t.auth.completeProfile.namePlaceholder}
+            autoFocus
+            className="h-12 rounded-full px-4"
+          />
+          {errors.name && <FieldError>{errors.name}</FieldError>}
+        </TextField>
 
-        <form onSubmit={handleSubmit} className="w-full space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-              الاسم الكامل
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(sanitizeName(e.target.value))}
-              className="w-full h-[48px] px-4 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-full bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400/20 transition-all"
-              placeholder="مثال: أحمد محمد"
-              required
+        <TextField isInvalid={!!errors.username || usernameStatus === "taken"} className="w-full">
+          <Label className="text-sm font-medium text-foreground">
+            <AtSign className="inline size-4 ltr:mr-1.5 rtl:ml-1.5" />
+            {t.auth.completeProfile.usernameLabel}
+          </Label>
+          <div className="relative">
+            <Input
+              value={username}
+              onChange={(e) => handleUsernameChange(e.target.value)}
+              placeholder={t.auth.completeProfile.usernamePlaceholder}
+              className="h-12 rounded-full px-4 ltr:pr-10 rtl:pl-10"
             />
-            {nameError && (
-              <p className="mt-1.5 text-sm text-red-500">{nameError}</p>
-            )}
-          </div>
-
-          {/* Username */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-              اسم المستخدم
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => handleUsernameChange(e.target.value)}
-                className="w-full h-[48px] px-4 pe-10 text-[14px] border border-zinc-200 dark:border-zinc-700 rounded-full bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 outline-none focus:border-zinc-400 dark:focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400/20 transition-all"
-                placeholder="username"
-                dir="ltr"
-                required
-              />
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
-                {!checkingUsername && usernameAvailable === true && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                {!checkingUsername && usernameAvailable === false && <XCircle className="w-4 h-4 text-red-500" />}
+            {usernameStatusIcon && (
+              <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 ltr:right-4 rtl:left-4">
+                {usernameStatusIcon}
               </div>
-            </div>
-            {usernameError && (
-              <p className="mt-1.5 text-sm text-red-500">{usernameError}</p>
             )}
           </div>
+          {usernameStatus === "available" && (
+            <Description className="text-xs text-green-600">
+              {t.auth.completeProfile.usernameAvailable}
+            </Description>
+          )}
+          {usernameStatus === "taken" && (
+            <FieldError>{t.auth.completeProfile.usernameTaken}</FieldError>
+          )}
+          {usernameStatus === "idle" && !errors.username && (
+            <Description className="text-xs text-muted">
+              {t.auth.completeProfile.usernameHint}
+            </Description>
+          )}
+          {errors.username && usernameStatus !== "taken" && (
+            <FieldError>{errors.username}</FieldError>
+          )}
+        </TextField>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={isSubmitting || usernameAvailable === false}
-            className="flex items-center justify-center gap-2 h-[48px] w-full bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 active:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-zinc-900 text-[14px] rounded-full font-semibold transition-all"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>جاري الحفظ...</span>
-              </>
-            ) : (
-              <span>حفظ ومتابعة</span>
-            )}
-          </button>
-        </form>
-      </div>
+        <Button
+          type="submit"
+          variant="primary"
+          isDisabled={isLoading || usernameStatus === "taken"}
+          className="mt-2 h-12 w-full rounded-full text-sm font-medium"
+        >
+          {isLoading ? <Spinner className="size-4" /> : null}
+          {t.auth.completeProfile.continue}
+        </Button>
+      </form>
     </div>
-  );
-}
-
-export default function CompleteProfilePage() {
-  return (
-    <Suspense fallback={
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-      </div>
-    }>
-      <CompleteProfileContent />
-    </Suspense>
   );
 }

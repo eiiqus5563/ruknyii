@@ -59,6 +59,7 @@ import S3Service from '../../services/s3.service';
 import { WhatsappModule } from '../../integrations/whatsapp';
 import { WhatsAppBusinessModule } from '../../integrations/whatsapp-business/whatsapp-business.module';
 import { EmailModule } from '../../integrations/email/email.module';
+import { QasehPaymentModule } from '../../integrations/qaseh-payment/qaseh-payment.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { EmailModule } from '../../integrations/email/email.module';
     WhatsappModule,
     WhatsAppBusinessModule,
     EmailModule,
+    QasehPaymentModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

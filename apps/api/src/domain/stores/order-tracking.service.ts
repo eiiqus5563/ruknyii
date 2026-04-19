@@ -397,11 +397,7 @@ export class OrderTrackingService {
       items: await Promise.all(order.order_items.map(async (item: any) => {
         let image: string | undefined = item.products?.product_images?.[0]?.imagePath;
         if (image && !image.startsWith('http')) {
-          try {
-            image = await this.s3Service.getPresignedGetUrl(this.bucket, image, 3600);
-          } catch {
-            image = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${image}`;
-          }
+          image = `/api/media/${image}`;
         }
         return {
           name: item.productName,
