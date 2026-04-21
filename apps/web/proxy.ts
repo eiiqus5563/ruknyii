@@ -291,13 +291,10 @@ export function proxy(request: NextRequest) {
     );
   }
 
-  // rukny.io homepage → show landing page, or redirect to app if logged in
+  // rukny.io homepage should always show the public landing page.
+  // This avoids cross-subdomain cookie mismatch loops such as:
+  // rukny.io -> app.rukny.io -> /login?session=expired
   if (pathname === '/') {
-    if (userHasSession) {
-      return NextResponse.redirect(
-        new URL(buildAppRedirectUrl(rootDomain, protocol)),
-      );
-    }
     return NextResponse.next();
   }
 
