@@ -7,6 +7,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { ProductStatus as PrismaProductStatus } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma/prisma.service';
 import { RedisService } from '../../core/cache/redis.service';
 import { CreateProductDto, ProductStatus } from './dto/create-product.dto';
@@ -541,7 +542,7 @@ export class ProductsService {
         this.prisma.wishlists.deleteMany({ where: { productId: id } }),
         this.prisma.products.update({
           where: { id },
-          data: { status: 'DISCONTINUED', quantity: 0 },
+          data: { status: PrismaProductStatus.DISCONTINUED, quantity: 0 },
         }),
       ]);
       this.logger.log(`Soft-deleted product ${id} (has ${orderItemsCount} order items)`);

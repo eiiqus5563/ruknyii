@@ -31,6 +31,8 @@ services:
     container_name: rukny_redis
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -48,6 +50,13 @@ services:
       dockerfile: Dockerfile
     container_name: rukny_api
     restart: always
+    command:
+      - sh
+      - -c
+      - >-
+        node -e "const net=require('net'); const retry=()=>{const socket=net.createConnection({host:'postgres',port:5432},()=>{socket.end(); process.exit(0);}); socket.on('error',()=>setTimeout(retry,1000));}; retry();"
+        && npx prisma migrate deploy --config prisma/prisma.config.ts
+        && node dist/main
     ports:
       - "0.0.0.0:3001:3001"
     depends_on:
@@ -140,9 +149,9 @@ services:
       dockerfile: Dockerfile
       args:
         - API_BACKEND_URL=http://api:3001
-        - NEXT_PUBLIC_API_EXTERNAL_URL=${NEXT_PUBLIC_API_EXTERNAL_URL:-http://localhost:3001/api/v1}
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-        - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-localhost:3000}
+        - NEXT_PUBLIC_API_EXTERNAL_URL=${NEXT_PUBLIC_API_EXTERNAL_URL:-https://api.rukny.io/api/v1}
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://rukny.io}
+        - NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN:-rukny.io}
     container_name: rukny_web
     restart: always
     ports:
@@ -153,9 +162,9 @@ services:
       NODE_ENV: production
       API_BACKEND_URL: http://api:3001
       API_URL: http://api:3001
-      NEXT_PUBLIC_API_EXTERNAL_URL: ${NEXT_PUBLIC_API_EXTERNAL_URL:-http://localhost:3001/api/v1}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN:-localhost:3000}
+      NEXT_PUBLIC_API_EXTERNAL_URL: ${NEXT_PUBLIC_API_EXTERNAL_URL:-https://api.rukny.io/api/v1}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://rukny.io}
+      NEXT_PUBLIC_ROOT_DOMAIN: ${NEXT_PUBLIC_ROOT_DOMAIN:-rukny.io}
     networks:
       - rukny_network
 
@@ -251,8 +260,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - web
       - api

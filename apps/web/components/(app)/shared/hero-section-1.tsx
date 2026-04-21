@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, Menu, X, Store, Calendar, Users, Sparkles, LayoutGrid, BarChart3, FileText, User, Bot, Zap, Shield, Clock, Headphones, Globe } from 'lucide-react';
+import { ArrowRight, ChevronDown, Menu, X, ShoppingBag, CalendarDays, ClipboardList, UserCircle2, TrendingUp, BrainCircuit, Sparkles, LayoutGrid, BarChart3, FileText, User, Bot, Zap, Shield, Clock, Headphones, Globe, Store, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
@@ -34,6 +34,62 @@ const transitionVariants = {
     },
 } satisfies { item: Variants };
 
+const rotatingItems = [
+    { text: 'روابطك',    color: '#0090FF' },
+    { text: 'منتجاتك',   color: '#FF2B3A' },
+    { text: 'فعالياتك',  color: '#f97316' },
+    { text: 'نماذجك',    color: '#FFBB26' },
+    { text: 'إعلاناتك', color: '#9F4FFF' },
+    { text: 'مطوريك',   color: '#10b981' },
+    { text: 'أعمالك',   color: '#0090FF' },
+];
+
+const ITEM_H = 1.15; // em — must match h1 leading-[1.15]
+
+function RotatingText() {
+    const [index, setIndex] = React.useState(0);
+
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            setIndex((prev) => (prev + 1) % rotatingItems.length);
+        }, 2400);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <span
+            style={{
+                display: 'inline-block',
+                overflow: 'hidden',
+                height: `${ITEM_H}em`,
+                verticalAlign: 'bottom',
+            }}
+        >
+            <motion.span
+                style={{ display: 'flex', flexDirection: 'column' }}
+                animate={{ y: `-${index * ITEM_H}em` }}
+                transition={{ type: 'spring', stiffness: 210, damping: 28 }}
+            >
+                {rotatingItems.map((item, i) => (
+                    <span
+                        key={i}
+                        style={{
+                            display: 'block',
+                            height: `${ITEM_H}em`,
+                            lineHeight: `${ITEM_H}em`,
+                            color: item.color,
+                            flexShrink: 0,
+                            fontWeight: 900,
+                        }}
+                    >
+                        {item.text}
+                    </span>
+                ))}
+            </motion.span>
+        </span>
+    );
+}
+
 const trustedLogos = [
     { src: "/logos/aws.svg", alt: "AWS", color: "#FF9900" },
     { src: "/logos/google-cloud.svg", alt: "Google Cloud", color: "#4285F4" },
@@ -57,9 +113,31 @@ export function HeroSection() {
         <>
             <HeroHeader />
             <main className="overflow-hidden bg-white" dir="rtl">
-                <section>
+                <section className="relative">
+                    {/* Subtle background glow */}
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <div className="absolute -top-32 right-1/4 size-[480px] rounded-full bg-primary/[0.06] blur-[90px]" />
+                        <div className="absolute top-24 left-1/4 size-[320px] rounded-full bg-primary/[0.04] blur-[70px]" />
+                    </div>
+
                     <div className="relative pt-24 mt-12 sm:pt-28 md:pt-32 lg:pt-36 pb-8 sm:pb-12 md:pb-14">
                         <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                            {/* Badge row */}
+                            <motion.div
+                                className="flex justify-center lg:justify-end mb-6 sm:mb-8"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: 'spring', bounce: 0.3, duration: 1, delay: 0.05 }}
+                            >
+                                <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs sm:text-sm font-medium text-primary/80">
+                                    <span className="relative flex size-2">
+                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
+                                        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                                    </span>
+                                    نسخة مستقرة · متاح الآن
+                                </span>
+                            </motion.div>
+
                             <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-12 xl:gap-20 items-center lg:items-start">
                                 {/* Right side in RTL - Big Heading */}
                                 <motion.div
@@ -68,13 +146,13 @@ export function HeroSection() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.2 }}
                                 >
-                                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[4.25rem] font-black leading-[1.1] tracking-tight">
-                                        منصة رقمية
-                                        <br />
-                                        متكاملة{' '}
-                                        <span className="text-primary">لأعمالك</span>
-                                        <br />
-                                        <span className="text-primary">على الانترنت</span>
+                                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-[4.25rem] font-black leading-[1.15] tracking-tight">
+                                        <div>منصة رقمية</div>
+                                        <div className="flex gap-2 sm:gap-3 items-baseline">
+                                            <span>متكاملة لـ</span>
+                                            <RotatingText />
+                                        </div>
+                                        <div>على الانترنت</div>
                                     </h1>
                                 </motion.div>
 
@@ -85,23 +163,36 @@ export function HeroSection() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.35 }}
                                 >
-                                    <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-3.5 py-1 text-xs sm:text-sm font-medium text-foreground/80">
-                                        نسخة مستقرة
-                                    </span>
                                     <p className="text-sm sm:text-base text-muted-foreground leading-relaxed text-center lg:text-right">
                                         أطلق مشروعك على الانترنت خلال دقائق.
-                                        أنشئ متجرك، نظّم فعالياتك، وتواصل مع عملائك.
-                                        أدر مدفوعاتك، زبائنك، ومنتجاتك في مكان واحد.
+                                        أنشئ متجرك، أضف منتجاتك وروابطك، نظّم فعالياتك،
+                                        وتواصل مع عملائك — كل ذلك من لوحة تحكم واحدة.
                                     </p>
-                                    <div className="bg-foreground/10 rounded-4xl border p-0.5">
-                                        <Button
-                                            asChild
-                                            size="default"
-                                            className="rounded-4xl px-6 text-sm h-10 sm:h-11 gap-2">
-                                            <Link href="/app">
-                                                <span className="text-nowrap">ابدأ مجاناً</span>
-                                            </Link>
-                                        </Button>
+
+                                    {/* Quick feature pills */}
+                                    <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+                                        {['روابط', 'منتجات', 'نماذج', 'إعلانات', 'مطورين'].map((tag) => (
+                                            <span key={tag} className="rounded-full border border-border/50 bg-muted/40 px-3 py-0.5 text-[11px] sm:text-xs font-medium text-foreground/60">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <div className="bg-foreground/10 rounded-4xl border p-0.5">
+                                            <Button
+                                                asChild
+                                                size="default"
+                                                className="rounded-4xl px-6 text-sm h-10 sm:h-11 gap-2">
+                                                <Link href="/app">
+                                                    <span className="text-nowrap">ابدأ مجاناً</span>
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                        <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 group">
+                                            <span>الأسعار</span>
+                                            <ArrowRight className="size-3.5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
+                                        </Link>
                                     </div>
                                 </motion.div>
                             </div>
@@ -115,13 +206,18 @@ export function HeroSection() {
                             transition={{ type: 'spring', bounce: 0.3, duration: 1.3, delay: 0.7 }}
                         >
                             <div className="border-t border-border/30 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-                                <p className="text-muted-foreground">
-                                    متاجر، فعاليات، ملفك الشخصي نماذج وتحليلات{' '}
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-muted-foreground">
+                                    {['متاجر', 'فعاليات', 'روابط', 'نماذج', 'تحليلات'].map((item, i) => (
+                                        <React.Fragment key={item}>
+                                            <span>{item}</span>
+                                            {i < 4 && <span className="size-1 rounded-full bg-border/60 hidden sm:inline-block" />}
+                                        </React.Fragment>
+                                    ))}
                                     <span className="text-primary font-semibold">كلها في منصة واحدة</span>
-                                </p>
-                                <p className="text-muted-foreground flex items-center gap-2">
+                                </div>
+                                <p className="text-muted-foreground flex items-center gap-2 shrink-0">
                                     <span className="size-1.5 rounded-full bg-primary/60" />
-                                    انضم لأكثر من <span className="font-bold text-foreground mx-1">1000+</span> صاحب عمل يدير مشروعه عبر ركني
+                                    انضم لأكثر من <span className="font-bold text-foreground mx-1">1000+</span> صاحب عمل
                                 </p>
                             </div>
                         </motion.div>
@@ -326,12 +422,12 @@ const menuItems = [
 ];
 
 const productItems = [
-    { name: 'المتاجر الإلكترونية', href: '/products/stores', icon: Store, description: 'أنشئ متجرك وابدأ البيع فوراً' },
-    { name: 'إدارة الفعاليات', href: '/products/events', icon: Calendar, description: 'نظّم فعالياتك واستقبل الحجوزات' },
-    { name: 'النماذج الذكية', href: '/products/forms', icon: FileText, description: 'أنشئ نماذج واستبيانات متقدمة' },
-    { name: 'الملف الشخصي', href: '/products/profile', icon: User, description: 'صفحة شخصية احترافية لعملك' },
-    { name: 'التحليلات', href: '/products/analytics', icon: BarChart3, description: 'راقب أداء أعمالك بالتفصيل بشكل متقدم' },
-    { name: 'الذكاء الاصطناعي', href: '/products/ai', icon: Bot, description: 'أدوات ذكية لتطوير أعمالك' },
+    { name: 'المتاجر الإلكترونية', href: '/products/stores', icon: ShoppingBag, description: 'أنشئ متجرك وابدأ البيع فوراً', color: '#f97316', bg: '#fff7ed' },
+    { name: 'إدارة الفعاليات', href: '/products/events', icon: CalendarDays, description: 'نظّم فعالياتك واستقبل الحجوزات', color: '#8b5cf6', bg: '#f5f3ff' },
+    { name: 'النماذج الذكية', href: '/products/forms', icon: ClipboardList, description: 'أنشئ نماذج واستبيانات متقدمة', color: '#0ea5e9', bg: '#f0f9ff' },
+    { name: 'الملف الشخصي', href: '/products/profile', icon: UserCircle2, description: 'صفحة شخصية احترافية لعملك', color: '#10b981', bg: '#f0fdf4' },
+    { name: 'التحليلات', href: '/products/analytics', icon: TrendingUp, description: 'راقب أداء أعمالك بالتفصيل', color: '#e11d48', bg: '#fff1f2' },
+    { name: 'الذكاء الاصطناعي', href: '/products/ai', icon: BrainCircuit, description: 'أدوات ذكية لتطوير أعمالك', color: '#6366f1', bg: '#eef2ff' },
 ];
 
 const HeroHeader = () => {
@@ -341,14 +437,11 @@ const HeroHeader = () => {
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 50);
-        };
+        const handleScroll = () => setIsScrolled(window.scrollY > 60);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Close product menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -361,269 +454,140 @@ const HeroHeader = () => {
         }
     }, [productMenuOpen]);
 
+    // Lock body scroll when mobile menu is open
+    React.useEffect(() => {
+        document.body.style.overflow = menuState ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [menuState]);
+
     return (
         <header dir="rtl" className="relative">
-            <nav className="fixed z-50 w-full px-3 sm:px-4 pt-3 sm:pt-4">
-                <motion.div
-                    initial={{ y: -20, opacity: 0 }}
-                    animate={{ 
-                        y: 0, 
-                        opacity: 1,
-                    }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className={cn(
-                        'mx-auto transition-all duration-500 ease-out border',
-                        isScrolled 
-                            ? 'max-w-4xl bg-white/80 backdrop-blur-xl shadow-lg shadow-black/5 border-border/30 rounded-2xl' 
-                            : 'max-w-7xl bg-white/60 backdrop-blur-md border-border/20 rounded-4xl'
-                    )}
-                >
-                    <div className={cn(
-                        'mx-auto transition-all duration-500 ease-out',
-                        isScrolled ? 'px-3 sm:px-4' : 'px-4 sm:px-6'
-                    )}>
-                        <div className={cn(
-                            'flex items-center justify-between transition-all duration-500',
-                            isScrolled ? 'h-12 sm:h-12' : 'h-14 sm:h-16'
-                        )}>
-                            {/* Logo */}
-                            <Link
-                                href="/"
-                                aria-label="الصفحة الرئيسية"
-                                className="flex items-center gap-2 shrink-0">
-                                <RuknyLogo />
-                            </Link>
+            {/* ─── Nav Bar ─── */}
+            <nav
+                className={cn(
+                    'fixed top-0 left-0 w-full z-50 transition-all duration-500 ease-out',
+                    isScrolled
+                        ? 'bg-white/95 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.06)] py-3'
+                        : 'pt-8 pb-4'
+                )}
+            >
+                <div className="mx-auto max-w-7xl px-5 sm:px-6 flex items-center justify-between lg:grid lg:grid-cols-5">
+                    {/* Logo */}
+                    <Link href="/" aria-label="الصفحة الرئيسية" className="flex items-center gap-2">
+                        <RuknyLogo />
+                    </Link>
 
-                            {/* Desktop Navigation - Center */}
-                            <div className="hidden lg:flex items-center gap-1">
-                                {/* Products Dropdown */}
-                                <div className="relative" ref={dropdownRef}>
-                                    <button
-                                        onClick={() => setProductMenuOpen(!productMenuOpen)}
-                                        onMouseEnter={() => setProductMenuOpen(true)}
-                                        className={cn(
-                                            'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors duration-200',
-                                            'text-foreground/80 hover:text-foreground',
-                                            productMenuOpen && 'text-foreground'
-                                        )}
-                                    >
-                                        <span>المنتجات</span>
-                                        <ChevronDown className={cn(
-                                            'size-4 transition-transform duration-300',
-                                            productMenuOpen && 'rotate-180'
-                                        )} />
-                                    </button>
-                                </div>
-
-                                {/* Other Menu Items */}
-                                {menuItems.map((item) => (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground transition-colors duration-200"
-                                    >
-                                        {item.name}
-                                    </Link>
-                                ))}
-                            </div>
-
-                            {/* Desktop CTA Buttons */}
-                            <div className="hidden lg:flex items-center gap-4 shrink-0">
-                                <Button
-                                    asChild
-                                    size="sm"
-                                    className="rounded-lg px-5 h-9"
-                                >
-                                    <Link href="/app">
-                                        <LayoutGrid className="size-4 ml-2" />
-                                        لوحة التحكم
-                                    </Link>
-                                </Button>
-                            </div>
-
-                            {/* Mobile Menu Button */}
+                    {/* Desktop Nav – centre col-span-3 */}
+                    <div className="col-span-3 hidden lg:flex items-center justify-center gap-8">
+                        <div className="relative" ref={dropdownRef}>
                             <button
-                                onClick={() => setMenuState(!menuState)}
-                                aria-label={menuState ? 'إغلاق القائمة' : 'فتح القائمة'}
-                                className="flex lg:hidden items-center justify-center size-9 sm:size-10 rounded-lg hover:bg-muted/80 active:bg-muted transition-colors"
+                                onClick={() => setProductMenuOpen(!productMenuOpen)}
+                                onMouseEnter={() => setProductMenuOpen(true)}
+                                className="flex items-center gap-1.5 text-[14px] text-[#132327] transition-all duration-200 ease-out hover:opacity-60"
                             >
-                                <AnimatePresence mode="wait">
-                                    {menuState ? (
-                                        <motion.div
-                                            key="close"
-                                            initial={{ rotate: -90, opacity: 0 }}
-                                            animate={{ rotate: 0, opacity: 1 }}
-                                            exit={{ rotate: 90, opacity: 0 }}
-                                            transition={{ duration: 0.15 }}
-                                        >
-                                            <X className="size-5" />
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div
-                                            key="menu"
-                                            initial={{ rotate: 90, opacity: 0 }}
-                                            animate={{ rotate: 0, opacity: 1 }}
-                                            exit={{ rotate: -90, opacity: 0 }}
-                                            transition={{ duration: 0.15 }}
-                                        >
-                                            <Menu className="size-5" />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                <span>المنتجات</span>
+                                <ChevronDown className={cn('size-3.5 transition-transform duration-300', productMenuOpen && 'rotate-180')} />
                             </button>
                         </div>
-                    </div>
-                </motion.div>
-
-                {/* Mega Menu Dropdown - Full Width like wayl.io */}
-                <AnimatePresence>
-                    {productMenuOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                            className={cn(
-                                "fixed inset-x-0 z-40 hidden lg:block px-4",
-                                isScrolled ? "top-[4.5rem]" : "top-[5.25rem]"
-                            )}
-                            onMouseEnter={() => setProductMenuOpen(true)}
-                            onMouseLeave={() => setProductMenuOpen(false)}
-                        >
-                            <div className={cn(
-                                "mx-auto bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl shadow-black/5 transition-all duration-300",
-                                isScrolled ? "max-w-4xl rounded-2xl" : "max-w-7xl rounded-xl"
-                            )}>
-                                <div className="px-6 py-8">
-                                    <div className="grid grid-cols-12 gap-8">
-                                        {/* Products Grid - 3 columns for 6 items */}
-                                        <div className="col-span-9">
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {productItems.map((item, index) => (
-                                                    <motion.div
-                                                        key={item.name}
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: index * 0.03 }}
-                                                    >
-                                                        <Link
-                                                            href={item.href}
-                                                            className="flex items-start gap-3 p-4 rounded-xl hover:bg-muted/50 transition-colors group"
-                                                            onClick={() => setProductMenuOpen(false)}
-                                                        >
-                                                            <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                                <item.icon className="size-5 text-primary" />
-                                                            </div>
-                                                            <div className="text-right min-w-0">
-                                                                <span className="block text-sm font-semibold text-foreground mb-0.5">{item.name}</span>
-                                                                <span className="block text-xs text-muted-foreground leading-relaxed">{item.description}</span>
-                                                            </div>
-                                                        </Link>
-                                                    </motion.div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* CTA Card */}
-                                        <div className="col-span-3">
-                                            <motion.div
-                                                initial={{ opacity: 0, x: 20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: 0.15 }}
-                                                className="bg-muted/50 rounded-2xl p-6 h-full flex flex-col justify-between"
-                                            >
-                                                <div>
-                                                    <h3 className="text-xl font-bold mb-2">مشروع خاص<br />أو مؤسسة؟</h3>
-                                                    <p className="text-muted-foreground text-sm">
-                                                        تواصل معنا للحصول على حلول مخصصة لاحتياجات عملك
-                                                    </p>
-                                                </div>
-                                                <Link
-                                                    href="/contact"
-                                                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors mt-4 group"
-                                                    onClick={() => setProductMenuOpen(false)}
-                                                >
-                                                    <ArrowRight className="size-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
-                                                    <span>احجز استشارة الآن</span>
-                                                </Link>
-                                            </motion.div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Mobile Menu - Top Sheet */}
-                <AnimatePresence>
-                    {menuState && (
-                        <>
-                            {/* Backdrop */}
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
-                                onClick={() => setMenuState(false)}
-                            />
-                            
-                            {/* Top Sheet */}
-                            <motion.div
-                                initial={{ y: '-100%' }}
-                                animate={{ y: 0 }}
-                                exit={{ y: '-100%' }}
-                                transition={{ type: 'spring', damping: 30, stiffness: 250 }}
-                                drag="y"
-                                dragConstraints={{ top: 0, bottom: 0 }}
-                                dragElastic={{ top: 0, bottom: 0.4 }}
-                                dragMomentum={true}
-                                dragTransition={{ bounceStiffness: 200, bounceDamping: 30 }}
-                                onDragEnd={(_, info) => {
-                                    // Close if dragged down more than 100px or with fast velocity
-                                    if (info.offset.y > 100 || info.velocity.y > 200) {
-                                        setMenuState(false);
-                                    }
-                                }}
-                                whileDrag={{ cursor: 'grabbing' }}
-                                className="fixed top-0 left-0 right-0 bg-white rounded-b-3xl shadow-2xl z-50 lg:hidden max-h-[90vh] overflow-hidden touch-pan-y"
-                                style={{ touchAction: 'pan-y' }}
+                        {menuItems.map((item) => (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className="text-[14px] text-[#132327] transition-all duration-200 ease-out hover:opacity-60"
                             >
-                                <div className="overflow-y-auto max-h-[90vh] px-5 pt-5 pb-4">
-                                    {/* Header */}
-                                    <div className="flex items-center justify-between mb-6">
-                                        <RuknyLogo />
-                                        <button
-                                            onClick={() => setMenuState(false)}
-                                            className="size-9 rounded-full bg-muted hover:bg-muted/80 active:scale-95 flex items-center justify-center transition-all"
-                                        >
-                                            <X className="size-4" />
-                                        </button>
-                                    </div>
+                                {item.name}
+                            </Link>
+                        ))}
+                    </div>
 
-                                    {/* Products Section - Cards with Text */}
-                                    <div className="mb-5">
-                                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">المنتجات</h3>
-                                        <div className="grid grid-cols-2 gap-3">
+                    {/* Desktop CTA */}
+                    <div className="hidden lg:flex items-center mr-auto">
+                        <Link href="/app">
+                            <div className="relative group flex items-center gap-1 text-[14px] text-[#132327] px-3 py-2">
+                                <span>لوحة التحكم</span>
+                                <LayoutGrid className="size-4" />
+                                <div className="absolute inset-[-5px] rounded-xl opacity-0 group-hover:opacity-100 bg-black/[0.06] scale-95 group-hover:scale-105 transition-all duration-300 ease-in-out -z-10" />
+                            </div>
+                        </Link>
+                    </div>
+
+                    {/* Mobile Hamburger */}
+                    <button
+                        onClick={() => setMenuState(!menuState)}
+                        aria-label={menuState ? 'إغلاق القائمة' : 'فتح القائمة'}
+                        className="flex lg:hidden items-center justify-center size-9 rounded-xl hover:bg-black/5 active:bg-black/10 transition-colors"
+                    >
+                        <AnimatePresence mode="wait">
+                            {menuState ? (
+                                <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                                    <X className="size-5" />
+                                </motion.div>
+                            ) : (
+                                <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                                    <Menu className="size-5" />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </button>
+                </div>
+            </nav>
+
+            {/* ─── Desktop Mega Menu ─── */}
+            <AnimatePresence>
+                {productMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className={cn(
+                            'fixed inset-x-0 z-40 hidden lg:block px-6',
+                            isScrolled ? 'top-[3.5rem]' : 'top-[5rem]'
+                        )}
+                        onMouseEnter={() => setProductMenuOpen(true)}
+                        onMouseLeave={() => setProductMenuOpen(false)}
+                    >
+                        <div className="mx-auto max-w-7xl">
+                            <div className="h-2" />
+                            <div className="bg-white border border-black/[0.07] shadow-[0_8px_30px_rgb(0,0,0,0.06)] rounded-4xl overflow-hidden">
+                                {/* Label bar */}
+                                <div className="px-8 pt-6 pb-4 flex items-center justify-between">
+                                    <p className="text-[11px] font-semibold uppercase tracking-widest text-black/30">المنتجات</p>
+                                    <Link
+                                        href="/products"
+                                        className="text-[12px] text-black/40 hover:text-black/70 transition-colors flex items-center gap-1"
+                                        onClick={() => setProductMenuOpen(false)}
+                                    >
+                                        <span>عرض الكل</span>
+                                        <ArrowRight className="size-3 rotate-180" />
+                                    </Link>
+                                </div>
+
+                                <div className="flex">
+                                    {/* Products grid */}
+                                    <div className="flex-1 px-5 pb-6">
+                                        <div className="grid grid-cols-3 gap-1">
                                             {productItems.map((item, index) => (
                                                 <motion.div
                                                     key={item.name}
-                                                    initial={{ opacity: 0, y: -20 }}
+                                                    initial={{ opacity: 0, y: 6 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: index * 0.05 + 0.1 }}
+                                                    transition={{ delay: index * 0.025 }}
                                                 >
                                                     <Link
                                                         href={item.href}
-                                                        className="flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted active:scale-[0.98] transition-all border border-border/50"
-                                                        onClick={() => setMenuState(false)}
+                                                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-black/[0.03] transition-all duration-150 group cursor-pointer"
+                                                        onClick={() => setProductMenuOpen(false)}
                                                     >
-                                                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                                            <item.icon className="size-5 text-primary" />
+                                                        <div
+                                                            className="size-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-150"
+                                                            style={{ backgroundColor: item.bg }}
+                                                        >
+                                                            <item.icon className="size-4 transition-colors duration-150" style={{ color: item.color }} />
                                                         </div>
-                                                        <div className="flex-1 min-w-0 text-right">
-                                                            <span className="block text-sm font-semibold leading-tight">{item.name}</span>
-                                                            <span className="block text-[11px] text-muted-foreground mt-0.5 leading-tight line-clamp-1">{item.description}</span>
+                                                        <div className="text-right min-w-0">
+                                                            <span className="block text-[13px] font-medium text-[#132327] leading-tight">{item.name}</span>
+                                                            <span className="block text-[11px] text-black/40 mt-0.5 leading-snug line-clamp-1">{item.description}</span>
                                                         </div>
                                                     </Link>
                                                 </motion.div>
@@ -631,80 +595,170 @@ const HeroHeader = () => {
                                         </div>
                                     </div>
 
-                                    {/* Quick Links */}
-                                    <div className="flex gap-2 mb-5">
-                                        {menuItems.map((item, index) => (
-                                            <motion.div
-                                                key={item.name}
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: index * 0.05 + 0.4 }}
-                                                className="flex-1"
-                                            >
-                                                <Link
-                                                    href={item.href}
-                                                    className="flex items-center justify-center p-3 rounded-xl bg-muted/50 hover:bg-muted active:scale-[0.98] transition-all"
-                                                    onClick={() => setMenuState(false)}
-                                                >
-                                                    <span className="text-sm font-medium">{item.name}</span>
-                                                </Link>
-                                            </motion.div>
-                                        ))}
-                                    </div>
+                                    {/* Divider */}
+                                    <div className="w-px bg-black/[0.05] my-5" />
 
-                                    {/* Consultation CTA Card */}
+                                    {/* CTA panel */}
                                     <motion.div
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.5 }}
-                                        className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-5 mb-5 border border-primary/10"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: 0.1 }}
+                                        className="w-64 shrink-0 px-7 py-6 flex flex-col justify-between"
                                     >
-                                        <div className="flex items-start gap-4">
-                                            <div className="size-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                                                <Sparkles className="size-5 text-primary" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-bold text-base mb-1">مشروع خاص أو مؤسسة؟</h4>
-                                                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                                                    تواصل معنا للحصول على حلول مخصصة لاحتياجات عملك
-                                                </p>
-                                                <Link
-                                                    href="/contact"
-                                                    className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-                                                    onClick={() => setMenuState(false)}
-                                                >
-                                                    <ArrowRight className="size-4 rotate-180" />
-                                                    <span>احجز استشارة مجانية</span>
-                                                </Link>
-                                            </div>
+                                        <div>
+                                            <h3 className="text-[15px] font-bold text-[#132327] mb-2 leading-snug">مشروع خاص<br />أو مؤسسة؟</h3>
+                                            <p className="text-[12px] text-black/45 leading-relaxed">
+                                                تواصل معنا للحصول على حلول مخصصة تناسب احتياجات عملك تماماً.
+                                            </p>
                                         </div>
-                                    </motion.div>
-
-                                    {/* CTA Buttons */}
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.55 }}
-                                        className="grid grid-cols-2 gap-3 mb-4"
-                                    >
-                                        <Button asChild variant="outline" className="w-full rounded-xl h-12 text-sm">
-                                            <Link href="/auth/login" onClick={() => setMenuState(false)}>
-                                                تسجيل الدخول
-                                            </Link>
-                                        </Button>
-                                        <Button asChild className="w-full rounded-xl h-12 text-sm">
-                                            <Link href="/app" onClick={() => setMenuState(false)}>
-                                                <LayoutGrid className="size-4 ml-2" />
-                                                لوحة التحكم
-                                            </Link>
-                                        </Button>
+                                        <Link
+                                            href="/contact"
+                                            className="mt-5 inline-flex items-center justify-center gap-2 w-full rounded-xl bg-[#132327] text-white text-[13px] font-medium py-2.5 hover:bg-[#132327]/85 transition-colors duration-200"
+                                            onClick={() => setProductMenuOpen(false)}
+                                        >
+                                            <span>احجز استشارة</span>
+                                            <ArrowRight className="size-3.5 rotate-180" />
+                                        </Link>
                                     </motion.div>
                                 </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
-            </nav>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ─── Mobile Menu ─── */}
+            <AnimatePresence>
+                {menuState && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+                            onClick={() => setMenuState(false)}
+                        />
+
+                        {/* Sheet */}
+                        <motion.div
+                            initial={{ y: '-100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '-100%' }}
+                            transition={{ type: 'spring', damping: 32, stiffness: 260 }}
+                            drag="y"
+                            dragConstraints={{ top: 0, bottom: 0 }}
+                            dragElastic={{ top: 0, bottom: 0.35 }}
+                            dragMomentum={false}
+                            onDragEnd={(_, info) => {
+                                if (info.offset.y > 80 || info.velocity.y > 300) setMenuState(false);
+                            }}
+                            className="fixed top-0 inset-x-0 bg-white rounded-b-[2rem] shadow-2xl z-50 lg:hidden max-h-[92dvh] flex flex-col"
+                            style={{ touchAction: 'pan-y' }}
+                        >
+                            {/* Drag handle */}
+                            <div className="flex justify-center pt-3 pb-1 shrink-0">
+                                <div className="w-9 h-1 rounded-full bg-black/10" />
+                            </div>
+
+                            {/* Top bar */}
+                            <div className="flex items-center justify-between px-5 pt-2 pb-4 shrink-0">
+                                <RuknyLogo />
+                                <button
+                                    onClick={() => setMenuState(false)}
+                                    className="size-9 rounded-full bg-black/[0.06] hover:bg-black/10 active:scale-95 flex items-center justify-center transition-all"
+                                >
+                                    <X className="size-4" />
+                                </button>
+                            </div>
+
+                            {/* Scrollable content */}
+                            <div className="overflow-y-auto flex-1 px-4 pb-6 space-y-1">
+
+                                {/* Section label */}
+                                <p className="text-[11px] font-semibold text-black/35 uppercase tracking-wider px-2 pb-2 pt-1">
+                                    المنتجات
+                                </p>
+
+                                {/* Product list – single column for readability */}
+                                {productItems.map((item, index) => (
+                                    <motion.div
+                                        key={item.name}
+                                        initial={{ opacity: 0, x: 12 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.04, type: 'spring', stiffness: 300, damping: 28 }}
+                                    >
+                                        <Link
+                                            href={item.href}
+                                            className="flex items-center gap-3.5 px-3 py-3 rounded-2xl hover:bg-black/[0.04] active:bg-black/[0.07] active:scale-[0.99] transition-all"
+                                            onClick={() => setMenuState(false)}
+                                        >
+                                            <div
+                                                className="size-10 rounded-xl flex items-center justify-center shrink-0"
+                                                style={{ backgroundColor: item.bg }}
+                                            >
+                                                <item.icon className="size-5" style={{ color: item.color }} />
+                                            </div>
+                                            <div className="flex-1 min-w-0 text-right">
+                                                <p className="text-[14px] font-semibold text-[#132327] leading-tight">{item.name}</p>
+                                                <p className="text-[12px] text-black/40 mt-0.5 leading-snug line-clamp-1">{item.description}</p>
+                                            </div>
+                                            <ChevronDown className="size-3.5 text-black/20 -rotate-90 shrink-0" />
+                                        </Link>
+                                    </motion.div>
+                                ))}
+
+                                {/* Divider */}
+                                <div className="h-px bg-black/[0.06] mx-2 my-3" />
+
+                                {/* Nav links row */}
+                                <div className="grid grid-cols-3 gap-2 pt-1">
+                                    {menuItems.map((item, index) => (
+                                        <motion.div
+                                            key={item.name}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 + 0.28 }}
+                                        >
+                                            <Link
+                                                href={item.href}
+                                                className="flex items-center justify-center py-3 rounded-2xl bg-black/[0.04] hover:bg-black/[0.07] text-[13px] font-medium text-[#132327] transition-all active:scale-95"
+                                                onClick={() => setMenuState(false)}
+                                            >
+                                                {item.name}
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </div>
+
+                                {/* Divider */}
+                                <div className="h-px bg-black/[0.06] mx-2 my-3" />
+
+                                {/* CTA Buttons */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.42 }}
+                                    className="grid grid-cols-2 gap-3 pt-1"
+                                >
+                                    <Button asChild variant="outline" className="rounded-2xl h-12 text-[13px] font-medium">
+                                        <Link href="/auth/login" onClick={() => setMenuState(false)}>
+                                            تسجيل الدخول
+                                        </Link>
+                                    </Button>
+                                    <Button asChild className="rounded-2xl h-12 text-[13px] font-medium gap-2">
+                                        <Link href="/app" onClick={() => setMenuState(false)}>
+                                            <LayoutGrid className="size-4" />
+                                            لوحة التحكم
+                                        </Link>
+                                    </Button>
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </header>
     );
 };

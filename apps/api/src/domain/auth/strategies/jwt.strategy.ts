@@ -47,7 +47,7 @@ const bearerExtractor = (req: any): string | null => {
 function isLocalhostContext(value?: string | string[] | null): boolean {
   if (!value) return false;
   const normalized = Array.isArray(value) ? value.join(' ') : value;
-  return /localhost|127\.0\.0\.1|0\.0\.0\.0|::1/i.test(normalized);
+  return /localhost|127\.0\.0\.1|0\.0\.0\.0|::1|rukny\.io/i.test(normalized);
 }
 
 @Injectable()
